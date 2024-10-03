@@ -14,7 +14,7 @@ class Latch(Document):
         validate_on_save = True
         use_state_management = True
 
-    id: int = Field(description='discord user id')
+    id: str = Field(description='discord guild::user id')
     enabled: bool = Field(False, description='whether the latch is enabled')
     member: PydanticObjectId | None = Field(
         description='the latched member id')

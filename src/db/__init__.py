@@ -47,10 +47,11 @@ class _MongoNew:
     @staticmethod
     def latch(
         user: int,
+        guild: int,
         member: PydanticObjectId | None,
         enabled: bool = False
     ) -> Latch:
-        return Latch(id=user, enabled=enabled, member=member)
+        return Latch(id=f'{guild}::{user}', enabled=enabled, member=member)
 
 
 class MongoDatabase:
@@ -115,16 +116,16 @@ class MongoDatabase:
         return await Group.find_one({'accounts': user_id, 'name': name})
 
     @overload
-    async def latch(self, user_id: int, create: Literal[False] = False) -> Latch | None:
+    async def latch(self, user_id: int, guild_id: int, create: Literal[False] = False) -> Latch | None:
         ...
 
     @overload
-    async def latch(self, user_id: int, create: Literal[True]) -> Latch:
+    async def latch(self, user_id: int, guild_id: int, create: Literal[True]) -> Latch:
         ...
 
-    async def latch(self, user_id: int, create: bool = False) -> Latch | None:
-        latch = await Latch.find_one({'_id': user_id})
+    async def latch(self, user_id: int, guild_id: int, create: bool = False) -> Latch | None:
+        latch = await Latch.find_one({'_id': f'{guild_id}::{user_id}'})
         if latch is not None or not create:
             return latch
 
-        return self.new.latch(user_id, None)
+        return self.new.latch(user_id, guild_id, None)

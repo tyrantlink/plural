@@ -140,13 +140,17 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
                 name='member',
                 description='set to a specific member immediately',
                 required=False,
-                autocomplete=autocomplete.members)])
+                autocomplete=autocomplete.members)],
+        contexts={InteractionContextType.guild})
     async def slash_autoproxy(self, ctx: ApplicationContext, enabled: bool | None, group: str, member: str | None):
         if ctx.interaction.user is None:
             await ctx.response.send_message(
                 embed=ErrorEmbed('you do not exist'),
                 ephemeral=True
             )
+            return
+
+        if ctx.guild_id is None:
             return
 
         resolved_group = await self.client.db.group_by_name(
@@ -161,7 +165,11 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
             )
             return
 
-        latch = await self.client.db.latch(ctx.interaction.user.id, create=True)
+        latch = await self.client.db.latch(
+            ctx.interaction.user.id,
+            ctx.guild_id,
+            create=True
+        )
 
         latch.enabled = enabled if enabled is not None else not latch.enabled
 

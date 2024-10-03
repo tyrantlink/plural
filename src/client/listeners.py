@@ -43,7 +43,10 @@ class ClientListeners(ClientBase):
             if not message.content.startswith('\\\\'):
                 return
 
-            latch = await self.db.latch(message.author.id)
+            latch = await self.db.latch(
+                message.author.id,
+                message.guild.id
+            )
 
             if latch is not None:
                 latch.member = None

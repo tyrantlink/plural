@@ -85,7 +85,10 @@ class ClientBase(AutoShardedBot):
         }
         channel_ids.remove(None)
 
-        latch = await self.db.latch(message.author.id)
+        if message.guild is None:
+            return None, None  # ? mypy stupid
+
+        latch = await self.db.latch(message.author.id, message.guild.id)
 
         for group in groups.copy():
             if (  # ? this is a mess, if the system restricts channels and the message isn't in one of them, skip
