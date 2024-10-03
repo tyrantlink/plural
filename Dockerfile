@@ -15,4 +15,4 @@ COPY . .
 RUN pip install --no-cache-dir -U -r requirements.txt
 
 
-CMD ["bash", "-c", "if [ \"$SCOPE\" = 'api' ]; then python3.12 main.py api; else python3.12 main.py bot; fi"]
+CMD ["bash", "-c", "python3.12 -u main.py $SCOPE"]
