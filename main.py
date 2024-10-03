@@ -6,7 +6,7 @@ from argparse import ArgumentParser
 
 
 def run_bot():
-    client = Client(intents=Intents.all())
+    client = Client(intents=Intents.default() | Intents.message_content)
     client.run(project.bot_token)
 
 
