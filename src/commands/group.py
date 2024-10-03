@@ -1,6 +1,6 @@
 from discord import ApplicationContext, Option, SlashCommandGroup, Attachment, User
-from src.client.embeds import ErrorEmbed, SuccessEmbed
 import src.commands.autocomplete as autocomplete
+from src.helpers import send_error, send_success
 from src.commands.base import BaseCommands
 from discord.abc import GuildChannel
 from asyncio import gather
@@ -31,9 +31,7 @@ class GroupCommands(BaseCommands):
                 await resolved_group.save()
                 return resolved_group
 
-            await interaction.response.send_message(
-                embed=ErrorEmbed(f'group `{group}` not found'),
-                ephemeral=True)
+            await send_error(interaction, f'group `{group}` not found')
             return None
 
         return resolved_group
@@ -49,9 +47,7 @@ class GroupCommands(BaseCommands):
                 required=True)])
     async def group_new(self, ctx: ApplicationContext, group: str):
         if await self.client.db.group_by_name(ctx.author.id, group) is not None:
-            await ctx.response.send_message(
-                embed=ErrorEmbed(f'group `{group}` already exists'),
-                ephemeral=True)
+            await send_error(ctx, f'group `{group}` already exists')
             return
 
         new_group = self.client.db.new.group(
@@ -62,9 +58,7 @@ class GroupCommands(BaseCommands):
 
         await gather(
             new_group.save(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(f'created group `{group}`'),
-                ephemeral=True)
+            send_success(ctx, f'created group `{group}`')
         )
 
     @group.command(
@@ -83,17 +77,12 @@ class GroupCommands(BaseCommands):
             return
 
         if resolved_group.members:
-            await ctx.response.send_message(
-                embed=ErrorEmbed(
-                    f'group `{group}` has {len(resolved_group.members)} members'),
-                ephemeral=True)
+            await send_error(ctx, f'group `{group}` has {len(resolved_group.members)} members')
             return
 
         await gather(
             resolved_group.delete(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(f'deleted group `{group}`'),
-                ephemeral=True)
+            send_success(ctx, f'deleted group `{group}`')
         )
 
     @group.command(
@@ -102,11 +91,7 @@ class GroupCommands(BaseCommands):
     async def group_list(self, ctx: ApplicationContext):
         groups = await self.client.db.groups(ctx.author.id)
 
-        await ctx.response.send_message(
-            embed=SuccessEmbed(
-                '\n'.join(group.name for group in groups) or 'no groups'),
-            ephemeral=True
-        )
+        await send_success(ctx, '\n'.join(group.name for group in groups) or 'no groups')
 
     @group.command(
         name='share',
@@ -147,9 +132,7 @@ class GroupCommands(BaseCommands):
 
         await gather(
             resolved_group.save(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(f'set group `{group}` name to `{name}`'),
-                ephemeral=True)
+            send_success(ctx, f'set group `{group}` name to `{name}`')
         )
 
     @group_set.command(
@@ -176,9 +159,7 @@ class GroupCommands(BaseCommands):
 
         await gather(
             resolved_group.save(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(f'set group `{group}` tag to `{tag}`'),
-                ephemeral=True)
+            send_success(ctx, f'set group `{group}` tag to `{tag}`')
         )
 
     @group_set.command(
@@ -212,25 +193,18 @@ class GroupCommands(BaseCommands):
 
             await gather(
                 resolved_group.save(),
-                ctx.response.send_message(
-                    embed=SuccessEmbed(f'removed group `{group}` avatar'),
-                    ephemeral=True)
+                send_success(ctx, f'removed group `{group}` avatar')
             )
             return None
 
         extension = avatar.filename.rsplit('.', 1)[-1]
 
         if extension not in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
-            await ctx.response.send_message(
-                embed=ErrorEmbed(
-                    'avatar must be a png, jpg, jpeg, gif, or webp'),
-                ephemeral=True)
+            await send_error(ctx, 'avatar must be a png, jpg, jpeg, gif, or webp')
             return None
 
         if avatar.size > 4_194_304:
-            await ctx.response.send_message(
-                embed=ErrorEmbed('avatar size must be less than 8mb'),
-                ephemeral=True)
+            await send_error(ctx, 'avatar size must be less than 4mb')
             return None
 
         await ctx.response.defer(ephemeral=True)
@@ -253,9 +227,7 @@ class GroupCommands(BaseCommands):
 
         await gather(
             resolved_group.save_changes(),
-            ctx.followup.send(
-                embed=SuccessEmbed(success_message),
-                ephemeral=True)
+            send_success(ctx, success_message)
         )
 
     @group_channels.command(
@@ -281,10 +253,8 @@ class GroupCommands(BaseCommands):
 
         await gather(
             resolved_group.save(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(
-                    f'added group `{group}` to channel `{channel.name}`'),
-                ephemeral=True)
+            send_success(ctx, f'added group `{
+                         group}` to channel `{channel.name}`')
         )
 
     @group_channels.command(
@@ -310,10 +280,9 @@ class GroupCommands(BaseCommands):
 
         await gather(
             resolved_group.save(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(
-                    f'removed group `{group}` from channel `{channel.name}`'),
-                ephemeral=True)
+            send_success(
+                ctx,
+                f'removed group `{group}` from channel `{channel.name}`')
         )
 
     @group_channels.command(
@@ -331,8 +300,4 @@ class GroupCommands(BaseCommands):
         if resolved_group is None:
             return
 
-        await ctx.response.send_message(
-            embed=SuccessEmbed(
-                '\n'.join(f'<#{channel}>' for channel in resolved_group.channels) or 'no channels'),
-            ephemeral=True
-        )
+        await send_success(ctx, '\n'.join(f'<#{channel}>' for channel in resolved_group.channels) or 'no channels')

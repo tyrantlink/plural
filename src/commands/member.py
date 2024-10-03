@@ -1,6 +1,6 @@
 from discord import ApplicationContext, Option, SlashCommandGroup, Attachment
-from src.client.embeds import ErrorEmbed, SuccessEmbed
 import src.commands.autocomplete as autocomplete
+from src.helpers import send_error, send_success
 from src.commands.base import BaseCommands
 from src.db.models import ProxyTag
 from src.db import Group, Member
@@ -31,9 +31,7 @@ class MemberCommands(BaseCommands):
                 await resolved_group.save()
                 return resolved_group
 
-            await interaction.response.send_message(
-                embed=ErrorEmbed(f'group `{group}` not found'),
-                ephemeral=True)
+            await send_error(interaction, f'group `{group}` not found')
             return None
 
         return resolved_group
@@ -47,9 +45,7 @@ class MemberCommands(BaseCommands):
         resolved_member = await resolved_group.get_member_by_name(member)
 
         if resolved_member is None:
-            await interaction.response.send_message(
-                embed=ErrorEmbed(f'member `{member}` not found'),
-                ephemeral=True)
+            await send_error(interaction, f'member `{member}` not found')
             return None, None
 
         return resolved_group, resolved_member
@@ -75,17 +71,12 @@ class MemberCommands(BaseCommands):
             return None
 
         if await resolved_group.get_member_by_name(member) is not None:
-            await ctx.response.send_message(
-                embed=ErrorEmbed(f'member `{member}` already exists'),
-                ephemeral=True)
+            await send_error(ctx, f'member `{member}` already exists')
             return None
 
         await resolved_group.add_member(member)
 
-        await ctx.response.send_message(
-            embed=SuccessEmbed(
-                f'created member `{member}` in group `{group}`'),
-            ephemeral=True)
+        await send_success(ctx, f'created member `{member}` in group `{group}`')
 
     @member.command(
         name='delete',
@@ -110,10 +101,7 @@ class MemberCommands(BaseCommands):
 
         await resolved_group.delete_member(resolved_member.id)
 
-        await ctx.response.send_message(
-            embed=SuccessEmbed(
-                f'member `{member}` of group `{group}` was deleted'),
-            ephemeral=True)
+        await send_success(ctx, f'member `{member}` of group `{group}` was deleted')
 
     @member.command(
         name='list',
@@ -139,10 +127,7 @@ class MemberCommands(BaseCommands):
             in members
         ]) or 'no members found'
 
-        await ctx.response.send_message(
-            embed=SuccessEmbed(
-                f'members in group `{group}`:\n{member_list}'),
-            ephemeral=True)
+        await send_success(ctx, f'members in group `{group}`:\n{member_list}')
 
     @member_set.command(
         name='name',
@@ -173,10 +158,9 @@ class MemberCommands(BaseCommands):
 
         await gather(
             resolved_member.save_changes(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(
-                    f'member `{member}` of group `{group}` was renamed to `{name}`'),
-                ephemeral=True)
+            send_success(
+                ctx,
+                f'member `{member}` of group `{group}` was renamed to `{name}`')
         )
 
     @member_set.command(
@@ -216,10 +200,9 @@ class MemberCommands(BaseCommands):
         await gather(
             resolved_group.save_changes(),
             new_resolved_group.save_changes(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(
-                    f'member `{member}` of group `{group}` was moved to group `{new_group}`'),
-                ephemeral=True)
+            send_success(
+                ctx,
+                f'member `{member}` of group `{group}` was moved to group `{new_group}`')
         )
 
     @member_set.command(
@@ -259,26 +242,20 @@ class MemberCommands(BaseCommands):
 
             await gather(
                 resolved_member.save_changes(),
-                ctx.followup.send(
-                    embed=SuccessEmbed(
-                        f'member `{member}` of group `{group}` now has no avatar'),
-                    ephemeral=True)
+                send_success(
+                    ctx,
+                    f'member `{member}` of group `{group}` now has no avatar')
             )
             return None
 
         extension = avatar.filename.rsplit('.', 1)[-1]
 
         if extension not in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
-            await ctx.response.send_message(
-                embed=ErrorEmbed(
-                    'avatar must be a png, jpg, jpeg, gif, or webp'),
-                ephemeral=True)
+            await send_error(ctx, 'avatar must be a png, jpg, jpeg, gif, or webp')
             return None
 
         if avatar.size > 4_194_304:
-            await ctx.response.send_message(
-                embed=ErrorEmbed('avatar size must be less than 8mb'),
-                ephemeral=True)
+            await send_error(ctx, 'avatar size must be less than 4mb')
             return None
 
         await ctx.response.defer(ephemeral=True)
@@ -301,9 +278,7 @@ class MemberCommands(BaseCommands):
 
         await gather(
             resolved_member.save_changes(),
-            ctx.followup.send(
-                embed=SuccessEmbed(success_message),
-                ephemeral=True)
+            send_success(ctx, success_message)
         )
 
     @member_proxy.command(
@@ -351,9 +326,7 @@ class MemberCommands(BaseCommands):
             return None
 
         if len(resolved_member.proxy_tags) >= 5:
-            await ctx.response.send_message(
-                embed=ErrorEmbed('a member can only have up to 5 proxy tags'),
-                ephemeral=True)
+            await send_error(ctx, 'a member can only have up to 5 proxy tags')
             return None
 
         resolved_member.proxy_tags.append(
@@ -366,10 +339,9 @@ class MemberCommands(BaseCommands):
 
         await gather(
             resolved_member.save_changes(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(
-                    f'proxy tag added to member `{member}` of group `{group}`'),
-                ephemeral=True)
+            send_success(
+                ctx,
+                f'proxy tag added to member `{member}` of group `{group}`')
         )
 
     @ member_proxy.command(
@@ -406,22 +378,19 @@ class MemberCommands(BaseCommands):
             return None
 
         if tag_index < 0 or tag_index >= len(resolved_member.proxy_tags):
-            await ctx.response.send_message(
-                embed=ErrorEmbed('proxy tag index out of range'),
-                ephemeral=True)
+            await send_error(ctx, 'proxy tag index out of range')
             return None
 
         resolved_member.proxy_tags.pop(tag_index)
 
         await gather(
             resolved_member.save_changes(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(
-                    f'proxy tag removed from member `{member}` of group `{group}`'),
-                ephemeral=True)
+            send_success(
+                ctx,
+                f'proxy tag removed from member `{member}` of group `{group}`')
         )
 
-    @ member_proxy.command(
+    @member_proxy.command(
         name='list',
         description='list all proxy tags of a member',
         options=[
@@ -454,10 +423,7 @@ class MemberCommands(BaseCommands):
             in enumerate(resolved_member.proxy_tags)
         ]) or 'no proxy tags set'
 
-        await ctx.response.send_message(
-            embed=SuccessEmbed(
-                f'proxy tags of member `{member}` in group `{group}`:\n{tags}'),
-            ephemeral=True)
+        await send_success(ctx, f'proxy tags of member `{member}` in group `{group}`:\n{tags}')
 
     @member_proxy.command(
         name='clear',
@@ -489,8 +455,7 @@ class MemberCommands(BaseCommands):
 
         await gather(
             resolved_member.save_changes(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(
-                    f'all proxy tags removed from member `{member}` of group `{group}`'),
-                ephemeral=True)
+            send_success(
+                ctx,
+                f'all proxy tags removed from member `{member}` of group `{group}`')
         )

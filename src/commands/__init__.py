@@ -3,6 +3,7 @@ from discord import slash_command, ApplicationContext, Option, message_command, 
 from src.client.embeds import ErrorEmbed, SuccessEmbed
 import src.commands.autocomplete as autocomplete
 from src.helpers import CustomModal
+from .import_handler import ImportCommand
 from src.db.models import ProxyTag
 from .member import MemberCommands
 from discord.ui import InputText
@@ -11,7 +12,7 @@ from .base import BaseCommands
 from asyncio import gather
 
 
-class Commands(MemberCommands, GroupCommands, BaseCommands):
+class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
     @slash_command(name='ping', description='check the bot\'s latency')
     async def ping(self, ctx: ApplicationContext):
         await ctx.response.send_message(

@@ -104,6 +104,9 @@ class ClientBase(AutoShardedBot):
                     continue
 
                 for proxy_tag in member.proxy_tags:
+                    if not proxy_tag.prefix and not proxy_tag.suffix:
+                        continue
+
                     check = match(
                         (
                             f'^{proxy_tag.prefix}(.+){proxy_tag.suffix}$'
