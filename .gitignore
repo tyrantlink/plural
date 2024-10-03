@@ -1,0 +1,6 @@
+.mypy_cache
+.vscode
+__pycache__
+notes
+venv
+project.toml
