@@ -1,15 +1,3 @@
-
-# ? /group new <group>
-# ? /group remove <group> #! cannot delete while group has members #? group is detached from account, only deleted if no members
-# ? /group list
-# ? /group share <group> <account:user>
-# ? /group set name <group> <name>
-# ? /group set tag <group> <tag>
-# ? /group set avatar <group> <avatar>
-# ? /group channels add <group> <channel>
-# ? /group channels remove <group> <channel>
-# ? /group channels list <group>
-
 from discord import ApplicationContext, Option, SlashCommandGroup, Attachment, User
 from src.client.embeds import ErrorEmbed, SuccessEmbed
 import src.commands.autocomplete as autocomplete
