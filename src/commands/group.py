@@ -37,6 +37,12 @@ class GroupCommands(BaseCommands):
         resolved_group = await self.client.db.group_by_name(interaction.author.id, group)
 
         if resolved_group is None:
+            if group == 'default':
+                resolved_group = self.client.db.new.group('default')
+                resolved_group.accounts.add(interaction.author.id)
+                await resolved_group.save()
+                return resolved_group
+
             await interaction.response.send_message(
                 embed=ErrorEmbed(f'group `{group}` not found'),
                 ephemeral=True)
