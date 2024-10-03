@@ -13,7 +13,7 @@ def run_bot():
 def run_api():
     from src.api import app
     from uvicorn import run
-    run(app, host='0.0.0.0', port=8080)
+    run(app, host='0.0.0.0', port=8080, forwarded_allow_ips='*')
 
 
 def main():
