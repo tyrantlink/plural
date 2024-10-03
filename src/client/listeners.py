@@ -4,6 +4,8 @@ from .embeds import ReplyEmbed
 from time import perf_counter
 from .base import ClientBase
 from asyncio import gather
+from bson import ObjectId
+from src.db import Image
 
 
 class ClientListeners(ClientBase):
@@ -84,17 +86,20 @@ class ClientListeners(ClientBase):
 
         app_emojis, proxy_content = await self.process_emotes(proxy_content)
 
+        avatar = None
+        if member.avatar:
+            image = await self.db.image(member.avatar, False)
+            if image is not None:
+                avatar = (
+                    f'{project.base_url}/avatars/{image.id}.{image.extension}')
+
         responses = await gather(
             message.delete(reason='/plu/ral proxy'),
             webhook.send(
                 content=proxy_content,
                 wait=True,
                 username=member.name,
-                avatar_url=(
-                    f'{project.base_url}/avatars/{member.avatar}'
-                    if member.avatar else
-                    None
-                ),
+                avatar_url=avatar,
                 embed=(
                     ReplyEmbed(
                         message.reference.resolved,

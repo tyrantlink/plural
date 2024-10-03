@@ -1,6 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from beanie import init_beanie, PydanticObjectId
 from typing import Type, overload, Literal
+from .models import DatalessImage
 from .webhook import Webhook
 from .message import Message
 from .member import Member
@@ -93,8 +94,19 @@ class MongoDatabase:
     async def member(self, id: PydanticObjectId) -> Member | None:
         return await Member.find_one({'_id': id})
 
-    async def image(self, id: PydanticObjectId) -> Image | None:
-        return await Image.find_one({'_id': id})
+    @overload
+    async def image(self, id: PydanticObjectId, include_data: Literal[False]) -> DatalessImage | None:
+        ...
+
+    @overload
+    async def image(self, id: PydanticObjectId, include_data: Literal[True] = True) -> Image | None:
+        ...
+
+    async def image(self, id: PydanticObjectId, include_data: bool = True) -> Image | DatalessImage | None:
+        return await Image.find_one(
+            {'_id': id},
+            projection_model=None if include_data else DatalessImage
+        )
 
     async def groups(self, user_id: int) -> list[Group]:
         return await Group.find({'accounts': user_id}).to_list()
