@@ -12,7 +12,7 @@ async def groups(ctx: AutocompleteContext) -> list[str]:
     if not groups:
         return ['no groups found, run /manage to create one']
 
-    if ctx.value == '':
+    if ctx.value == '' or ctx.value.isspace():
         return groups[:25]
 
     processed_groups = process.extract(ctx.value, groups, limit=5)
@@ -59,7 +59,7 @@ async def members(ctx: AutocompleteContext) -> list[str]:
     if not members:
         return ['no members found, run /manage to create one']
 
-    if ctx.value == '':
+    if ctx.value == '' or ctx.value.isspace():
         return members[:25]
 
     processed_members = process.extract(ctx.value, members, limit=5)
