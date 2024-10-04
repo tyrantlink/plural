@@ -32,10 +32,10 @@ class ImportCommand(BaseCommands):
         await ctx.response.defer(ephemeral=True)
 
         if file is not None:
-            importer = await Importer.from_attachment(ctx, file)
+            importer = await Importer.from_attachment(ctx, file, self.client)
 
         if file_url is not None:
-            importer = await Importer.from_url(ctx, file_url)
+            importer = await Importer.from_url(ctx, file_url, self.client)
 
         if importer is None:
             return

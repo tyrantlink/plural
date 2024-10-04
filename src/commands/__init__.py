@@ -207,3 +207,29 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
                 ephemeral=True
             )
         )
+
+    @slash_command(
+        name='delete_all_data',
+        description='delete all your data; currently has NO CONFIRMATION')
+    async def slash_delete_all_data(self, ctx: ApplicationContext):
+        await ctx.response.defer(ephemeral=True)
+        #! redo latches again to work with this system, _id is oid, include both user and guild
+
+        groups = await self.client.db.groups(ctx.interaction.user.id)
+        tasks = []
+        for group in groups:
+            members = await group.get_members()
+            tasks.append(group.delete())
+            for member in members:
+                tasks.append(member.delete())
+                if member.avatar:
+                    avatar = await self.client.db.image(member.avatar)
+                    if avatar:
+                        tasks.append(avatar.delete())
+
+        await gather(*tasks)
+
+        await ctx.followup.send(  # ! also remember to replace these with send_error and send_success
+            embed=SuccessEmbed('all your data has been deleted'),
+            ephemeral=True
+        )

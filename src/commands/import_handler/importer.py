@@ -5,19 +5,27 @@ from src.helpers import send_error
 from src.db.models import ProxyTag
 from urllib.parse import urlparse
 from src.db import MongoDatabase
+from src.project import project
 from .models import ImportType
+from src.client import Client
 from typing import Self
 from json import loads
 
 
 class Importer:
-    def __init__(self, data: dict) -> None:
+    def __init__(self, data: dict, client: Client) -> None:
         self.data = data
+        self.client = client
         self.type = ImportType.TUPPERBOX if 'tuppers' in data else ImportType.PLURALKIT
         self.log: list[str] = []
 
     @classmethod
-    async def from_attachment(cls, ctx: ApplicationContext, attachment: Attachment) -> Self | None:
+    async def from_attachment(
+        cls,
+        ctx: ApplicationContext,
+        attachment: Attachment,
+        client: Client
+    ) -> Self | None:
         if attachment.content_type is not None and 'application/json' not in attachment.content_type:
             await send_error(ctx, 'file must be a json file')
             return
@@ -32,10 +40,15 @@ class Importer:
             await send_error(ctx, f'error reading file: {e}')
             return
 
-        return cls(json_data)
+        return cls(json_data, client)
 
     @classmethod
-    async def from_url(cls, ctx: ApplicationContext, url: str) -> Self | None:
+    async def from_url(
+        cls,
+        ctx: ApplicationContext,
+        url: str,
+        client: Client
+    ) -> Self | None:
         url_data = urlparse(url)
 
         if url_data.scheme != 'https':
@@ -66,7 +79,25 @@ class Importer:
                     await send_error(ctx, f'error reading file: {e}')
                     return
 
-                return cls(json_data)
+                return cls(json_data, client)
+
+    async def _refresh_discord_attachment(self, url: str) -> str | None:
+        channel = self.client.get_channel(project.import_proxy_channel_id)
+
+        if channel is None:
+            return None
+
+        message = await channel.send(url)
+
+        for _ in range(5):
+            if message.embeds and message.embeds[0].image:
+                return message.embeds[0].image.url
+            try:
+                message = await channel.fetch_message(message.id)
+            except Exception:
+                return None
+
+        return None
 
     async def _url_to_image(self, url: str | None, name: str, db: MongoDatabase) -> PydanticObjectId | None:
         if url is None:
@@ -88,6 +119,13 @@ class Importer:
 
         async with ClientSession(timeout=ClientTimeout(10)) as session:
             async with session.get(url) as response:
+                if url_data.hostname == 'cdn.discordapp.com' and response.status == 404:
+                    return await self._url_to_image(
+                        await self._refresh_discord_attachment(url),
+                        name,
+                        db
+                    )
+
                 if response.status != 200:
                     self.log.append(
                         f'failed to fetch image from url {url}, status code {response.status}')
