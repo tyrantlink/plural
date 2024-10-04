@@ -1,5 +1,7 @@
+from __future__ import annotations
 from discord import ApplicationContext, Attachment
 from aiohttp import ClientSession, ClientTimeout
+from typing import Self, TYPE_CHECKING
 from beanie import PydanticObjectId
 from src.helpers import send_error
 from src.db.models import ProxyTag
@@ -7,9 +9,11 @@ from urllib.parse import urlparse
 from src.db import MongoDatabase
 from src.project import project
 from .models import ImportType
-from src.client import Client
-from typing import Self
+from asyncio import sleep
 from json import loads
+
+if TYPE_CHECKING:
+    from src.client import Client
 
 
 class Importer:
@@ -87,14 +91,21 @@ class Importer:
         if channel is None:
             return None
 
-        message = await channel.send(url)
+        message = await channel.send(url, delete_after=6)
 
         for _ in range(5):
-            if message.embeds and message.embeds[0].image:
-                return message.embeds[0].image.url
+            if message.embeds:
+                return (
+                    message.embeds[0].image.url
+                    if message.embeds[0].image
+                    else message.embeds[0].thumbnail.url
+                    if message.embeds[0].thumbnail
+                    else None
+                )
+            await sleep(1)
             try:
                 message = await channel.fetch_message(message.id)
-            except Exception:
+            except Exception as e:
                 return None
 
         return None
