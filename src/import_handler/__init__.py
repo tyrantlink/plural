@@ -261,6 +261,11 @@ class ImportHandler:
             for group in await self.client.db.groups(user_id)
         }
 
+        if 'default' not in existing_groups:
+            group = self.client.db.new.group('default')
+            await group.save()
+            existing_groups['default'] = group
+
         for member in self.data['tuppers']:
             member_group = tb_groups.get(member['group_id'], 'default')
 
