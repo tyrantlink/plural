@@ -264,7 +264,7 @@ class ImportHandler:
         for member in self.data['tuppers']:
             member_group = tb_groups.get(member['group_id'], 'default')
 
-            if member_group is not None and member_group not in existing_groups:
+            if member['group_id'] is not None and member_group not in existing_groups:
                 group = self.client.db.new.group(member_group)
                 group.tag = [
                     group['tag']
