@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from asyncio import sleep, gather
 from src.db import Member, Group
 from src.project import project
+from asyncio import create_task
 from .models import ImportType
 from typing import Any
 from json import loads
@@ -93,10 +94,11 @@ class ImportHandler:
         if not isinstance(channel, TextChannel):
             return None  # ? should never happen
 
-        message = await channel.send(url, delete_after=6)
+        message = await channel.send(url)
 
         for _ in range(5):
             if message.embeds:
+                create_task(message.delete())
                 return (
                     message.embeds[0].image.url
                     if message.embeds[0].image
