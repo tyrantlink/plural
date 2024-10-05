@@ -151,19 +151,19 @@ class BaseCommands(Cog):
             ),
             Option(
                 str,
+                name='member',
+                description='set to a specific member immediately',
+                required=False,
+                autocomplete=autocomplete.members),
+            Option(
+                str,
                 name='group',
                 description='group to select from',
                 default='default',
                 required=False,
-                autocomplete=autocomplete.groups),
-            Option(
-                str,
-                name='member',
-                description='set to a specific member immediately',
-                required=False,
-                autocomplete=autocomplete.members)],
+                autocomplete=autocomplete.groups)],
         contexts={InteractionContextType.guild})
-    async def slash_autoproxy(self, ctx: ApplicationContext, enabled: bool | None, group: str, member: str | None):
+    async def slash_autoproxy(self, ctx: ApplicationContext, enabled: bool | None, member: str | None, group: str):
         if ctx.interaction.user is None:
             await send_error(ctx, 'you do not exist')
             return
