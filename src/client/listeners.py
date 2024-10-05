@@ -4,8 +4,6 @@ from .embeds import ReplyEmbed
 from time import perf_counter
 from .base import ClientBase
 from asyncio import gather
-from bson import ObjectId
-from src.db import Image
 
 
 class ClientListeners(ClientBase):

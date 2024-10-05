@@ -4,7 +4,6 @@ from src.helpers import send_error, send_success
 from src.commands.base import BaseCommands
 from discord.abc import GuildChannel
 from asyncio import gather
-from src.db import Group
 
 
 class GroupCommands(BaseCommands):
@@ -20,21 +19,6 @@ class GroupCommands(BaseCommands):
         name='channels',
         description='manage a group\'s channels'
     )
-
-    async def _base_group_getter(self, interaction: ApplicationContext, group: str) -> Group | None:
-        resolved_group = await self.client.db.group_by_name(interaction.author.id, group)
-
-        if resolved_group is None:
-            if group == 'default':
-                resolved_group = self.client.db.new.group('default')
-                resolved_group.accounts.add(interaction.author.id)
-                await resolved_group.save()
-                return resolved_group
-
-            await send_error(interaction, f'group `{group}` not found')
-            return None
-
-        return resolved_group
 
     @group.command(
         name='new',

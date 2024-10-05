@@ -1,10 +1,8 @@
 from __future__ import annotations
 from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle
-from src.client.embeds import ErrorEmbed, SuccessEmbed
+from src.helpers import CustomModal, send_error, send_success
 import src.commands.autocomplete as autocomplete
-from src.helpers import CustomModal
 from .importer import ImportCommand
-from src.db.models import ProxyTag
 from .member import MemberCommands
 from discord.ui import InputText
 from .group import GroupCommands
@@ -37,10 +35,7 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
                 required=False,
                 autocomplete=autocomplete.members)])
     async def slash_manage(self, ctx: ApplicationContext, group: str, member: str) -> None:
-        await ctx.response.send_message(
-            f'menu management has not been implemented yet',
-            ephemeral=True
-        )
+        await send_error(ctx, 'menu management has not been implemented yet')
 
     @message_command(
         name='plural edit',
@@ -50,20 +45,14 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
             return  # ? never going to happen mypy is just stupid
 
         if message.webhook_id is None:
-            await ctx.response.send_message(
-                embed=ErrorEmbed('message is not a proxied message!'),
-                ephemeral=True
-            )
+            await send_error(ctx, 'message is not a proxied message!')
             return
 
         webhook = await self.client.get_proxy_webhook(
             message.channel)  # type: ignore
 
         if message.webhook_id != webhook.id:
-            await ctx.response.send_message(
-                embed=ErrorEmbed('message is not a proxied message!'),
-                ephemeral=True
-            )
+            await send_error(ctx, 'message is not a proxied message!')
             return
 
         db_message = await self.client.db.message(
@@ -71,17 +60,11 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
         )
 
         if db_message is None:
-            await ctx.response.send_message(
-                embed=ErrorEmbed('message could not be found, is it too old?'),
-                ephemeral=True
-            )
+            await send_error(ctx, 'message could not be found, is it too old?')
             return
 
         if ctx.author.id != db_message.author_id:
-            await ctx.response.send_message(
-                embed=ErrorEmbed('you can only edit your own messages!'),
-                ephemeral=True
-            )
+            await send_error(ctx, 'you can only edit your own messages!')
             return
 
         modal = CustomModal(
@@ -105,10 +88,7 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
         new_content = modal.children[0].value
 
         if new_content == message.content:
-            await modal.interaction.response.send_message(
-                embed=ErrorEmbed('no changes were made'),
-                ephemeral=True
-            )
+            await send_error(modal.interaction, 'no changes were made')
             return
 
         await webhook.edit_message(
@@ -144,10 +124,7 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
         contexts={InteractionContextType.guild})
     async def slash_autoproxy(self, ctx: ApplicationContext, enabled: bool | None, group: str, member: str | None):
         if ctx.interaction.user is None:
-            await ctx.response.send_message(
-                embed=ErrorEmbed('you do not exist'),
-                ephemeral=True
-            )
+            await send_error(ctx, 'you do not exist')
             return
 
         if ctx.guild_id is None:
@@ -159,10 +136,7 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
         )
 
         if resolved_group is None:
-            await ctx.response.send_message(
-                embed=ErrorEmbed(f'group `{group}` not found'),
-                ephemeral=True
-            )
+            await send_error(ctx, f'group `{group}` not found')
             return
 
         latch = await self.client.db.latch(
@@ -177,11 +151,7 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
             resolved_member = await resolved_group.get_member_by_name(member)
 
             if resolved_member is None:
-                await ctx.response.send_message(
-                    embed=ErrorEmbed(
-                        f'member `{member}` not found in group `{group}`'),
-                    ephemeral=True
-                )
+                await send_error(ctx, f'member `{member}` not found in group `{group}`')
                 return
 
             latch.member = resolved_member.id
@@ -200,12 +170,7 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
 
         await gather(
             latch.save(),
-            ctx.response.send_message(
-                embed=SuccessEmbed(
-                    success_message
-                ),
-                ephemeral=True
-            )
+            send_success(ctx, success_message)
         )
 
     @slash_command(
@@ -229,7 +194,4 @@ class Commands(MemberCommands, GroupCommands, ImportCommand, BaseCommands):
 
         await gather(*tasks)
 
-        await ctx.followup.send(  # ! also remember to replace these with send_error and send_success
-            embed=SuccessEmbed('all your data has been deleted'),
-            ephemeral=True
-        )
+        await send_success(ctx, 'deleted all your data')

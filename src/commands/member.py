@@ -3,7 +3,6 @@ import src.commands.autocomplete as autocomplete
 from src.helpers import send_error, send_success
 from src.commands.base import BaseCommands
 from src.db.models import ProxyTag
-from src.db import Group, Member
 from asyncio import gather
 
 
@@ -20,35 +19,6 @@ class MemberCommands(BaseCommands):
         name='proxy',
         description='manage a member\'s proxy tags'
     )
-
-    async def _base_group_getter(self, interaction: ApplicationContext, group: str) -> Group | None:
-        resolved_group = await self.client.db.group_by_name(interaction.author.id, group)
-
-        if resolved_group is None:
-            if group == 'default':
-                resolved_group = self.client.db.new.group('default')
-                resolved_group.accounts.add(interaction.author.id)
-                await resolved_group.save()
-                return resolved_group
-
-            await send_error(interaction, f'group `{group}` not found')
-            return None
-
-        return resolved_group
-
-    async def _base_member_getter(self, interaction: ApplicationContext, group: str, member: str) -> tuple[Group, Member] | tuple[None, None]:
-        resolved_group = await self._base_group_getter(interaction, group)
-
-        if resolved_group is None:
-            return None, None
-
-        resolved_member = await resolved_group.get_member_by_name(member)
-
-        if resolved_member is None:
-            await send_error(interaction, f'member `{member}` not found')
-            return None, None
-
-        return resolved_group, resolved_member
 
     @member.command(
         name='new',
