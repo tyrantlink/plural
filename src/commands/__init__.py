@@ -3,7 +3,7 @@ from discord import slash_command, ApplicationContext, Option, message_command, 
 from src.client.embeds import ErrorEmbed, SuccessEmbed
 import src.commands.autocomplete as autocomplete
 from src.helpers import CustomModal
-from .import_handler import ImportCommand
+from .importer import ImportCommand
 from src.db.models import ProxyTag
 from .member import MemberCommands
 from discord.ui import InputText

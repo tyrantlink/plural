@@ -1,22 +1,24 @@
 from __future__ import annotations
-from discord import ApplicationContext, Attachment
+from discord import ApplicationContext, Attachment, TextChannel
 from aiohttp import ClientSession, ClientTimeout
 from typing import Self, TYPE_CHECKING
 from beanie import PydanticObjectId
-from src.helpers import send_error
 from src.db.models import ProxyTag
+from src.helpers import send_error
+from .embed import ImportHelpEmbed
 from urllib.parse import urlparse
-from src.db import MongoDatabase
+from asyncio import sleep, gather
+from src.db import Member, Group
 from src.project import project
 from .models import ImportType
-from asyncio import sleep
+from typing import Any
 from json import loads
 
 if TYPE_CHECKING:
     from src.client import Client
 
 
-class Importer:
+class ImportHandler:
     def __init__(self, data: dict, client: Client) -> None:
         self.data = data
         self.client = client
@@ -32,17 +34,17 @@ class Importer:
     ) -> Self | None:
         if attachment.content_type is not None and 'application/json' not in attachment.content_type:
             await send_error(ctx, 'file must be a json file')
-            return
+            return None
 
         if attachment.size > 2 ** 22:  # 4MB
             await send_error(ctx, 'file is too large, 4MB max')
-            return
+            return None
 
         try:
             json_data = loads(await attachment.read())
         except Exception as e:
             await send_error(ctx, f'error reading file: {e}')
-            return
+            return None
 
         return cls(json_data, client)
 
@@ -57,17 +59,17 @@ class Importer:
 
         if url_data.scheme != 'https':
             await send_error(ctx, 'url must be https')
-            return
+            return None
 
         if url_data.hostname != 'cdn.discordapp.com':
             await send_error(ctx, 'url must be a discord cdn url')
-            return
+            return None
 
         async with ClientSession(timeout=ClientTimeout(10)) as session:
             async with session.get(url) as response:
                 if response.status != 200:
                     await send_error(ctx, 'error fetching file, try to upload it instead')
-                    return
+                    return None
 
                 content = bytearray()
 
@@ -75,21 +77,21 @@ class Importer:
                     content.extend(chunk)
                     if len(content) > 2 ** 22:  # 4MB
                         await send_error(ctx, 'file is too large to import, 4MB max')
-                        return
+                        return None
 
                 try:
                     json_data = loads(content)
                 except Exception as e:
                     await send_error(ctx, f'error reading file: {e}')
-                    return
+                    return None
 
                 return cls(json_data, client)
 
     async def _refresh_discord_attachment(self, url: str) -> str | None:
         channel = self.client.get_channel(project.import_proxy_channel_id)
 
-        if channel is None:
-            return None
+        if not isinstance(channel, TextChannel):
+            return None  # ? should never happen
 
         message = await channel.send(url, delete_after=6)
 
@@ -110,7 +112,7 @@ class Importer:
 
         return None
 
-    async def _url_to_image(self, url: str | None, name: str, db: MongoDatabase) -> PydanticObjectId | None:
+    async def _url_to_image(self, url: str | None, name: str) -> PydanticObjectId | None:
         if url is None:
             return None
 
@@ -134,7 +136,7 @@ class Importer:
                     return await self._url_to_image(
                         await self._refresh_discord_attachment(url),
                         name,
-                        db
+
                     )
 
                 if response.status != 200:
@@ -156,7 +158,7 @@ class Importer:
                             f'failed to port `{name}` avatar, image is too large, 4MB max')
                         return None
 
-        image = db.new.image(
+        image = self.client.db.new.image(
             data=content,
             extension=file_extension
         )
@@ -165,7 +167,12 @@ class Importer:
 
         return image.id
 
-    async def _from_pluralkit(self, user_id: int, db: MongoDatabase) -> bool:
+    async def _save_object_with_avatar(self, obj: Member | Group, avatar_url: str) -> None:
+        obj.avatar = await self._url_to_image(avatar_url, obj.name)
+        await obj.save()
+
+    async def _from_pluralkit(self, user_id: int) -> bool:
+        tasks = []
         pk_groups = {
             group['name']: group['members']
             for group in self.data['groups']
@@ -177,7 +184,7 @@ class Importer:
                     return group
             return 'default'
 
-        new_groups = {}
+        new_groups: dict[str, list[dict[str, Any]]] = {}
 
         for member in self.data['members']:
             member_group = get_member_group(member['id'])
@@ -193,22 +200,18 @@ class Importer:
 
         existing_groups = {
             group.name: group
-            for group in await db.groups(user_id)
+            for group in await self.client.db.groups(user_id)
         }
 
         for group_name, members in new_groups.items():
             if group_name in existing_groups:
                 group = existing_groups[group_name]
             else:
-                group = db.new.group(group_name)
+                group = self.client.db.new.group(group_name)
                 group.tag = self.data['tag']
-                group.avatar = await self._url_to_image(
-                    self.data['avatar_url'],
-                    group_name,
-                    db
-                )
                 group.accounts.add(user_id)
-                await group.save()
+                tasks.append(self._save_object_with_avatar(
+                    group, self.data['avatar_url']))
 
             existing_group_members = [
                 member.name
@@ -223,13 +226,8 @@ class Importer:
                     continue
 
                 member_model = await group.add_member(
-                    member['name']
-                )
-
-                member_model.avatar = await self._url_to_image(
-                    member['avatar_url'],
                     member['name'],
-                    db
+                    save=False
                 )
 
                 for tag in member['proxy_tags']:
@@ -240,18 +238,81 @@ class Importer:
                             regex=False
                         ))
 
-                await member_model.save()
+                tasks.append(self._save_object_with_avatar(
+                    member_model, member['avatar_url']))
+
+        await gather(*tasks)
 
         return True
 
-    async def _from_tupperbox(self, user_id: int, db: MongoDatabase) -> bool:
-        return False
+    async def _from_tupperbox(self, user_id: int) -> bool:
+        tasks = []
+        tb_groups = {
+            group['id']: group['name']
+            for group in self.data['groups']
+        }
 
-    async def import_to_plural(self, ctx: ApplicationContext, db: MongoDatabase) -> bool:
+        if any((group.get('avatar') != None for group in self.data['groups'])):
+            self.log.append(
+                'warning: some of your groups have avatars, porting tupperbox group avatars is not supported')
+
+        existing_groups = {
+            group.name: group
+            for group in await self.client.db.groups(user_id)
+        }
+
+        for member in self.data['tuppers']:
+            member_group = tb_groups.get(member['group_id'], 'default')
+
+            if member_group is not None and member_group not in existing_groups:
+                group = self.client.db.new.group(member_group)
+                group.tag = [
+                    group['tag']
+                    for group in self.data['groups']
+                    if group['id'] == member['group_id']
+                ][0]
+                group.avatar = None
+                group.accounts.add(user_id)
+                await group.save()
+                existing_groups[member_group] = group
+            else:
+                group = existing_groups[member_group]
+
+            if member['name'] in [
+                member.name
+                for member in await group.get_members()
+            ]:
+                self.log.append(
+                    f'failed to port member {member['name']} to group {group.name}, member already exists')
+                continue
+
+            member_model = await group.add_member(
+                member['name'],
+                save=False
+            )
+
+            if member['brackets']:
+                member_model.proxy_tags.append(
+                    ProxyTag(
+                        prefix=member['brackets'][0],
+                        suffix=member['brackets'][1],
+                        regex=False
+                    ))
+
+            tasks.append(self._save_object_with_avatar(
+                member_model, member['avatar_url']))
+
+            tasks.append(group.save())
+
+        await gather(*tasks)
+
+        return True
+
+    async def import_to_plural(self, ctx: ApplicationContext) -> bool:
         match self.type:
             case ImportType.PLURALKIT:
-                return await self._from_pluralkit(ctx.author.id, db)
+                return await self._from_pluralkit(ctx.author.id)
             case ImportType.TUPPERBOX:
-                return await self._from_tupperbox(ctx.author.id, db)
+                return await self._from_tupperbox(ctx.author.id)
 
         return False

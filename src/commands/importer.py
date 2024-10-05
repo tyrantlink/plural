@@ -1,8 +1,7 @@
 from discord import ApplicationContext, Option, Attachment, slash_command, Embed
 from src.commands.base import BaseCommands
 from src.helpers import send_error
-from .embed import ImportHelpEmbed
-from .importer import Importer
+from src.import_handler import ImportHelpEmbed, ImportHandler
 
 
 class ImportCommand(BaseCommands):
@@ -32,15 +31,15 @@ class ImportCommand(BaseCommands):
         await ctx.response.defer(ephemeral=True)
 
         if file is not None:
-            importer = await Importer.from_attachment(ctx, file, self.client)
+            importer = await ImportHandler.from_attachment(ctx, file, self.client)
 
         if file_url is not None:
-            importer = await Importer.from_url(ctx, file_url, self.client)
+            importer = await ImportHandler.from_url(ctx, file_url, self.client)
 
         if importer is None:
             return
 
-        success = await importer.import_to_plural(ctx, self.client.db)
+        success = await importer.import_to_plural(ctx)
 
         log = '\n'.join(importer.log) or 'no logs, everything went smoothly!'
 

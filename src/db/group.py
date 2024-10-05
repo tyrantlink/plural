@@ -79,7 +79,8 @@ class Group(Document):
 
     async def add_member(
         self,
-        name: str
+        name: str,
+        save: bool = True
     ) -> Member:
         if await self.get_member_by_name(name) is not None:
             raise ValueError(f'member {name} already exists')
@@ -92,10 +93,11 @@ class Group(Document):
 
         self.members.add(member.id)
 
-        await gather(
-            self.save_changes(),
-            member.save()
-        )
+        if save:
+            await gather(
+                self.save_changes(),
+                member.save()
+            )
 
         return member
 
