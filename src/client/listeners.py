@@ -129,6 +129,12 @@ class ClientListeners(ClientBase):
         for app_emoji in app_emojis:
             await app_emoji.delete()
 
+    async def on_message_edit(self, before: Message, after: Message) -> None:
+        if await after.channel.history(limit=1).flatten() != [after]:
+            return None
+
+        await self.on_message(after)
+
     async def on_raw_reaction_add(self, payload: RawReactionActionEvent) -> None:
         if (
             payload.user_id == self.user.id or  # type: ignore
