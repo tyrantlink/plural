@@ -51,7 +51,12 @@ class _MongoNew:
         member: PydanticObjectId | None,
         enabled: bool = False
     ) -> Latch:
-        return Latch(id=f'{guild}::{user}', enabled=enabled, member=member)
+        return Latch(
+            user=user,
+            guild=guild,
+            enabled=enabled,
+            member=member
+        )
 
 
 class MongoDatabase:
@@ -124,7 +129,7 @@ class MongoDatabase:
         ...
 
     async def latch(self, user_id: int, guild_id: int, create: bool = False) -> Latch | None:
-        latch = await Latch.find_one({'_id': f'{guild_id}::{user_id}'})
+        latch = await Latch.find_one({'user': user_id, 'guild': guild_id})
         if latch is not None or not create:
             return latch
 

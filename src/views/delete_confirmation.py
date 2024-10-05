@@ -23,7 +23,6 @@ class DeleteConfirmation(View):
         style=ButtonStyle.red,
         custom_id='button_confirm')
     async def button_confirm(self, button: Button, interaction: Interaction):
-        #! redo latches again to work with this system, _id is oid, include both user and guild
         if interaction.user is None:
             await send_error(interaction, 'you do not exist')
             return  # ? mypy stupid
@@ -39,6 +38,12 @@ class DeleteConfirmation(View):
                 if member.avatar:
                     if avatar := await self.client.db.image(member.avatar):
                         tasks.append(avatar.delete())
+
+        tasks.append(
+            self.client.db._client.latches.delete_many({'user': interaction.user.id}))
+
+        tasks.append(
+            self.client.db._client.messages.delete_many({'author_id': interaction.user.id}))
 
         await gather(*tasks)
 

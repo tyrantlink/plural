@@ -200,7 +200,7 @@ class BaseCommands(Cog):
         if not latch.enabled:
             latch.member = None
 
-        success_message = f'autoproxying is now {
+        success_message = f'autoproxying in {ctx.guild.name} is now {
             'enabled' if latch.enabled else 'disabled'}'
 
         if latch.enabled:
@@ -221,7 +221,7 @@ class BaseCommands(Cog):
         await ctx.response.send_message(
             embed=Embed(
                 title='are you sure?',
-                description='this will delete all your data, including groups, members, and avatars',
+                description='this will delete all your data, including groups, members, avatars, latches, and messages',
                 color=0xff6969
             ),
             view=DeleteConfirmation(self.client),

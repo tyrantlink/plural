@@ -1,4 +1,4 @@
-from beanie import Document, PydanticObjectId
+from beanie import Document, PydanticObjectId  # , TimeSeriesConfig, Granularity
 from datetime import timedelta, datetime
 from pydantic import Field
 
@@ -12,11 +12,14 @@ class Message(Document):
 
     class Settings:
         name = 'messages'
-        use_cache = True
         validate_on_save = True
-        use_state_management = True
         cache_expiration_time = timedelta(minutes=30)
-        indexes = ['original_id', 'proxy_id']
+        indexes = ['original_id', 'proxy_id', 'author_id']
+        # timeseries = TimeSeriesConfig( #! https://github.com/BeanieODM/beanie/issues/1005
+        #     time_field='ts',
+        #     granularity=Granularity.seconds,
+        #     expire_after_seconds=30
+        # )
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
     original_id: int = Field(description='the original id of the message')
