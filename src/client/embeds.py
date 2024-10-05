@@ -17,19 +17,3 @@ class ReplyEmbed(Embed):
             if message.attachments else
             f'*[click to see message]({message.jump_url})*'
         )
-
-
-class ErrorEmbed(Embed):
-    def __init__(self, message: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title = 'error'
-        self.description = message
-        self.color = 0xff6969
-
-
-class SuccessEmbed(Embed):
-    def __init__(self, message: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title = 'success'
-        self.description = message
-        self.color = 0x69ff69

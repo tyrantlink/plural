@@ -1,7 +1,7 @@
 from discord import ApplicationContext, Option, Attachment, slash_command, Embed
 from src.import_handler import ImportHelpEmbed, ImportHandler
+from src.helpers import send_error, chunk_string
 from src.commands.base import BaseCommands
-from src.helpers import send_error
 
 
 class ImportCommand(BaseCommands):
@@ -41,15 +41,30 @@ class ImportCommand(BaseCommands):
 
         success = await importer.import_to_plural(ctx)
 
+        title, color = (
+            ('import successful!', 0x69ff69)
+            if success
+            else
+            ('import failed!', 0xff6969)
+        )
+
         log = '\n'.join(importer.log) or 'no logs, everything went smoothly!'
 
-        embed = Embed(description=f'```{log}```')
+        chunks = chunk_string(log, 4088)
 
-        if success:
-            embed.title = 'import successful!'
-            embed.color = 0x69ff69
-        else:
-            embed.title = 'import failed!'
-            embed.color = 0xff6969
+        embeds = [
+            Embed(
+                title=title + f' ({i + 1}/{len(chunks)})',
+                description=f'```{chunk}```',
+                color=color
+            )
+            for i, chunk in enumerate(chunks)
+        ] if len(chunks) > 1 else [
+            Embed(
+                title=title,
+                description=f'```{chunks[0]}```',
+                color=color
+            )
+        ]
 
-        await ctx.followup.send(embed=embed, ephemeral=True)
+        await ctx.followup.send(embeds=embeds, ephemeral=True)
