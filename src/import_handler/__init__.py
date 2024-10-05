@@ -263,6 +263,7 @@ class ImportHandler:
 
         if 'default' not in existing_groups:
             group = self.client.db.new.group('default')
+            group.accounts.add(user_id)
             await group.save()
             existing_groups['default'] = group
 
@@ -276,7 +277,6 @@ class ImportHandler:
                     for group in self.data['groups']
                     if group['id'] == member['group_id']
                 ][0]
-                group.avatar = None
                 group.accounts.add(user_id)
                 await group.save()
                 existing_groups[member_group] = group
