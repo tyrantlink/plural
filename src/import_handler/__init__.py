@@ -305,7 +305,7 @@ class ImportHandler:
                     ))
 
             tasks.append(self._save_object_with_avatar(
-                member_model, member['avatar_url']))
+                member_model, member['avatar_url'] or None))
 
             tasks.append(group.save())
 
