@@ -186,7 +186,7 @@ class BaseCommands(Cog):
             create=True
         )
 
-        latch.enabled = enabled if enabled is not None else not latch.enabled
+        latch.enabled = bool(enabled or member or not latch.enabled)
 
         if member is not None:
             resolved_member = await resolved_group.get_member_by_name(member)
@@ -200,7 +200,7 @@ class BaseCommands(Cog):
         if not latch.enabled:
             latch.member = None
 
-        success_message = f'autoproxying in {ctx.guild.name} is now {
+        success_message = f'autoproxying in `{ctx.guild.name}` is now {
             'enabled' if latch.enabled else 'disabled'}'
 
         if latch.enabled:
