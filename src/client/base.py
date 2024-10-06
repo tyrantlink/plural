@@ -115,13 +115,14 @@ class ClientBase(AutoShardedBot):
                     if not proxy_tag.prefix and not proxy_tag.suffix:
                         continue
 
+                    prefix, suffix = (
+                        (escape(proxy_tag.prefix), escape(proxy_tag.suffix))
+                        if not proxy_tag.regex else
+                        (proxy_tag.prefix, proxy_tag.suffix)
+                    )
+
                     check = match(
-                        (
-                            f'^{proxy_tag.prefix}(.+){proxy_tag.suffix}$'
-                            if proxy_tag.regex else
-                            (
-                                f'^{escape(proxy_tag.prefix)}(.+){escape(proxy_tag.suffix)}$')
-                        ),
+                        f'^{prefix}(?![@#])(.+){suffix}$',
                         message.content
                     )
                     if check is not None:
