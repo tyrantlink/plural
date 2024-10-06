@@ -71,9 +71,7 @@ class ClientListeners(ClientBase):
 
         # ? it's never going to be outside of a guild
         webhook = await self.get_proxy_webhook(
-            message.channel.parent
-            if isinstance(message.channel, Thread) and message.channel.parent is not None
-            else message.channel  # type: ignore
+            message.channel  # type: ignore
         )
 
         if sum(
