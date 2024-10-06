@@ -1,12 +1,13 @@
 from __future__ import annotations
-from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed
+from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING
 from src.helpers import CustomModal, send_error, send_success
+from src.db import Group, Member, Message as DBMessage
 import src.commands.autocomplete as autocomplete
 from src.views import DeleteConfirmation
 from discord.ext.commands import Cog
 from discord.ui import InputText
 from typing import TYPE_CHECKING
-from src.db import Group, Member
+from src.project import project
 from asyncio import gather
 
 
@@ -227,3 +228,104 @@ class BaseCommands(Cog):
             view=DeleteConfirmation(self.client),
             ephemeral=True
         )
+
+    @slash_command(
+        name='reproxy',
+        description='reproxy your last message',
+        options=[
+            Option(
+                str,
+                name='member',
+                description='member to reproxy as',
+                autocomplete=autocomplete.members),
+            Option(
+                str,
+                name='group',
+                description='group to select from',
+                default='default',
+                autocomplete=autocomplete.groups)],)
+    async def slash_reproxy(self, ctx: ApplicationContext, member: str, group: str):
+        resolved_group, resolved_member = await self._base_member_getter(ctx, group, member)
+
+        if resolved_group is None or resolved_member is None:
+            return
+
+        try:
+            last_channel_messages = await ctx.channel.history(limit=1).flatten()
+
+            if not isinstance(last_channel_messages, list):  # ? mypy is stupid
+                await send_error(ctx, 'failed to fetch recent messages')
+                return
+
+        except Forbidden:
+            await send_error(
+                ctx,
+                'failed to fetch recent messages, i do not have permission to read message history')
+            return
+
+        if len(last_channel_messages) == 0:
+            await send_error(ctx, 'no messages found in this channel')
+            return
+
+        message = last_channel_messages[0]
+
+        last_proxy_message = await DBMessage.find_one(
+            {
+                'author_id': ctx.author.id,
+                'proxy_id': message.id
+            },
+            sort=[('ts', -1)]
+        )
+
+        if last_proxy_message is None:
+            await send_error(
+                ctx,
+                'no messages found, you cannot reproxy a message that was not the most recent message, or a message older than 30 minutes')
+            return
+
+        webhook = await self.client.get_proxy_webhook(
+            ctx.interaction.channel)
+
+        if webhook is None:
+            await send_error(ctx, 'could not find the proxy webhook')
+            return
+
+        avatar = None
+        if resolved_member.avatar:
+            image = await self.client.db.image(resolved_member.avatar, False)
+            if image is not None:
+                avatar = (
+                    f'{project.base_url}/avatars/{image.id}.{image.extension}')
+
+        app_emojis, proxy_content = await self.client.process_emotes(message.content)
+
+        responses = await gather(
+            message.delete(reason='/plu/ral reproxy'),
+            webhook.send(
+                content=proxy_content,
+                thread=(
+                    message.channel
+                    if getattr(message.channel, 'parent', None) is not None else
+                    MISSING
+                ),
+                wait=True,
+                username=resolved_member.name,
+                avatar_url=avatar,
+                embeds=message.embeds or MISSING,
+                files=[
+                    await attachment.to_file()
+                    for attachment in message.attachments
+                ]
+            )
+        )
+
+        await self.client.db.new.message(
+            original_id=message.id,
+            proxy_id=responses[1].id,
+            author_id=message.author.id
+        ).save()
+
+        for app_emoji in app_emojis:
+            await app_emoji.delete()
+
+        await send_success(ctx, 'message reproxied successfully')
