@@ -1,4 +1,4 @@
-from discord import Message, MISSING, RawReactionActionEvent, Thread
+from discord import Message, MISSING, RawReactionActionEvent
 from src.project import project
 from .embeds import ReplyEmbed
 from time import perf_counter
@@ -100,7 +100,11 @@ class ClientListeners(ClientBase):
             message.delete(reason='/plu/ral proxy'),
             webhook.send(
                 content=proxy_content,
-                thread=getattr(message.channel, 'parent', MISSING),
+                thread=(
+                    message.channel
+                    if getattr(message.channel, 'parent', None) is not None else
+                    MISSING
+                ),
                 wait=True,
                 username=member.name,
                 avatar_url=avatar,

@@ -47,7 +47,12 @@ class ClientBase(AutoShardedBot):
         return set(app_emojis.values()), message
 
     async def get_proxy_webhook(self, channel: GuildChannel) -> Webhook:
-        webhook = await self.db.webhook(channel.id)
+        resolved_channel: GuildChannel = getattr(channel, 'parent', channel)
+
+        if not isinstance(resolved_channel, GuildChannel):
+            raise ValueError('resolved channel is not a guild channel')
+
+        webhook = await self.db.webhook(resolved_channel.id)
 
         if webhook is not None:
             return Webhook.from_url(
@@ -55,21 +60,21 @@ class ClientBase(AutoShardedBot):
                 session=self.http._HTTPClient__session  # type: ignore # ? use it anyway
             )
 
-        for webhook in await channel.webhooks():
+        for webhook in await resolved_channel.webhooks():
             if webhook.name == '/plu/ral proxy':
                 await self.db.new.webhook(
-                    channel.id,
+                    resolved_channel.id,
                     webhook.url
                 ).save()
                 return webhook
 
-        webhook = await channel.create_webhook(
+        webhook = await resolved_channel.create_webhook(
             name='/plu/ral proxy',
             reason='required for /plu/ral to function'
         )
 
         await self.db.new.webhook(
-            channel.id,
+            resolved_channel.id,
             webhook.url
         ).save()
 
