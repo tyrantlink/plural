@@ -162,7 +162,9 @@ class ClientListeners(ClientBase):
                 if payload.user_id != message.author_id:
                     return
 
-                channel = payload.member.guild.get_channel(payload.channel_id)
+                channel = payload.member.guild.get_channel_or_thread(
+                    payload.channel_id
+                )
 
                 if channel is None:
                     return
@@ -171,4 +173,11 @@ class ClientListeners(ClientBase):
                     channel  # type: ignore
                 )
 
-                await webhook.delete_message(payload.message_id)
+                await webhook.delete_message(
+                    payload.message_id,
+                    thread_id=(
+                        payload.channel_id
+                        if getattr(channel, 'parent', None) is not None else
+                        None
+                    )
+                )
