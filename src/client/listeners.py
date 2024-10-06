@@ -1,4 +1,4 @@
-from discord import Message, MISSING, RawReactionActionEvent
+from discord import Message, MISSING, RawReactionActionEvent, Thread
 from src.project import project
 from .embeds import ReplyEmbed
 from time import perf_counter
@@ -70,7 +70,11 @@ class ClientListeners(ClientBase):
             return
 
         # ? it's never going to be outside of a guild
-        webhook = await self.get_proxy_webhook(message.channel)  # type: ignore
+        webhook = await self.get_proxy_webhook(
+            message.channel.parent
+            if isinstance(message.channel, Thread) and message.channel.parent is not None
+            else message.channel  # type: ignore
+        )
 
         if sum(
             attachment.size
@@ -98,6 +102,7 @@ class ClientListeners(ClientBase):
             message.delete(reason='/plu/ral proxy'),
             webhook.send(
                 content=proxy_content,
+                thread=getattr(message.channel, 'parent', MISSING),
                 wait=True,
                 username=member.name,
                 avatar_url=avatar,
