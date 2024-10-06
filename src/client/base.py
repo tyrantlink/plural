@@ -1,4 +1,4 @@
-from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions
+from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions, Thread
 from src.db import MongoDatabase, Member
 from re import finditer, match, escape
 from src.commands import Commands
@@ -46,8 +46,11 @@ class ClientBase(AutoShardedBot):
 
         return set(app_emojis.values()), message
 
-    async def get_proxy_webhook(self, channel: GuildChannel) -> Webhook:
+    async def get_proxy_webhook(self, channel: GuildChannel | Thread) -> Webhook:
         webhook = await self.db.webhook(channel.id)
+
+        _channel = channel.parent if isinstance(
+            channel, Thread) and channel.parent is not None else channel
 
         if webhook is not None:
             return Webhook.from_url(
@@ -55,7 +58,7 @@ class ClientBase(AutoShardedBot):
                 session=self.http._HTTPClient__session  # type: ignore # ? use it anyway
             )
 
-        for webhook in await channel.webhooks():
+        for webhook in await _channel.webhooks():
             if webhook.name == '/plu/ral proxy':
                 await self.db.new.webhook(
                     channel.id,
@@ -63,7 +66,7 @@ class ClientBase(AutoShardedBot):
                 ).save()
                 return webhook
 
-        webhook = await channel.create_webhook(
+        webhook = await _channel.create_webhook(
             name='/plu/ral proxy',
             reason='required for /plu/ral to function'
         )
