@@ -83,7 +83,7 @@ class ClientBase(AutoShardedBot):
             getattr(message.channel, 'category_id', None),
             getattr(message.channel, 'parent_id', None)
         }
-        channel_ids.remove(None)
+        channel_ids.discard(None)
 
         if message.guild is None:
             return None, None  # ? mypy stupid
