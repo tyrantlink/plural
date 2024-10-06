@@ -135,6 +135,9 @@ class ClientListeners(ClientBase):
             await app_emoji.delete()
 
     async def on_message_edit(self, before: Message, after: Message) -> None:
+        if before.content == after.content:
+            return None
+
         if await after.channel.history(limit=1).flatten() != [after]:
             return None
 
