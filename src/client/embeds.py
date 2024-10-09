@@ -10,7 +10,7 @@ class ReplyEmbed(Embed):
         )
         self.description = (
             (  # ? i hate this autoformatter sometimes
-                f'**[Reply to:]({message.jump_url})**{message.content[:100]}{'…' if len(message.content) > 100 else ""}')
+                f'**[Reply to:] ({message.jump_url})**{message.content[:100]}{'…' if len(message.content) > 100 else ""}')
             if message.content else
             (
                 f'*[(click to see attachment{"" if len(message.attachments)-1 else "s"})]({message.jump_url})*')
