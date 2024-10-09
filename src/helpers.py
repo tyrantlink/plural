@@ -1,5 +1,5 @@
+from discord import Interaction, ApplicationContext, Embed, Colour, MessageReference, Message
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
-from discord import Interaction, ApplicationContext, Embed, Colour
 from functools import partial
 
 
@@ -98,3 +98,35 @@ def chunk_string(string: str, chunk_size: int) -> list[str]:
         chunks.append(chunk)
 
     return chunks
+
+
+def format_reply(content: str, reference: MessageReference | None) -> str:
+    if reference is None:
+        return content
+
+    if not isinstance(reference.resolved, Message):
+        return content
+
+    refcontent = reference.resolved.content.replace('\n', ' ')
+    refattachments = reference.resolved.attachments
+
+    base_reply = f'-# {reference.resolved.author.mention}'
+
+    formatted_refcontent = (
+        refcontent
+        if len(refcontent) <= 75 else
+        f'{refcontent[:75].strip()}…'
+    )
+
+    reply_content = (
+        formatted_refcontent
+        if formatted_refcontent else
+        f'[*Click to see attachment*](<{reference.resolved.jump_url}>)'
+        if refattachments else
+        f'[*Click to see message*](<{reference.resolved.jump_url}>)'
+    )
+
+    # ? currently doing without jump as i think i looks better,
+    # ? leaving this here if i change my mind or think of a better implementation
+    # f'{base_reply} [{reply_content}](<{reference.resolved.jump_url}>)\n{content}'
+    return f'{base_reply} {reply_content}\n{content}'

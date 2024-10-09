@@ -1,4 +1,5 @@
-from discord import Message, MISSING, RawReactionActionEvent
+from discord import Message, MISSING, RawReactionActionEvent, AllowedMentions
+from src.helpers import format_reply
 from src.project import project
 from .embeds import ReplyEmbed
 from time import perf_counter
@@ -60,19 +61,14 @@ class ClientListeners(ClientBase):
         if not await self.permission_check(message):
             return
 
-        if len(proxy_content) > 2000:
+        if len(proxy_content) > 1980:
             await message.channel.send(
-                'i cannot proxy message over 2000 characters',
+                'i cannot proxy message over 1980 characters',
                 reference=message,
                 mention_author=False,
                 delete_after=10
             )
             return
-
-        # ? it's never going to be outside of a guild
-        webhook = await self.get_proxy_webhook(
-            message.channel  # type: ignore
-        )
 
         if sum(
             attachment.size
@@ -87,7 +83,25 @@ class ClientListeners(ClientBase):
             )
             return
 
+        webhook = await self.get_proxy_webhook(message.channel)
+
         app_emojis, proxy_content = await self.process_emotes(proxy_content)
+
+        if len(proxy_content) > 2000:
+            await message.channel.send(
+                'this message was over 2000 characters after processing emotes. proxy failed',
+                reference=message,
+                mention_author=False,
+                delete_after=10
+            )
+            return
+
+        proxy_with_reply = format_reply(proxy_content, message.reference)
+
+        reply_with_embed = len(proxy_with_reply) > 2000
+
+        if not reply_with_embed:
+            proxy_content = proxy_with_reply
 
         avatar = None
         if member.avatar:
@@ -113,6 +127,7 @@ class ClientListeners(ClientBase):
                         message.reference.resolved,
                         color=0x69ff69)
                     if (
+                        reply_with_embed and
                         message.reference and
                         isinstance(message.reference.resolved, Message)
                     ) else
@@ -121,7 +136,22 @@ class ClientListeners(ClientBase):
                 files=[
                     await attachment.to_file()
                     for attachment in message.attachments
-                ]
+                ],
+                allowed_mentions=(
+                    AllowedMentions(
+                        users=(
+                            [message.reference.resolved.author]
+                            if message.reference.resolved.author in message.mentions else
+                            []
+                        )
+                    )
+                )
+                if (
+                    not reply_with_embed and
+                    message.reference is not None and
+                    isinstance(message.reference.resolved, Message)
+                ) else
+                MISSING
             )
         )
 
