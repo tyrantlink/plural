@@ -1,5 +1,6 @@
-from discord import Interaction, ApplicationContext, Embed, Colour, MessageReference, Message
+from discord import Interaction, ApplicationContext, Embed, Colour, MessageReference, Message, User, Member, HTTPException, Forbidden
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
+from asyncio import sleep, create_task
 from functools import partial
 
 
@@ -100,6 +101,30 @@ def chunk_string(string: str, chunk_size: int) -> list[str]:
     return chunks
 
 
+async def __notify(
+    message: Message,
+    reaction: str = '❌',
+    delay: int | float = 1
+) -> None:
+    if message._state.user is None:
+        return  # ? should never be none but mypy is stupid
+
+    try:
+        await message.add_reaction(reaction)
+        await sleep(delay)
+        await message.remove_reaction(reaction, message._state.user)
+    except (HTTPException, Forbidden):
+        pass
+
+
+def notify(
+    message: Message,
+    reaction: str = '❌',
+    delay: int | float = 1
+) -> None:
+    create_task(__notify(message, reaction, delay))
+
+
 def format_reply(content: str, reference: MessageReference | None) -> str:
     if reference is None:
         return content
@@ -110,7 +135,8 @@ def format_reply(content: str, reference: MessageReference | None) -> str:
     refcontent = reference.resolved.content.replace('\n', ' ')
     refattachments = reference.resolved.attachments
 
-    base_reply = f'-# {reference.resolved.author.mention}'
+    base_reply = (
+        f'-# [↪](<{reference.resolved.jump_url}>) {reference.resolved.author.mention}')
 
     formatted_refcontent = (
         refcontent
