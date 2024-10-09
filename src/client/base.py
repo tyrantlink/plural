@@ -126,7 +126,7 @@ class ClientBase(AutoShardedBot):
                         message.content,
                         MULTILINE
                     )
-                    print(check)
+
                     if check is not None:
                         if latch is not None and latch.enabled:
                             latch.member = member.id
