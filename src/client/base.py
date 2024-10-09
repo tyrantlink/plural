@@ -1,11 +1,15 @@
 from __future__ import annotations
-from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions
+from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions, MISSING, AllowedMentions
 from re import finditer, match, escape, MULTILINE
 from src.db import MongoDatabase, Member
+from src.helpers import format_reply
 from typing import TYPE_CHECKING
 from .emoji import ProbableEmoji
 from src.project import project
+from .embeds import ReplyEmbed
 from time import perf_counter
+from asyncio import gather
+
 
 if TYPE_CHECKING:
     from discord.abc import MessageableChannel
@@ -174,3 +178,162 @@ class ClientBase(AutoShardedBot):
             return False
 
         return True
+
+    async def process_proxy(self, message: Message) -> bool:
+        if (
+            message.author.bot or
+            message.guild is None or
+            not (message.content or message.attachments)
+        ):
+            return False
+
+        if message.content.startswith('\\'):
+            if not message.content.startswith('\\\\'):
+                return False
+
+            latch = await self.db.latch(
+                message.author.id,
+                message.guild.id
+            )
+
+            if latch is not None:
+                latch.member = None
+                await latch.save_changes()
+
+            return False
+
+        member, proxy_content = await self.get_proxy_for_message(message)
+
+        if member is None or proxy_content is None:
+            return False
+
+        if not await self.permission_check(message):
+            return False
+
+        if len(proxy_content) > 1980:
+            await message.channel.send(
+                'i cannot proxy message over 1980 characters',
+                reference=message,
+                mention_author=False,
+                delete_after=10
+            )
+            return False
+
+        if sum(
+            attachment.size
+            for attachment in
+            message.attachments
+        ) > message.guild.filesize_limit:
+            await message.channel.send(
+                'attachments are above the file size limit',
+                reference=message,
+                mention_author=False,
+                delete_after=10
+            )
+            return False
+
+        webhook = await self.get_proxy_webhook(message.channel)
+
+        app_emojis, proxy_content = await self.process_emotes(proxy_content)
+
+        if len(proxy_content) > 2000:
+            await message.channel.send(
+                'this message was over 2000 characters after processing emotes. proxy failed',
+                reference=message,
+                mention_author=False,
+                delete_after=10
+            )
+            return False
+
+        proxy_with_reply = format_reply(proxy_content, message.reference)
+
+        reply_with_embed = len(proxy_with_reply) > 2000
+
+        if not reply_with_embed:
+            proxy_content = proxy_with_reply
+
+        avatar = None
+        if member.avatar:
+            image = await self.db.image(member.avatar, False)
+            if image is not None:
+                avatar = (
+                    f'{project.base_url}/avatars/{image.id}.{image.extension}')
+
+        responses = await gather(
+            message.delete(reason='/plu/ral proxy'),
+            webhook.send(
+                content=proxy_content,
+                thread=(
+                    message.channel
+                    if getattr(message.channel, 'parent', None) is not None else
+                    MISSING
+                ),
+                wait=True,
+                username=member.name,
+                avatar_url=avatar,
+                embed=(
+                    ReplyEmbed(
+                        message.reference.resolved,
+                        color=0x69ff69)
+                    if (
+                        reply_with_embed and
+                        message.reference and
+                        isinstance(message.reference.resolved, Message)
+                    ) else
+                    MISSING
+                ),
+                files=[
+                    await attachment.to_file()
+                    for attachment in message.attachments
+                ],
+                allowed_mentions=(
+                    AllowedMentions(
+                        users=(
+                            [message.reference.resolved.author]
+                            if message.reference.resolved.author in message.mentions else
+                            []
+                        )
+                    )
+                )
+                if (
+                    not reply_with_embed and
+                    message.reference is not None and
+                    isinstance(message.reference.resolved, Message)
+                ) else
+                MISSING
+            )
+        )
+
+        await self.db.new.message(
+            original_id=message.id,
+            proxy_id=responses[1].id,
+            author_id=message.author.id
+        ).save()
+
+        for app_emoji in app_emojis:
+            await app_emoji.delete()
+
+        return True
+
+    async def handle_ping_reply(self, message: Message) -> None:
+        if (
+            message.reference is None or
+            not isinstance(message.reference.resolved, Message) or
+            message.reference.resolved.webhook_id is None
+        ):
+            return
+
+        message_data = await self.db.message(proxy_id=message.reference.resolved.id)
+
+        if message_data is None:
+            return
+
+        if message_data.author_id == message.author.id:
+            return
+
+        await message.channel.send(
+            f'<@{message_data.author_id}>',
+            reference=message,
+            mention_author=False,
+            delete_after=0
+        )
