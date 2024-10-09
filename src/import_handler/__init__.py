@@ -169,7 +169,7 @@ class ImportHandler:
 
         return image.id
 
-    async def _save_object_with_avatar(self, obj: Member | Group, avatar_url: str) -> None:
+    async def _save_object_with_avatar(self, obj: Member | Group, avatar_url: str | None) -> None:
         obj.avatar = await self._url_to_image(avatar_url, obj.name)
         await obj.save()
 
@@ -255,7 +255,7 @@ class ImportHandler:
         }
 
         if any((group.get('avatar') != None for group in self.data['groups'])):
-            self.log.append(
+            self.log.append(  # ? i don't know the cdn url for tupper group avatars, if you know it, make a pull request
                 'warning: some of your groups have avatars, porting tupperbox group avatars is not supported')
 
         existing_groups = {

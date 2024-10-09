@@ -1,10 +1,14 @@
+from __future__ import annotations
 from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions
 from re import finditer, match, escape, MULTILINE
 from src.db import MongoDatabase, Member
-from src.commands import Commands
+from typing import TYPE_CHECKING
 from .emoji import ProbableEmoji
 from src.project import project
 from time import perf_counter
+
+if TYPE_CHECKING:
+    from discord.abc import MessageableChannel
 
 GuildChannel = TextChannel | VoiceChannel | StageChannel
 
@@ -14,12 +18,6 @@ class ClientBase(AutoShardedBot):
         self._st = perf_counter()
         self.db = MongoDatabase(project.mongo_uri)
         super().__init__(*args, **kwargs)
-
-    async def start(self, token: str, *, reconnect: bool = True) -> None:
-        self.add_cog(Commands(self))
-        await self.db.connect()
-        await self.login(token)
-        await self.connect(reconnect=reconnect)
 
     async def process_emotes(self, message: str) -> tuple[set[AppEmoji], str]:
         guild_emojis = {
@@ -46,8 +44,8 @@ class ClientBase(AutoShardedBot):
 
         return set(app_emojis.values()), message
 
-    async def get_proxy_webhook(self, channel: GuildChannel) -> Webhook:
-        resolved_channel: GuildChannel = getattr(channel, 'parent', channel)
+    async def get_proxy_webhook(self, channel: MessageableChannel) -> Webhook:
+        resolved_channel = getattr(channel, 'parent', channel)
 
         if not isinstance(resolved_channel, GuildChannel):
             raise ValueError('resolved channel is not a guild channel')

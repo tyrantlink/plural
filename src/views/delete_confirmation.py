@@ -6,17 +6,20 @@ from discord.ui import button
 from asyncio import gather
 
 if TYPE_CHECKING:
-    from src.client import Client
+    from src.client import Client, ClientBase
 
 
+# ? only includes ClientBase to fix mypy error, will never actually be ClientBase
 class DeleteConfirmation(View):
-    def __init__(self, client: Client, **kwargs):
+    def __init__(self, client: Client | ClientBase, **kwargs):
         super().__init__(
             timeout=kwargs.pop('timeout', None),
             **kwargs
         )
         self.client = client
-        self.add_item(self.button_confirm)
+        self.add_item(
+            self.button_confirm  # type: ignore # ? mypy doesn't like these
+        )
 
     @button(
         label='confirm',

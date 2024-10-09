@@ -3,6 +3,7 @@ from discord import slash_command, ApplicationContext, Option, message_command, 
 from src.helpers import CustomModal, send_error, send_success
 from src.db import Group, Member, Message as DBMessage
 import src.commands.autocomplete as autocomplete
+
 from src.views import DeleteConfirmation
 from discord.ext.commands import Cog
 from discord.ui import InputText
@@ -10,13 +11,13 @@ from typing import TYPE_CHECKING
 from src.project import project
 from asyncio import gather
 
-
 if TYPE_CHECKING:
-    from src.client.base import ClientBase
+    from discord.abc import MessageableChannel
+    from src.client import Client
 
 
 class BaseCommands(Cog):
-    def __init__(self, client: ClientBase):
+    def __init__(self, client: Client):
         self.client = client
 
     async def _base_group_getter(self, interaction: ApplicationContext, group: str) -> Group | None:
@@ -91,7 +92,7 @@ class BaseCommands(Cog):
             return
 
         webhook = await self.client.get_proxy_webhook(
-            message.channel)  # type: ignore
+            message.channel)
 
         if message.webhook_id != webhook.id:
             await send_error(ctx, 'message is not a proxied message!')
@@ -133,17 +134,18 @@ class BaseCommands(Cog):
             await send_error(modal.interaction, 'no changes were made')
             return
 
-        await webhook.edit_message(
-            message.id,
-            content=new_content,
-            thread=(
-                message.channel
-                if getattr(message.channel, 'parent', None) is not None else
-                MISSING
+        await gather(
+            modal.interaction.response.defer(),
+            webhook.edit_message(
+                message.id,
+                content=new_content,
+                thread=(
+                    message.channel
+                    if getattr(message.channel, 'parent', None) is not None else
+                    MISSING
+                )
             )
         )
-
-        await modal.interaction.response.defer()
 
     @slash_command(
         name='autoproxy',
@@ -174,7 +176,7 @@ class BaseCommands(Cog):
             await send_error(ctx, 'you do not exist')
             return
 
-        if ctx.guild_id is None:
+        if ctx.guild is None:
             return
 
         resolved_group = await self.client.db.group_by_name(
@@ -188,7 +190,7 @@ class BaseCommands(Cog):
 
         latch = await self.client.db.latch(
             ctx.interaction.user.id,
-            ctx.guild_id,
+            ctx.guild.id,
             create=True
         )
 
@@ -255,6 +257,10 @@ class BaseCommands(Cog):
         if resolved_group is None or resolved_member is None:
             return
 
+        if not isinstance(ctx.channel, MessageableChannel):
+            await send_error(ctx, 'channel is not a messageable object')
+            return  # ? mypy is stupid, this will never happen
+
         try:
             last_channel_messages = await ctx.channel.history(limit=1).flatten()
 
@@ -289,7 +295,8 @@ class BaseCommands(Cog):
             return
 
         webhook = await self.client.get_proxy_webhook(
-            ctx.interaction.channel)
+            ctx.channel
+        )
 
         if webhook is None:
             await send_error(ctx, 'could not find the proxy webhook')
