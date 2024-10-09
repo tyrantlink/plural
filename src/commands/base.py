@@ -135,7 +135,12 @@ class BaseCommands(Cog):
 
         await webhook.edit_message(
             message.id,
-            content=new_content
+            content=new_content,
+            thread=(
+                message.channel
+                if getattr(message.channel, 'parent', None) is not None else
+                MISSING
+            )
         )
 
         await modal.interaction.response.defer()
