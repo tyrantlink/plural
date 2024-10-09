@@ -1,6 +1,6 @@
 from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions
+from re import finditer, match, escape, MULTILINE
 from src.db import MongoDatabase, Member
-from re import finditer, match, escape
 from src.commands import Commands
 from .emoji import ProbableEmoji
 from src.project import project
@@ -122,9 +122,11 @@ class ClientBase(AutoShardedBot):
                     )
 
                     check = match(
-                        f'^{prefix}(?!(?:[@#]\\d+>))(.*?){suffix}$',
-                        message.content
+                        f'^{prefix}(?!(?:[@#]\\d+>))([\\s\\S]*){suffix}$',
+                        message.content,
+                        MULTILINE
                     )
+                    print(check)
                     if check is not None:
                         if latch is not None and latch.enabled:
                             latch.member = member.id
