@@ -111,7 +111,7 @@ class ClientListeners(ClientBase):
                 embed=(
                     ReplyEmbed(
                         message.reference.resolved,
-                        color=member.color or 0x69ff69)
+                        color=0x69ff69)
                     if (
                         message.reference and
                         isinstance(message.reference.resolved, Message)
