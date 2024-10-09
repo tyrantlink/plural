@@ -122,7 +122,7 @@ class ClientBase(AutoShardedBot):
                     )
 
                     check = match(
-                        f'^{prefix}(?!(?:[@#]\\d+>))([\\s\\S]*){suffix}$',
+                        f'^{prefix}(?!(?:[@#]\\d+>))([\\s\\S]+){suffix}$',
                         message.content,
                         MULTILINE
                     )
