@@ -88,8 +88,16 @@ class ClientBase(AutoShardedBot):
             check.string
         ):
             if (
-                safety_match.start() >= check.start(1) and
-                check.end(3) <= safety_match.end()
+                (
+                    # ? if the prefix is present
+                    check.end(1) and
+                    safety_match.start() < check.end(1)
+                ) or
+                (
+                    # ? if the suffix is present
+                    (check.start(3)-len(check.string)) and
+                    safety_match.end() > check.start(3)
+                )
             ):
                 return False
 
