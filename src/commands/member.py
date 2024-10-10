@@ -388,7 +388,7 @@ class MemberCommands(BaseCommands):
 
         tags = '\n'.join([
             f'`{index}{" (regex)" if tag.regex else ""}`: {
-                tag.prefix} text {tag.suffix}'
+                tag.prefix}text{tag.suffix}'
             for index, tag
             in enumerate(resolved_member.proxy_tags)
         ]) or 'no proxy tags set'
