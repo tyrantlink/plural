@@ -1,6 +1,6 @@
 from __future__ import annotations
 from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions, MISSING, AllowedMentions
-from re import finditer, match, escape, MULTILINE
+from re import finditer, match, escape, Match
 from src.db import MongoDatabase, Member
 from src.helpers import format_reply
 from typing import TYPE_CHECKING
@@ -82,6 +82,19 @@ class ClientBase(AutoShardedBot):
 
         return webhook
 
+    def _ensure_proxy_preserves_mentions(self, check: Match) -> bool:
+        for safety_match in finditer(
+            f'<(?:[@#]|:\\S+:)\\d+>',
+            check.string
+        ):
+            if (
+                safety_match.start() < check.start(2) and
+                safety_match.end() > check.end(2)
+            ):
+                return False
+
+        return True
+
     async def get_proxy_for_message(self, message: Message) -> tuple[Member, str] | tuple[None, None]:
         groups = await self.db.groups(message.author.id)
 
@@ -124,17 +137,19 @@ class ClientBase(AutoShardedBot):
                     )
 
                     check = match(
-                        f'^{prefix}(?!(?:[@#]\\d+>))([\\s\\S]+){suffix}$',
-                        message.content,
-                        MULTILINE
+                        f'^({prefix})([\\s\\S]+)({suffix})$',
+                        message.content
                     )
 
                     if check is not None:
+                        if not self._ensure_proxy_preserves_mentions(check):
+                            continue
+
                         if latch is not None and latch.enabled:
                             latch.member = member.id
                             await latch.save_changes()
 
-                        return member, check.group(1)
+                        return member, check.group(2)
 
         if latch is None:
             return None, None
