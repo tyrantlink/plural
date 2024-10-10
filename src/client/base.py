@@ -89,7 +89,7 @@ class ClientBase(AutoShardedBot):
         ):
             if (
                 safety_match.start() >= check.start(1) and
-                safety_match.end() <= check.end(3)
+                check.end(3) <= safety_match.end()
             ):
                 return False
 
