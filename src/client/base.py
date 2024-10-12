@@ -1,7 +1,7 @@
 from __future__ import annotations
 from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions, MISSING, AllowedMentions
+from src.db import MongoDatabase, Member, Latch
 from re import finditer, match, escape, Match
-from src.db import MongoDatabase, Member
 from src.helpers import format_reply
 from typing import TYPE_CHECKING
 from .emoji import ProbableEmoji
@@ -103,7 +103,10 @@ class ClientBase(AutoShardedBot):
 
         return True
 
-    async def get_proxy_for_message(self, message: Message) -> tuple[Member, str] | tuple[None, None]:
+    async def get_proxy_for_message(
+        self,
+        message: Message
+    ) -> tuple[Member, str, Latch | None] | tuple[None, None, None]:
         groups = await self.db.groups(message.author.id)
 
         channel_ids = {
@@ -114,7 +117,7 @@ class ClientBase(AutoShardedBot):
         channel_ids.discard(None)
 
         if message.guild is None:
-            return None, None  # ? mypy stupid
+            return None, None, None  # ? mypy stupid
 
         latch = await self.db.latch(message.author.id, message.guild.id)
 
@@ -157,18 +160,18 @@ class ClientBase(AutoShardedBot):
                             latch.member = member.id
                             await latch.save_changes()
 
-                        return member, check.group(2)
+                        return member, check.group(2), latch
 
         if latch is None:
-            return None, None
+            return None, None, None
 
         if latch.enabled and latch.member is not None:
             member = await self.db.member(latch.member)
 
             if member is not None:
-                return member, message.content
+                return member, message.content, latch
 
-        return None, None
+        return None, None, None
 
     async def permission_check(self, message: Message) -> bool:
         if message.guild is None:
@@ -210,22 +213,21 @@ class ClientBase(AutoShardedBot):
         ):
             return False
 
-        if message.content.startswith('\\'):
-            if not message.content.startswith('\\\\'):
-                return False
+        member, proxy_content, latch = await self.get_proxy_for_message(message)
 
-            latch = await self.db.latch(
-                message.author.id,
-                message.guild.id
-            )
-
-            if latch is not None:
+        if (
+            latch is not None and
+            latch.enabled and
+            message.content.startswith('\\')
+        ):
+            # ? if latch is enabled and,
+            # ? if message starts with single backslash, skip proxying this message,
+            # ? if message starts with double backslash, reset member on latch
+            if message.content.startswith('\\\\'):
                 latch.member = None
                 await latch.save_changes()
 
             return False
-
-        member, proxy_content = await self.get_proxy_for_message(message)
 
         if member is None or proxy_content is None:
             return False
