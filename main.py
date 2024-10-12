@@ -1,8 +1,7 @@
-
-from src.project import project
+from argparse import ArgumentParser
+from src.models import project
 from src.client import Client
 from discord import Intents
-from argparse import ArgumentParser
 
 
 def run_bot():

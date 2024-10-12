@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from src.project import project
+    from src.models import project
     from src.db import MongoDatabase
     DB = MongoDatabase(project.mongo_uri)
 

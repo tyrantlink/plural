@@ -2,10 +2,10 @@ from __future__ import annotations
 from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions, MISSING, AllowedMentions
 from src.db import MongoDatabase, Member, Latch
 from re import finditer, match, escape, Match
+from src.models import project, DebugMessage
 from src.helpers import format_reply
 from typing import TYPE_CHECKING
 from .emoji import ProbableEmoji
-from src.project import project
 from .embeds import ReplyEmbed
 from time import perf_counter
 from asyncio import gather
@@ -105,8 +105,12 @@ class ClientBase(AutoShardedBot):
 
     async def get_proxy_for_message(
         self,
-        message: Message
+        message: Message,
+        debug_log: list[DebugMessage | str] | None = None
     ) -> tuple[Member, str, Latch | None] | tuple[None, None, None]:
+        if debug_log is None:
+            debug_log = []
+
         groups = await self.db.groups(message.author.id)
 
         channel_ids = {
@@ -129,6 +133,9 @@ class ClientBase(AutoShardedBot):
                     for channel_id in channel_ids
                 )
             ):
+                if debug_log:
+                    debug_log.append(
+                        DebugMessage.GROUP_CHANNEL_RESTRICTED.format(group.name))
                 continue
 
             for member_id in group.members.copy():
@@ -163,6 +170,8 @@ class ClientBase(AutoShardedBot):
                         return member, check.group(2), latch
 
         if latch is None:
+            debug_log.append(DebugMessage.AUTHOR_NO_TAGS)
+
             return None, None, None
 
         if latch.enabled and latch.member is not None:
@@ -171,9 +180,12 @@ class ClientBase(AutoShardedBot):
             if member is not None:
                 return member, message.content, latch
 
+        if debug_log:
+            debug_log.append(DebugMessage.AUTHOR_NO_TAGS_NO_LATCH)
+
         return None, None, None
 
-    async def permission_check(self, message: Message) -> bool:
+    async def permission_check(self, message: Message, debug_log: list[DebugMessage | str] | None = None) -> bool:
         if message.guild is None:
             return False
 
@@ -185,6 +197,9 @@ class ClientBase(AutoShardedBot):
             return False  # ? mypy stupid
 
         if self_permissions.send_messages is False:
+            if debug_log:
+                debug_log.append(DebugMessage.PERM_SEND_MESSAGES)
+
             return False
 
         if self_permissions.manage_webhooks is False:
@@ -193,6 +208,10 @@ class ClientBase(AutoShardedBot):
                 reference=message,
                 mention_author=False
             )
+
+            if debug_log:
+                debug_log.append(DebugMessage.PERM_MANAGE_WEBHOOKS)
+
             return False
 
         if self_permissions.manage_messages is False:
@@ -201,19 +220,41 @@ class ClientBase(AutoShardedBot):
                 reference=message,
                 mention_author=False
             )
+
+            if debug_log:
+                debug_log.append(DebugMessage.PERM_MANAGE_MESSAGES)
+
             return False
 
         return True
 
-    async def process_proxy(self, message: Message) -> bool:
+    async def process_proxy(self, message: Message, debug_log: list[DebugMessage | str] | None = None) -> bool:
+        if debug_log is None:
+            # ? if debug_log is given by debug command, it will have DebugMessage.ENABLER, being a truthy value
+            # ? if it's not given, we set it to an empty list here and never append to it
+            debug_log = []
+
         if (
             message.author.bot or
             message.guild is None or
             not (message.content or message.attachments)
         ):
+            if debug_log:
+                if message.author.bot:
+                    debug_log.append(DebugMessage.AUTHOR_BOT)
+
+                if message.guild is None:
+                    debug_log.append(DebugMessage.NOT_IN_GUILD)
+
+                if not (message.content or message.attachments):
+                    debug_log.append(DebugMessage.NO_CONTENT)
+
             return False
 
-        member, proxy_content, latch = await self.get_proxy_for_message(message)
+        member, proxy_content, latch = await self.get_proxy_for_message(message, debug_log)
+
+        if member is None or proxy_content is None:
+            return False
 
         if (
             latch is not None and
@@ -227,12 +268,12 @@ class ClientBase(AutoShardedBot):
                 latch.member = None
                 await latch.save_changes()
 
+            if debug_log:
+                debug_log.append(DebugMessage.AUTOPROXY_BYPASSED)
+
             return False
 
-        if member is None or proxy_content is None:
-            return False
-
-        if not await self.permission_check(message):
+        if not await self.permission_check(message, debug_log):
             return False
 
         if len(proxy_content) > 1980:
@@ -242,6 +283,10 @@ class ClientBase(AutoShardedBot):
                 mention_author=False,
                 delete_after=10
             )
+
+            if debug_log:
+                debug_log.append(DebugMessage.OVER_TEXT_LIMIT)
+
             return False
 
         if sum(
@@ -255,11 +300,18 @@ class ClientBase(AutoShardedBot):
                 mention_author=False,
                 delete_after=10
             )
+
+            if debug_log:
+                debug_log.append(DebugMessage.OVER_FILE_LIMIT)
+
             return False
 
         webhook = await self.get_proxy_webhook(message.channel)
 
-        app_emojis, proxy_content = await self.process_emotes(proxy_content)
+        # ? don't actually clone emotes if we're debugging
+        app_emojis = set()
+        if not debug_log:
+            app_emojis, proxy_content = await self.process_emotes(proxy_content)
 
         if len(proxy_content) > 2000:
             await message.channel.send(
@@ -283,6 +335,10 @@ class ClientBase(AutoShardedBot):
             if image is not None:
                 avatar = (
                     f'{project.base_url}/avatars/{image.id}.{image.extension}')
+
+        if debug_log:
+            debug_log.append(DebugMessage.SUCCESS)
+            return True
 
         responses = await gather(
             message.delete(reason='/plu/ral proxy'),

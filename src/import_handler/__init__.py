@@ -9,8 +9,8 @@ from .embed import ImportHelpEmbed
 from urllib.parse import urlparse
 from asyncio import sleep, gather
 from src.db import Member, Group
-from src.project import project
 from asyncio import create_task
+from src.models import project
 from .models import ImportType
 from typing import Any
 from json import loads

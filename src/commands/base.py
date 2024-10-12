@@ -3,12 +3,11 @@ from discord import slash_command, ApplicationContext, Option, message_command, 
 from src.helpers import CustomModal, send_error, send_success
 from src.db import Group, Member, Message as DBMessage
 import src.commands.autocomplete as autocomplete
-
+from src.models import project, DebugMessage
 from src.views import DeleteConfirmation
 from discord.ext.commands import Cog
 from discord.ui import InputText
 from typing import TYPE_CHECKING
-from src.project import project
 from asyncio import gather
 
 if TYPE_CHECKING:
@@ -81,7 +80,7 @@ class BaseCommands(Cog):
         await send_error(ctx, 'menu management has not been implemented yet')
 
     @message_command(
-        name='plural edit',
+        name='/plu/ral edit',
         contexts={InteractionContextType.guild})
     async def message_plural_edit(self, ctx: ApplicationContext, message: Message):
         if ctx.guild is None:
@@ -341,3 +340,30 @@ class BaseCommands(Cog):
             await app_emoji.delete()
 
         await send_success(ctx, 'message reproxied successfully')
+
+    @message_command(
+        name='/plu/ral debug'
+    )
+    async def message_plural_debug(self, ctx: ApplicationContext, message: Message) -> None:
+        if ctx.guild is None:
+            await send_error(ctx, 'this command can only be used in a guild')
+            return
+
+        debug_log: list[DebugMessage | str] = [DebugMessage.ENABLER]
+
+        await self.client.process_proxy(message, debug_log)
+
+        debug_log.remove(DebugMessage.ENABLER)
+
+        await ctx.response.send_message(
+            embed=Embed(
+                title='debug log',
+                description=f'```{'\n'.join(debug_log)}```',
+                color=(
+                    0x69ff69
+                    if DebugMessage.SUCCESS in debug_log else
+                    0xff6969
+                )
+            ),
+            ephemeral=True
+        )
