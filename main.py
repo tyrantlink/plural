@@ -17,7 +17,7 @@ def run_api():
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('mode', choices=['bot', 'api'])
+    parser.add_argument('mode', choices=['bot', 'api'], default='bot')
     args = parser.parse_args()
 
     match args.mode:
