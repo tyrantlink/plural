@@ -1,7 +1,6 @@
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
 from src.db.member import Member
-from datetime import timedelta
 from asyncio import gather
 from typing import Any
 
@@ -33,7 +32,7 @@ class Group(Document):
         name = 'groups'
         validate_on_save = True
         use_state_management = True
-        indexes = ['accounts', 'members']
+        indexes = ['accounts', 'members', 'name']
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
     name: str = Field(description='the name of the system')
@@ -111,6 +110,9 @@ class Group(Document):
 
         if member is None:
             raise ValueError(f'member {id} not found')
+
+        if member.group != self.id:
+            raise ValueError(f'member {id} not in group {self.id}')
 
         self.members.remove(member.id)
 

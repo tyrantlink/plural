@@ -1,8 +1,11 @@
+from __future__ import annotations
 from beanie import Document, PydanticObjectId
-from datetime import timedelta
 from .models import ProxyTag
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
 from pydantic import Field
+
+if TYPE_CHECKING:
+    from src.db.group import Group
 
 
 class Member(Document):
@@ -27,3 +30,13 @@ class Member(Document):
         [],
         description='proxy tags for the member'
     )
+
+    async def get_group(self) -> Group:
+        from src.db.group import Group
+
+        group = await Group.find_one({'members': self.id})
+
+        if group is None:
+            raise ValueError(f'member {self.id} is not in any group')
+
+        return group

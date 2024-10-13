@@ -1,6 +1,12 @@
-from discord import Interaction, ApplicationContext, Embed, Colour, MessageReference, Message, User, Member, HTTPException, Forbidden
+from discord import Interaction, ApplicationContext, Embed, Colour, MessageReference, Message, HTTPException, Forbidden
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
+from discord.ext.commands.converter import CONVERTER_MAPPING
+from discord.ext.commands import Converter
 from asyncio import sleep, create_task
+from typing import Literal, overload
+from beanie import PydanticObjectId
+from bson.errors import InvalidId
+from src.db import Group, Member
 from functools import partial
 
 
@@ -157,7 +163,140 @@ def format_reply(content: str, reference: MessageReference | None) -> str:
         f'[*Click to see message*](<{reference.resolved.jump_url}>)'
     )
 
-    # ? currently doing without jump as i think i looks better,
-    # ? leaving this here if i change my mind or think of a better implementation
-    # f'{base_reply} [{reply_content}](<{reference.resolved.jump_url}>)\n{content}'
     return f'{base_reply} {reply_content}\n{content}'
+
+
+class DBConversionError(Exception):
+    ...
+
+
+class DBConverter(Converter):
+    async def convert(self, ctx: ApplicationContext, argument: str):
+        match self._get_reversed_options(ctx).get(argument, None):
+            case 'member':
+                return await self._handle_member(ctx, argument)
+            case 'group':
+                return await self._handle_group(ctx, argument)
+            case _:  # ? should never happen
+                raise DBConversionError(f'invalid argument `{argument}`')
+
+        return argument
+
+    def _get_options(self, ctx: ApplicationContext) -> dict[str, str]:
+        if ctx.interaction.data is None:  # ? should never happen
+            raise DBConversionError('interaction data is None')
+
+        return {
+            # ? type is string, value will always be string
+            o['name']: o['value']  # type: ignore
+            for o in ctx.interaction.data.get('options', [])
+        }
+
+    def _get_reversed_options(self, ctx: ApplicationContext) -> dict[str, str]:
+        return {
+            v: k
+            for k, v in self._get_options(ctx).items()
+        }
+
+    @overload
+    async def _handle_member(self, ctx: ApplicationContext, argument: str) -> Member:
+        ...
+
+    @overload
+    async def _handle_member(self, ctx: ApplicationContext, argument: None) -> None:
+        ...
+
+    async def _handle_member(self, ctx: ApplicationContext, argument: str | None) -> Member | None:
+        if argument is None:
+            return None
+
+        try:
+            parsed_argument = PydanticObjectId(argument)
+        except InvalidId:
+            parsed_argument = None
+
+        member, group = None, None
+
+        if parsed_argument is not None:
+            member = await Member.find_one({'_id': parsed_argument})
+
+        # ? member argument is not id, try to find by name
+        if parsed_argument is None and member is None:
+            group = await self._handle_group(ctx, self._get_options(ctx).get('group', 'default') or 'default')
+            member = await group.get_member_by_name(argument)
+
+        if member is None:
+            raise DBConversionError('member not found')
+
+        if group is None:
+            group = await member.get_group()
+
+        if ctx.author.id not in group.accounts:
+            raise DBConversionError('member not found')
+
+        return member
+
+    async def _handle_group(self, ctx: ApplicationContext, argument: str | None) -> Group:
+        if isinstance(argument, str):
+            try:
+                parsed_argument = PydanticObjectId(argument)
+            except InvalidId:
+                parsed_argument = None
+
+            group = None
+
+            if parsed_argument is not None:
+                group = await Group.find_one({'_id': parsed_argument})
+
+            # ? group argument is not id, try to find by name
+            if parsed_argument is None and group is None:
+                group = await Group.find_one({'accounts': ctx.author.id, 'name': argument})
+
+            if group is None or ctx.author.id not in group.accounts:
+                raise DBConversionError('group not found')
+
+            return group
+
+        # ? group argument is None, try to find member argument
+        if (member := self._get_options(ctx).get('member', None)) is not None:
+            try:
+                return await (await self._handle_member(ctx, member)).get_group()
+            except DBConversionError:
+                # ? no need to actually raise the errors, if member is a supplied argument,
+                # ? then those errors will be raised by the member conversion
+                pass
+
+        # ? group argument is None and member argument is not found, try to find by default
+        group = await Group.find_one({'accounts': ctx.author.id, 'name': 'default'})
+
+        if group is None:
+            raise DBConversionError('group not found')
+
+        return group
+
+
+CONVERTER_MAPPING.update(
+    {
+        Member: DBConverter,
+        Group: DBConverter
+    }
+)
+
+
+def include_all_options(ctx: ApplicationContext) -> Literal[True]:
+    if ctx.interaction.data is None:
+        return True
+
+    ctx.interaction.data['options'] = [  # type: ignore # ? mypy stupid
+        *ctx.interaction.data.get('options', []),
+        *[
+            {
+                'value': o.default,
+                'type': o.input_type.value,
+                'name': o.name
+            }
+            for o in ctx.unselected_options or []
+        ]
+    ]
+
+    return True

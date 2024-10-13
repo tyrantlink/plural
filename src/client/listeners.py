@@ -1,4 +1,5 @@
-from discord import Message, RawReactionActionEvent
+from discord import ApplicationContext, DiscordException, Message, RawReactionActionEvent
+from src.helpers import send_error, DBConversionError
 from time import perf_counter
 from .base import ClientBase
 from asyncio import gather
@@ -83,3 +84,13 @@ class ClientListeners(ClientBase):
                         None
                     )
                 )
+
+    async def on_application_command_error(self, ctx: ApplicationContext, exception: DiscordException) -> None:
+        error = str(exception).removeprefix(
+            'Application Command raised an exception: ')
+
+        if error.startswith('DBConversionError: '):
+            await send_error(ctx, error.removeprefix('DBConversionError: '))
+            return
+
+        await send_error(ctx, error)

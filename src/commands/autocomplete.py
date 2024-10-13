@@ -1,6 +1,15 @@
-from discord import AutocompleteContext
+from discord import AutocompleteContext, OptionChoice, ApplicationContext
+from beanie import PydanticObjectId
+from typing import NamedTuple
 from thefuzz import process  # type: ignore
 from src.db import Group
+
+
+class ProcessedMember(NamedTuple):
+    member_id: PydanticObjectId
+    member_name: str
+    score: int
+    group_name: str
 
 
 async def groups(ctx: AutocompleteContext) -> list[str]:
@@ -28,48 +37,71 @@ async def groups(ctx: AutocompleteContext) -> list[str]:
     ]
 
 
-async def members(ctx: AutocompleteContext) -> list[str]:
+async def members(ctx: AutocompleteContext) -> list[OptionChoice]:
     if ctx.interaction.user is None:
-        return ['you do not exist']
+        return [OptionChoice(name='you do not exist', value='None')]
 
-    groups = await Group.find({'accounts': ctx.interaction.user.id}).to_list()
+    selected_group: str = ctx.options.get('group', None)
 
-    selected_group = next(
-        (  # ? select group based on option
-            group
+    members = [
+        (group, member)
+        for group in [
+            group  # ? restrict to group user has selected
             for group in
-            groups
-            if group.name == ctx.options.get('group')
-        ),
-        None
-    ) or next(
-        (  # ? or select the default
-            group
-            for group in groups
-            if group.name == 'default'
-        ),
-        None
-    )
-
-    if selected_group is None:
-        return ['no group selected']
-
-    members = [member.name for member in await selected_group.get_members()]
+            await Group.find({'accounts': ctx.interaction.user.id}).to_list()
+            if selected_group in [group.name, None]
+        ]
+        for member in await group.get_members()
+    ]
 
     if not members:
-        return ['no members found, run /manage to create one']
+        return [OptionChoice(name='no members found, run /manage to create one', value='None')]
 
     if ctx.value == '' or ctx.value.isspace():
-        return members[:25]
+        return [
+            OptionChoice(
+                name=(
+                    ''.join(['{', group.name, '} ', member.name])
+                    if selected_group is None
+                    else member.name
+                ),
+                value=str(member.id))
+            for group, member in members[:25]
+        ]
 
-    processed_members = process.extract(ctx.value, members, limit=5)
-    process_failed = all(m[1] == 0 for m in processed_members)
+    processed_members = [
+        ProcessedMember(
+            processed[2][1],
+            processed[0],
+            processed[1],
+            processed[2][0]
+        )
+        for processed in
+        process.extract(
+            ctx.value,
+            {
+                (group.name, member.id): member.name
+                for group, member
+                in members
+            },
+            limit=5
+        )
+    ]
+
+    process_failed = all(m.score == 0 for m in processed_members)
 
     return [
-        member[0]
-        for member in
-        processed_members
-        if member[1] > 60 or process_failed
+        OptionChoice(
+            name=(
+                ''.join(
+                    ['{', processed.group_name, '} ', processed.member_name])
+                if selected_group is None
+                else processed.member_name
+            ),
+            value=str(processed.member_id))
+        for processed in processed_members
+        if processed.score > 60 or process_failed
     ] or [
-        'no members matched, run /manage to create a new one'
+        OptionChoice(
+            name='no members matched, run /manage to create a new one', value='None')
     ]

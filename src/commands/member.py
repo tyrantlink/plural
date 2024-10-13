@@ -1,8 +1,9 @@
+from src.helpers import send_error, send_success, DBConverter, include_all_options
 from discord import ApplicationContext, Option, SlashCommandGroup, Attachment
 import src.commands.autocomplete as autocomplete
-from src.helpers import send_error, send_success
 from src.commands.base import BaseCommands
 from src.db.models import ProxyTag
+from src.db import Member, Group
 from asyncio import gather
 
 
@@ -23,73 +24,61 @@ class MemberCommands(BaseCommands):
     @member.command(
         name='new',
         description='create a new member',
+        checks=[include_all_options],
         options=[
             Option(
                 str,
-                name='member',
+                name='name',
                 description='the name of the member'),
             Option(
-                str,
+                DBConverter,
                 name='group',
                 description='the name of the group',
-                default='default',
+                required=False,
                 autocomplete=autocomplete.groups)])
-    async def slash_member_new(self, ctx: ApplicationContext, member: str, group: str) -> None:
-        resolved_group = await self._base_group_getter(ctx, group)
-
-        if resolved_group is None:
+    async def slash_member_new(self, ctx: ApplicationContext, name: str, group: Group) -> None:
+        if await group.get_member_by_name(name) is not None:
+            await send_error(ctx, f'member `{name}` already exists')
             return None
 
-        if await resolved_group.get_member_by_name(member) is not None:
-            await send_error(ctx, f'member `{member}` already exists')
-            return None
+        await group.add_member(name)
 
-        await resolved_group.add_member(member)
-
-        await send_success(ctx, f'created member `{member}` in group `{group}`')
+        await send_success(ctx, f'created member `{name}` in group `{group.name}`')
 
     @member.command(
         name='delete',
         description='delete a member',
+        checks=[include_all_options],
         options=[
             Option(
-                str,
+                DBConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
             Option(
-                str,
+                DBConverter,
                 name='group',
-                description='the name of the group',
-                default='default',
+                description='restrict results to a single group',
+                required=False,
                 autocomplete=autocomplete.groups)])
-    async def slash_member_delete(self, ctx: ApplicationContext, member: str, group: str) -> None:
-        resolved_group, resolved_member = await self._base_member_getter(ctx, group, member)
+    async def slash_member_delete(self, ctx: ApplicationContext, member: Member, group: Group) -> None:
+        await group.delete_member(member.id)
 
-        if resolved_group is None or resolved_member is None:
-            return None
-
-        await resolved_group.delete_member(resolved_member.id)
-
-        await send_success(ctx, f'member `{member}` of group `{group}` was deleted')
+        await send_success(ctx, f'member `{member.name}` of group `{group.name}` was deleted')
 
     @member.command(
         name='list',
         description='list all members in a group',
+        checks=[include_all_options],
         options=[
             Option(
-                str,
+                DBConverter,
                 name='group',
-                description='the name of the group',
-                default='default',
+                description='restrict results to a single group',
+                required=False,
                 autocomplete=autocomplete.groups)])
-    async def slash_member_list(self, ctx: ApplicationContext, group: str) -> None:
-        resolved_group = await self._base_group_getter(ctx, group)
-
-        if resolved_group is None:
-            return None
-
-        members = await resolved_group.get_members()
+    async def slash_member_list(self, ctx: ApplicationContext, group: Group) -> None:
+        members = await group.get_members()
 
         member_list = '\n'.join([
             member.name
@@ -97,14 +86,15 @@ class MemberCommands(BaseCommands):
             in members
         ]) or 'no members found'
 
-        await send_success(ctx, f'members in group `{group}`:\n{member_list}')
+        await send_success(ctx, f'members in group `{group.name}`:\n{member_list}')
 
     @member_set.command(
         name='name',
         description='set a member\'s name',
+        checks=[include_all_options],
         options=[
             Option(
-                str,
+                DBConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
@@ -113,74 +103,61 @@ class MemberCommands(BaseCommands):
                 name='name',
                 description='the new name of the member'),
             Option(
-                str,
+                DBConverter,
                 name='group',
-                description='the name of the group',
-                default='default',
+                description='restrict results to a single group',
+                required=False,
                 autocomplete=autocomplete.groups)])
-    async def slash_member_set_name(self, ctx: ApplicationContext, member: str, name: str, group: str) -> None:
-        resolved_group, resolved_member = await self._base_member_getter(ctx, group, member)
-
-        if resolved_group is None or resolved_member is None:
-            return None
-
-        resolved_member.name = name
+    async def slash_member_set_name(self, ctx: ApplicationContext, member: Member, name: str, group: Group) -> None:
+        old_name, member.name = member.name, name
 
         await gather(
-            resolved_member.save_changes(),
+            member.save_changes(),
             send_success(
                 ctx,
-                f'member `{member}` of group `{group}` was renamed to `{name}`')
+                f'member `{old_name}` of group `{group.name}` was renamed to `{member.name}`')
         )
 
     @member_set.command(
         name='group',
         description='set a member\'s group',
+        checks=[include_all_options],
         options=[
             Option(
-                str,
+                DBConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
             Option(
-                str,
+                DBConverter,
                 name='new_group',
                 description='the name of the new group',
                 autocomplete=autocomplete.groups),
             Option(
-                str,
+                DBConverter,
                 name='group',
-                description='the name of the group',
-                default='default',
+                description='restrict results to a single group',
+                required=False,
                 autocomplete=autocomplete.groups)])
-    async def slash_member_set_group(self, ctx: ApplicationContext, member: str, new_group: str, group: str) -> None:
-        resolved_group, resolved_member = await self._base_member_getter(ctx, group, member)
-
-        if resolved_group is None or resolved_member is None:
-            return None
-
-        new_resolved_group = await self._base_group_getter(ctx, new_group)
-
-        if new_resolved_group is None:
-            return None
-
-        resolved_group.members.remove(resolved_member.id)
-        new_resolved_group.members.add(resolved_member.id)
+    async def slash_member_set_group(self, ctx: ApplicationContext, member: Member, new_group: Group, group: Group) -> None:
+        group.members.remove(member.id)
+        new_group.members.add(member.id)
 
         await gather(
-            resolved_group.save_changes(),
-            new_resolved_group.save_changes(),
+            group.save_changes(),
+            new_group.save_changes(),
             send_success(
                 ctx,
-                f'member `{member}` of group `{group}` was moved to group `{new_group}`')
+                f'member `{member.name}` of group `{group.name}` was moved to group `{new_group.name}`')
         )
 
     @member_set.command(
         name='avatar',
         description='set a member\'s avatar (4mb max, png, jpg, jpeg, gif, webp)',
+        checks=[include_all_options],
         options=[
             Option(
-                str,
+                DBConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
@@ -190,31 +167,32 @@ class MemberCommands(BaseCommands):
                 required=False,
                 description='the avatar of the member'),
             Option(
-                str,
+                DBConverter,
                 name='group',
-                description='the name of the group',
-                default='default',
+                description='restrict results to a single group',
+                required=False,
                 autocomplete=autocomplete.groups)])
-    async def slash_member_set_avatar(self, ctx: ApplicationContext, member: str, avatar: Attachment | None, group: str) -> None:
-        resolved_group, resolved_member = await self._base_member_getter(ctx, group, member)
-
-        if resolved_group is None or resolved_member is None:
-            return None
-
+    async def slash_member_set_avatar(
+        self,
+        ctx: ApplicationContext,
+        member: Member,
+        avatar: Attachment | None,
+        group: Group
+    ) -> None:
         if avatar is None:
-            if resolved_member.avatar is not None:
+            if member.avatar is not None:
                 await ctx.response.defer(ephemeral=True)
-                current_avatar = await self.client.db.image(resolved_member.avatar)
+                current_avatar = await self.client.db.image(member.avatar)
                 if current_avatar is not None:
                     await current_avatar.delete()
 
-            resolved_member.avatar = None
+            member.avatar = None
 
             await gather(
-                resolved_member.save_changes(),
+                member.save_changes(),
                 send_success(
                     ctx,
-                    f'member `{member}` of group `{group}` now has no avatar')
+                    f'member `{member.name}` of group `{group.name}` now has no avatar')
             )
             return None
 
@@ -234,29 +212,30 @@ class MemberCommands(BaseCommands):
 
         await image.save()
 
-        if resolved_member.avatar is not None:
-            current_avatar = await self.client.db.image(resolved_member.avatar)
+        if member.avatar is not None:
+            current_avatar = await self.client.db.image(member.avatar)
             if current_avatar is not None:
                 await current_avatar.delete()
 
-        resolved_member.avatar = image.id
+        member.avatar = image.id
 
         success_message = (
-            f'member `{member}` of group `{group}` now has avatar `{avatar.filename}`')
+            f'member `{member.name}` of group `{group.name}` now has avatar `{avatar.filename}`')
         if extension in {'gif'}:
             success_message += '\n\n**note:** gif avatars are not animated'
 
         await gather(
-            resolved_member.save_changes(),
+            member.save_changes(),
             send_success(ctx, success_message)
         )
 
     @member_proxy.command(
         name='add',
         description='add a proxy tag to a member',
+        checks=[include_all_options],
         options=[
             Option(
-                str,
+                DBConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
@@ -276,30 +255,25 @@ class MemberCommands(BaseCommands):
                 description='whether the proxy tag is matched with regex',
                 default=False),
             Option(
-                str,
+                DBConverter,
                 name='group',
-                description='the name of the group',
-                default='default',
+                description='restrict results to a single group',
+                required=False,
                 autocomplete=autocomplete.groups)])
     async def slash_member_proxy_add(
         self,
         ctx: ApplicationContext,
-        member: str,
+        member: Member,
         prefix: str | None,
         suffix: str | None,
         regex: bool,
-        group: str
+        group: Group
     ) -> None:
-        resolved_group, resolved_member = await self._base_member_getter(ctx, group, member)
-
-        if resolved_group is None or resolved_member is None:
-            return None
-
-        if len(resolved_member.proxy_tags) >= 5:
+        if len(member.proxy_tags) >= 5:
             await send_error(ctx, 'a member can only have up to 5 proxy tags')
             return None
 
-        resolved_member.proxy_tags.append(
+        member.proxy_tags.append(
             ProxyTag(
                 prefix=prefix or '',
                 suffix=suffix or '',
@@ -308,124 +282,112 @@ class MemberCommands(BaseCommands):
         )
 
         await gather(
-            resolved_member.save_changes(),
+            member.save_changes(),
             send_success(
                 ctx,
-                f'proxy tag added to member `{member}` of group `{group}`')
+                f'proxy tag added to member `{member.name}` of group `{group.name}`')
         )
 
-    @ member_proxy.command(
+    @member_proxy.command(
         name='remove',
         description='remove a proxy tag from a member',
+        checks=[include_all_options],
         options=[
             Option(
-                str,
+                DBConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
             Option(
-                int,
+                int,  # ! make an autocomplete for this {prefix}text{suffix}
                 name='proxy_index',
                 min_value=0,
                 max_value=4,
                 description='the index of the proxy tag to remove (check with /member proxy list)'),
             Option(
-                str,
+                DBConverter,
                 name='group',
-                description='the name of the group',
-                default='default',
+                description='restrict results to a single group',
+                required=False,
                 autocomplete=autocomplete.groups)])
     async def slash_member_proxy_remove(
         self,
         ctx: ApplicationContext,
-        member: str,
+        member: Member,
         tag_index: int,
-        group: str
+        group: Group
     ) -> None:
-        resolved_group, resolved_member = await self._base_member_getter(ctx, group, member)
-
-        if resolved_group is None or resolved_member is None:
-            return None
-
-        if tag_index < 0 or tag_index >= len(resolved_member.proxy_tags):
+        if tag_index < 0 or tag_index >= len(member.proxy_tags):
             await send_error(ctx, 'proxy tag index out of range')
             return None
 
-        resolved_member.proxy_tags.pop(tag_index)
+        member.proxy_tags.pop(tag_index)
 
         await gather(
-            resolved_member.save_changes(),
+            member.save_changes(),
             send_success(
                 ctx,
-                f'proxy tag removed from member `{member}` of group `{group}`')
+                f'proxy tag removed from member `{member.name}` of group `{group.name}`')
         )
 
     @member_proxy.command(
         name='list',
         description='list all proxy tags of a member',
+        checks=[include_all_options],
         options=[
             Option(
-                str,
+                DBConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
             Option(
-                str,
+                DBConverter,
                 name='group',
-                description='the name of the group',
-                default='default',
+                description='restrict results to a single group',
+                required=False,
                 autocomplete=autocomplete.groups)])
     async def slash_member_proxy_list(
         self,
         ctx: ApplicationContext,
-        member: str,
-        group: str
+        member: Member,
+        group: Group
     ) -> None:
-        resolved_group, resolved_member = await self._base_member_getter(ctx, group, member)
-
-        if resolved_group is None or resolved_member is None:
-            return None
-
         tags = '\n'.join([
             f'`{index}{" (regex)" if tag.regex else ""}`: {
                 tag.prefix}text{tag.suffix}'
             for index, tag
-            in enumerate(resolved_member.proxy_tags)
+            in enumerate(member.proxy_tags)
         ]) or 'no proxy tags set'
 
-        await send_success(ctx, f'proxy tags of member `{member}` in group `{group}`:\n{tags}')
+        await send_success(ctx, f'proxy tags of member `{member.name}` in group `{group.name}`:\n{tags}')
 
     @member_proxy.command(
         name='clear',
         description='clear all proxy tags of a member',
+        checks=[include_all_options],
         options=[
             Option(
-                str,
+                DBConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
             Option(
-                str,
+                DBConverter,
                 name='group',
-                description='the name of the group',
-                default='default',
+                description='restrict results to a single group',
+                required=False,
                 autocomplete=autocomplete.groups)])
     async def slash_member_proxy_clear(
         self,
         ctx: ApplicationContext,
-        member: str,
-        group: str
+        member: Member,
+        group: Group
     ) -> None:
-        resolved_group, resolved_member = await self._base_member_getter(ctx, group, member)
-
-        if resolved_group is None or resolved_member is None:
-            return None
-
-        resolved_member.proxy_tags.clear()
+        member.proxy_tags.clear()
 
         await gather(
-            resolved_member.save_changes(),
+            member.save_changes(),
             send_success(
                 ctx,
-                f'all proxy tags removed from member `{member}` of group `{group}`')
+                f'all proxy tags removed from member `{member.name}` of group `{group.name}`')
         )
