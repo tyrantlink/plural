@@ -134,9 +134,14 @@ def format_reply(content: str, reference: MessageReference | None) -> str:
 
     refcontent = reference.resolved.content.replace('\n', ' ')
     refattachments = reference.resolved.attachments
+    mention = (
+        reference.resolved.author.mention
+        if reference.resolved.webhook_id is None else
+        f'@{reference.resolved.author.name}'
+    )
 
     base_reply = (
-        f'-# [↪](<{reference.resolved.jump_url}>) {reference.resolved.author.mention}')
+        f'-# [↪](<{reference.resolved.jump_url}>) {mention}')
 
     formatted_refcontent = (
         refcontent
