@@ -30,5 +30,5 @@ async def get_message(
         raise HTTPException(status_code=404, detail='message not found')
 
     return JSONResponse(
-        content=message.model_dump_json()
+        content=message.model_dump_json(exclude={'id'})
     )
