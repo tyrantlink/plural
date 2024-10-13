@@ -137,7 +137,7 @@ def format_reply(content: str, reference: MessageReference | None) -> str:
     mention = (
         reference.resolved.author.mention
         if reference.resolved.webhook_id is None else
-        f'@{reference.resolved.author.name}'
+        f'`@{reference.resolved.author.name}`'
     )
 
     base_reply = (
