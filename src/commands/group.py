@@ -28,6 +28,7 @@ class GroupCommands(BaseCommands):
             Option(
                 str,
                 name='name',
+                max_length=32,
                 description='name of the new group')])
     async def group_new(self, ctx: ApplicationContext, group: str):
         if await self.client.db.group_by_name(ctx.author.id, group) is not None:
@@ -122,9 +123,27 @@ class GroupCommands(BaseCommands):
             Option(
                 str,
                 name='tag',
+                max_length=50,
                 description='tag for the group',
                 required=False)])
     async def group_set_tag(self, ctx: ApplicationContext, group: Group, tag: str | None):
+        if tag is not None:
+            members = await group.get_members()
+
+            members_over_length = [
+                member
+                for member in members
+                if len(member.name+tag) > 80
+            ]
+
+            if members_over_length:
+                await send_error(
+                    ctx,
+                    f'tag `{tag}` is too long for the following members:\n\n' +
+                    '\n'.join(member.name for member in members_over_length)
+                )
+                return
+
         group.tag = tag
 
         await gather(

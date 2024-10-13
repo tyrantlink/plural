@@ -29,6 +29,7 @@ class MemberCommands(BaseCommands):
             Option(
                 str,
                 name='name',
+                max_length=50,
                 description='the name of the member'),
             Option(
                 DBConverter,
@@ -40,6 +41,11 @@ class MemberCommands(BaseCommands):
         if await group.get_member_by_name(name) is not None:
             await send_error(ctx, f'member `{name}` already exists')
             return None
+
+        if group.tag is not None:
+            if len(name+group.tag) > 80:
+                await send_error(ctx, f'member name and group tag combined must be less than 80 characters')
+                return None
 
         await group.add_member(name)
 
