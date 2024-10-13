@@ -1,13 +1,17 @@
 from discord import Interaction, ApplicationContext, Embed, Colour, MessageReference, Message, HTTPException, Forbidden
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
 from discord.ext.commands.converter import CONVERTER_MAPPING
+from typing import Literal, overload, Iterable
+from asyncio import sleep, create_task, Task
 from discord.ext.commands import Converter
-from asyncio import sleep, create_task
-from typing import Literal, overload
 from beanie import PydanticObjectId
 from bson.errors import InvalidId
 from src.db import Group, Member
 from functools import partial
+
+# ? this is a very unorganized file of anything that might be needed
+TOKEN_EPOCH = 1727988244890
+BASE66CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789=-_~'
 
 
 class CustomModal(_Modal):
@@ -300,3 +304,60 @@ def include_all_options(ctx: ApplicationContext) -> Literal[True]:
     ]
 
     return True
+
+
+class TTLSet[_T](set):
+    def __init__(self, __iterable: Iterable[_T] | None = None, ttl: int = 86400) -> None:
+        """a normal set with an async time-to-live (seconds) for each item"""
+        __iterable = __iterable or []
+        super().__init__(__iterable)
+        self.__ttl = ttl
+        self._tasks: dict[_T, Task] = {
+            __item: create_task(self._expire(__item))
+            for __item in
+            __iterable
+        }
+
+    def _create_expire_task(self, __item: _T) -> None:
+        self._tasks[__item] = create_task(self._expire(__item))
+
+    def _cancel_task(self, __item: _T) -> None:
+        if __item in self._tasks:
+            self._tasks[__item].cancel()
+            self._tasks.pop(__item, None)
+
+    async def _expire(self, __item: _T) -> None:
+        await sleep(self.__ttl)
+        self.discard(__item)
+
+    def add(self, __item: _T) -> None:
+        super().add(__item)
+        self._cancel_task(__item)
+        self._create_expire_task(__item)
+
+    def remove(self, __item: _T) -> None:
+        super().remove(__item)
+        self._cancel_task(__item)
+
+    def update(self, *s: Iterable[_T]) -> None:
+        super().update(*s)
+
+        for iterable in s:
+            for __item in iterable:
+                self._cancel_task(__item)
+                self._create_expire_task(__item)
+
+
+def encode_b66(b10: int) -> str:
+    b66 = ''
+    while b10:
+        b66 = BASE66CHARS[b10 % 66]+b66
+        b10 //= 66
+    return b66
+
+
+def decode_b66(b66: str) -> int:
+    b10 = 0
+    for i in range(len(b66)):
+        b10 += BASE66CHARS.index(b66[i])*(66**(len(b66)-i-1))
+    return b10

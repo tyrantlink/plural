@@ -1,13 +1,17 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from beanie import init_beanie, PydanticObjectId
 from typing import Type, overload, Literal
+from bcrypt import hashpw, gensalt
 from .models import DatalessImage
+from secrets import token_hex
 from .webhook import Webhook
 from .message import Message
+from .api_key import ApiKey
 from .member import Member
 from .group import Group
 from .latch import Latch
 from .image import Image
+from time import time
 
 
 class _MongoNew:
@@ -58,6 +62,26 @@ class _MongoNew:
             member=member
         )
 
+    @staticmethod
+    def api_key(
+        user: int
+    ) -> tuple[ApiKey, str]:
+        # ? placed here to avoid circular import
+        from src.helpers import encode_b66, TOKEN_EPOCH
+
+        token = '.'.join([
+            encode_b66(user),
+            encode_b66(int((time()*1000)-TOKEN_EPOCH)),
+            encode_b66(int(token_hex(20), 16))
+        ])
+        return (
+            ApiKey(
+                id=user,
+                token=hashpw(token.encode(), gensalt()).decode()
+            ),
+            token
+        )
+
 
 class MongoDatabase:
     def __init__(self, mongo_uri: str) -> None:
@@ -66,7 +90,7 @@ class MongoDatabase:
 
     async def connect(self) -> None:
         await init_beanie(self._client, document_models=[
-            Webhook, Message, Group, Member, Image, Latch
+            Webhook, Message, Group, Member, Image, Latch, ApiKey
         ])
 
     @property
@@ -134,3 +158,6 @@ class MongoDatabase:
             return latch
 
         return self.new.latch(user_id, guild_id, None)
+
+    async def api_key(self, user_id: int) -> ApiKey | None:
+        return await ApiKey.find_one({'_id': user_id})

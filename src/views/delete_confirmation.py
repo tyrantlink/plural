@@ -12,6 +12,9 @@ if TYPE_CHECKING:
 # ? only includes ClientBase to fix mypy error, will never actually be ClientBase
 class DeleteConfirmation(View):
     def __init__(self, client: Client | ClientBase, **kwargs):
+        if TYPE_CHECKING and not isinstance(client, Client):
+            raise ValueError('client must be an instance of Client')
+
         super().__init__(
             timeout=kwargs.pop('timeout', None),
             **kwargs

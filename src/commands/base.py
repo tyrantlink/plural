@@ -2,9 +2,9 @@ from __future__ import annotations
 from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING
 from src.helpers import CustomModal, send_error, send_success, DBConverter, include_all_options
 from src.db import Group, Member, Message as DBMessage
+from src.views import DeleteConfirmation, ApiKeyView
 import src.commands.autocomplete as autocomplete
 from src.models import project, DebugMessage
-from src.views import DeleteConfirmation
 from discord.ext.commands import Cog
 from discord.ui import InputText
 from typing import TYPE_CHECKING
@@ -315,5 +315,21 @@ class BaseCommands(Cog):
                     0xff6969
                 )
             ),
+            ephemeral=True
+        )
+
+    @slash_command(
+        name='api',
+        description='get an or refresh api key')
+    async def slash_api(self, ctx: ApplicationContext):
+        if ctx.interaction.user is None:
+            await send_error(ctx, 'you do not exist')
+            return
+
+        view = ApiKeyView(self.client)
+
+        await ctx.response.send_message(
+            embed=view.embed,
+            view=view,
             ephemeral=True
         )

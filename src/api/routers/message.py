@@ -1,4 +1,6 @@
+from src.api.models.message import MessageModel
 from fastapi.responses import JSONResponse
+from src.api.docs import message as docs
 from fastapi import HTTPException, Query
 from fastapi import APIRouter
 from src.db import Message
@@ -6,7 +8,10 @@ from src.db import Message
 router = APIRouter(prefix='/messages', tags=['Message'])
 
 
-@router.get('/{message_id}')
+@router.get(
+    '/{message_id}',
+    response_model=MessageModel,
+    responses=docs.get__message)
 async def get_message(
     message_id: int,
     only_check_existence: bool = Query(default=False)

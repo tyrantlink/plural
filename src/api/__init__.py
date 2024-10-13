@@ -1,8 +1,6 @@
-
-
-# ? images are stored in mongodb as binary data, and accessed through the api, and cached on cloudflare and discord
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
+from src.api.docs import root as docs
+from fastapi import FastAPI
 
 
 @asynccontextmanager
@@ -13,9 +11,10 @@ async def lifespan(app: FastAPI):
 
     await DB.connect()
 
-    from .routers import image, message
+    from .routers import image, message, latch
     app.include_router(image.router)
     app.include_router(message.router)
+    app.include_router(latch.router)
 
     yield
 
@@ -27,6 +26,9 @@ app = FastAPI(
 )
 
 
-@app.get("/")
+@app.get(
+    "/",
+    responses=docs.get__root
+)
 async def root():
     return {'message': 'this is very basic i\'ll work on it later'}
