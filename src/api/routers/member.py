@@ -45,6 +45,15 @@ async def patch__member(
     for field in patch.model_fields_set:
         match field:
             case 'name':
+                group = await member.get_group()
+                if await group.get_member_by_name(patch.name) is not None:
+                    raise HTTPException(
+                        400, f'member {patch.name} already exists')
+
+                if group.tag and (len_sum := len(patch.name+group.tag)) > 80:
+                    raise HTTPException(
+                        400, f'name and group tag combined must be less than 80 characters ({len_sum}/80)')
+
                 member.name = patch.name
             case 'avatar':
                 member.avatar = patch.avatar

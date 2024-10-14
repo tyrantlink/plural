@@ -1,4 +1,4 @@
-from src.api.docs.responses import response
+from src.api.docs.responses import response, multi_response
 
 
 get__member = {
@@ -59,11 +59,19 @@ patch__member = {
             'detail': 'member not found'
         }
     ),
-    **response(
+    **multi_response(
         status=400,
-        description='invalid field',
-        example={
-            'detail': 'invalid field: invalid_field'
-        }
+        description='invalid field, member already exists, name with tag over character limit',
+        examples={
+            'invalid field': {
+                'detail': 'invalid field: invalid_field'
+            },
+            'member already exists': {
+                'detail': 'member steve already exists'
+            },
+            'name with tag over character limit': {
+                'detail': 'name and group tag combined must be less than 80 characters (85/80)'
+            }
+        },
     )
 }
