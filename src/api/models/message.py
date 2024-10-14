@@ -17,6 +17,9 @@ class SendMessageModel(BaseModel):
     content: str = Field(
         description='the content of the message', min_length=1, max_length=2000)
     channel: int = Field(description='the channel id of the message')
+    thread: int = Field(
+        None,
+        description='the thread id of the message; None if not in a thread')
 
     @model_validator(mode='before')
     def validate_content(cls, value):

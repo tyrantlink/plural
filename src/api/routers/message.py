@@ -1,6 +1,6 @@
+from discord import Webhook as DiscordWebhook, InvalidArgument, Object, MISSING
 from src.api.models.message import MessageModel, SendMessageModel
 from src.db import Message, Webhook as DBWebhook, Member, Image
-from discord import Webhook as DiscordWebhook, InvalidArgument
 from fastapi import HTTPException, Query, APIRouter, Security
 from src.api.auth import api_key_validator, TokenData
 from fastapi.responses import JSONResponse
@@ -85,7 +85,12 @@ async def post__message(
             content=message.content,
             username=member.name,
             avatar_url=avatar,
-            wait=True
+            wait=True,
+            thread=(
+                Object(message.thread)
+                if message.thread else
+                MISSING
+            )
         )
 
     db_message = Message(
