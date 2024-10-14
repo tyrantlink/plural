@@ -22,7 +22,8 @@ class Message(Document):
         # )
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
-    original_id: int = Field(description='the original id of the message')
+    original_id: int | None = Field(
+        description='the original id of the message; None if message sent through api')
     proxy_id: int = Field(description='the proxy id of the message')
     author_id: int = Field(description='the author id of the message')
     ts: datetime = Field(
