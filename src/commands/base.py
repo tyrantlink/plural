@@ -362,7 +362,7 @@ class BaseCommands(Cog):
 
         embed.set_footer(
             text=(
-                f'original message id: {db_message.original_id or 'None; sent through /plu/ral api'}'),
+                f'original message id: {db_message.original_id or 'sent through /plu/ral api'}'),
         )
 
         await ctx.response.send_message(
