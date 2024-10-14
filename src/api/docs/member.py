@@ -52,11 +52,16 @@ patch__member = {
             ]
         }
     ),
-    **response(
+    **multi_response(
         status=404,
-        description='member not found',
-        example={
-            'detail': 'member not found'
+        description='member or group not found',
+        examples={
+            'member not found': {
+                'detail': 'member not found'
+            },
+            'group not found': {
+                'detail': 'group not found'
+            }
         }
     ),
     **multi_response(

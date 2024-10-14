@@ -1,11 +1,11 @@
 from src.api.models.member import MemberModel, MemberUpdateModel
+from fastapi import HTTPException, Security, APIRouter
 from src.api.auth import api_key_validator, TokenData
-from fastapi import HTTPException, Security
 from fastapi.responses import JSONResponse
 from src.api.docs import member as docs
 from beanie import PydanticObjectId
-from fastapi import APIRouter
-from src.db import Member
+from src.db import Member, Group
+from asyncio import gather
 
 router = APIRouter(prefix='/member', tags=['Member'])
 
@@ -38,6 +38,7 @@ async def patch__member(
     token: TokenData = Security(api_key_validator)
 ) -> JSONResponse:
     member = await Member.find_one({'_id': member_id})
+    tasks = []
 
     if member is None or token.user_id not in (await member.get_group()).accounts:
         raise HTTPException(404, 'member not found')
@@ -57,12 +58,27 @@ async def patch__member(
                 member.name = patch.name
             case 'avatar':
                 member.avatar = patch.avatar
+            case 'group':
+                current_group = await member.get_group()
+                new_group = await Group.find_one({'_id': patch.group})
+
+                if new_group is None or token.user_id not in new_group.accounts:
+                    raise HTTPException(404, 'group not found')
+
+                if current_group.id != new_group.id:
+                    current_group.members.remove(member.id)
+                    new_group.members.add(member.id)
+
+                    tasks.append(current_group.save_changes())
+                    tasks.append(new_group.save_changes())
             case 'proxy_tags':
                 member.proxy_tags = patch.proxy_tags
             case _:
                 raise HTTPException(400, f'invalid field: {field}')
 
-    await member.save_changes()
+    tasks.append(member.save_changes())
+
+    await gather(*tasks)
 
     return JSONResponse(
         content=member.model_dump_json(exclude={'id'})

@@ -24,6 +24,9 @@ class MemberUpdateModel(BaseModel):
         None,
         description='the avatar uuid of the member; overrides the group avatar'
     )
+    group: PydanticObjectId = Field(
+        None,
+        description='group id for the member')
     proxy_tags: Annotated[list[ProxyTag], Field(max_length=5)] = Field(
         None,
         description='proxy tags for the member'
