@@ -14,15 +14,12 @@ class ProxyTag(BaseModel):
     regex: bool = False
 
     @model_validator(mode='after')
-    def check_prefix_and_suffix(cls, values):
-        prefix = values.get('prefix', '')
-        suffix = values.get('suffix', '')
-
-        if not prefix and not suffix:
+    def check_prefix_and_suffix(cls, value):
+        if not value.prefix and not value.suffix:
             raise ValidationError(
                 'At least one of prefix or suffix must be non-empty')
 
-        return values
+        return value
 
 
 class DatalessImage(BaseModel):
