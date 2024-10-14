@@ -35,7 +35,7 @@ class Group(Document):
         indexes = ['accounts', 'members', 'name']
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
-    name: str = Field(description='the name of the system')
+    name: str = Field(description='the name of the system', max_length=32)
     accounts: set[int] = Field(
         default_factory=set,
         description='the discord accounts attached to this group'
@@ -50,6 +50,7 @@ class Group(Document):
     )
     tag: str | None = Field(
         None,
+        max_length=50,
         description='''
         group tag, displayed at the end of the member name
         for example, if a member has the name 'steve' and the tag is '| the skibidi rizzlers',

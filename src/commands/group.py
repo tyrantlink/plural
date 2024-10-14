@@ -102,6 +102,7 @@ class GroupCommands(BaseCommands):
             Option(
                 str,
                 name='name',
+                max_length=32,
                 description='new name for the group')])
     async def group_set_name(self, ctx: ApplicationContext, group: Group, name: str):
         old_name, group.name = group.name, name
