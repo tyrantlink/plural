@@ -21,7 +21,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="/plu/ral API",
+    title='/plu/ral API',
+    description='get an API key by running /api on the bot',
     lifespan=lifespan,
     version="0.1.0"
 )
