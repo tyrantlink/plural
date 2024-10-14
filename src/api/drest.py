@@ -11,12 +11,13 @@ from asyncio import gather
 
 drest_app = RESTApp()
 drest_client: RESTClientImpl
+CACHE_TTL = 60
 
-perm_cache = TTLDict[str, bool](ttl=0)
-guild_cache = TTLDict[int, Guild](ttl=60)
-member_cache = TTLDict[str, Member](ttl=60)
-role_cache = TTLDict[Snowflake, Sequence[Role]](ttl=60)
-channel_cache = TTLDict[int, PermissibleGuildChannel](ttl=60)
+perm_cache = TTLDict[str, bool](ttl=CACHE_TTL)
+guild_cache = TTLDict[int, Guild](ttl=CACHE_TTL)
+member_cache = TTLDict[str, Member](ttl=CACHE_TTL)
+role_cache = TTLDict[Snowflake, Sequence[Role]](ttl=CACHE_TTL)
+channel_cache = TTLDict[int, PermissibleGuildChannel](ttl=CACHE_TTL)
 
 REQUIRED_PERMISSIONS = (
     Permissions.VIEW_CHANNEL |
