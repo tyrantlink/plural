@@ -8,7 +8,6 @@ from fastapi import HTTPException
 from src.models import project
 from asyncio import gather
 
-from time import perf_counter
 
 drest_app = RESTApp()
 drest_client: RESTClientImpl
@@ -35,10 +34,7 @@ async def start_drest() -> None:
 
 
 async def _get_member(guild_id, user_id: int) -> Member:
-    st = perf_counter()
     if (cache_hash := f'{guild_id}::{user_id}') in member_cache:
-        print(f'cached fetch_member[{user_id}] took {
-              (perf_counter() - st) * 1000}ms')
         return member_cache[cache_hash]
 
     try:
@@ -48,32 +44,22 @@ async def _get_member(guild_id, user_id: int) -> Member:
 
     member_cache[cache_hash] = member
 
-    print(f'fetch_member[{user_id}] took {(perf_counter() - st) * 1000}ms')
-
     return member
 
 
 async def _get_member_roles(member: Member) -> Sequence[Role]:
-    st = perf_counter()
     if member.id in role_cache:
-        print(f'cached fetch_roles[{member.id}] took {
-              (perf_counter() - st) * 1000}ms')
         return role_cache[member.id]
 
     roles = await member.fetch_roles()
 
     role_cache[member.id] = roles
 
-    print(f'fetch_roles[{member.id}] took {(perf_counter() - st) * 1000}ms')
-
     return roles
 
 
 async def _get_guild(guild_id: int) -> Guild:
-    st = perf_counter()
     if guild_id in guild_cache:
-        print(f'cached fetch_guild[{guild_id}] took {
-              (perf_counter() - st) * 1000}ms')
         return guild_cache[guild_id]
 
     try:
@@ -83,16 +69,11 @@ async def _get_guild(guild_id: int) -> Guild:
 
     guild_cache[guild_id] = guild
 
-    print(f'fetch_guild[{guild_id}] took {(perf_counter() - st) * 1000}ms')
-
     return guild
 
 
 async def _get_permissible_channel(channel_id: int) -> PermissibleGuildChannel:
-    st = perf_counter()
     if channel_id in channel_cache:
-        print(f'cached fetch_channel[{channel_id}] took {
-              (perf_counter() - st) * 1000}ms')
         return channel_cache[channel_id]
 
     try:
@@ -104,8 +85,6 @@ async def _get_permissible_channel(channel_id: int) -> PermissibleGuildChannel:
         raise HTTPException(404, 'channel not found')
 
     channel_cache[channel_id] = channel
-
-    print(f'fetch_channel[{channel_id}] took {(perf_counter() - st) * 1000}ms')
 
     return channel
 
