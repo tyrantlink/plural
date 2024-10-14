@@ -333,3 +333,39 @@ class BaseCommands(Cog):
             view=view,
             ephemeral=True
         )
+
+    @message_command(
+        name='/plu/ral proxy info')
+    async def message_plural_proxy_info(self, ctx: ApplicationContext, message: Message):
+        if message.webhook_id is None:
+            await send_error(ctx, 'message is not a proxied message!')
+            return
+
+        db_message = await self.client.db.message(
+            proxy_id=message.id
+        )
+
+        if db_message is None:
+            await send_error(ctx, 'message could not be found, it is either too old or not proxied by the bot')
+            return
+
+        embed = Embed(
+            title='proxy info',
+            color=0x69ff69
+        )
+
+        embed.add_field(
+            name='author',
+            value=f'<@{db_message.author_id}>',
+            inline=False
+        )
+
+        embed.set_footer(
+            text=(
+                f'original message id: {db_message.original_id or 'None; sent through /plu/ral api'}'),
+        )
+
+        await ctx.response.send_message(
+            embed=embed,
+            ephemeral=True
+        )
