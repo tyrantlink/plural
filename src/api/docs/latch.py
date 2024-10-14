@@ -80,3 +80,24 @@ post__latch = {
         }
     )
 }
+
+
+put__latch = {
+    **response(
+        status=200,
+        description='latch updated / created, returns latch',
+        example={
+            'user': 250797109022818305,
+            'guild': 844127424526680084,
+            'enabled': True,
+            'member': '67018b8f74900a4cd323555a'
+        }
+    ),
+    **response(
+        status=404,
+        description='member not found',
+        example={
+            'detail': 'member not found'
+        }
+    )
+}

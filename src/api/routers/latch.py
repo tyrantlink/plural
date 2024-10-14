@@ -91,3 +91,40 @@ async def post__latch(
     return JSONResponse(
         content=latch.model_dump_json(exclude={'id'})
     )
+
+
+@router.put(
+    '/{guild_id}',
+    response_model=LatchModel,
+    responses=docs.put__latch)
+async def put__latch(
+    guild_id: int,
+    upsert: LatchCreateModel,
+    token: TokenData = Security(api_key_validator)
+) -> JSONResponse:
+    latch = await Latch.find_one({'user': token.user_id, 'guild': guild_id})
+    latch = latch or Latch(
+        user=token.user_id,
+        guild=guild_id,
+        enabled=upsert.enabled,
+        member=upsert.member
+    )
+
+    for field in upsert.model_fields_set:
+        match field:
+            case 'enabled':
+                latch.enabled = upsert.enabled
+            case 'member':
+                member = await Member.find_one({'_id': upsert.member})
+
+                if member is None or token.user_id not in (await member.get_group()).accounts:
+                    # ? be vauge to prevent user enumeration
+                    raise HTTPException(404, 'member not found')
+
+                latch.member = upsert.member
+            case _:
+                raise HTTPException(400, f'invalid field: {field}')
+
+    return JSONResponse(
+        content=latch.model_dump_json(exclude={'id'})
+    )
