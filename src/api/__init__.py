@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from src.api.drest import start_drest
 from src.api.docs import root as docs
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 
 
 @asynccontextmanager
@@ -39,8 +39,14 @@ app = FastAPI(
 
 
 @app.get(
-    "/",
-    responses=docs.get__root
-)
-async def root():
+    '/',
+    responses=docs.get__root)
+async def get__root():
     return {'message': 'this is very basic i\'ll work on it later'}
+
+
+@app.get(
+    '/healthcheck',
+    status_code=204)
+async def get__healthcheck():
+    return Response(status_code=204)
