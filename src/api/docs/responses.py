@@ -5,7 +5,7 @@ def response(
     status: int,
     description: str,
     example: Any
-) -> dict:
+) -> dict[str | int, dict]:
     return {
         status:
         {
@@ -25,7 +25,7 @@ def multi_response(
     status: int,
     description: str,
     examples: dict[str, Any]
-) -> dict:
+) -> dict[str | int, dict]:
     """examples is a dictionary of example names and their values"""
     try:
         return {
@@ -55,7 +55,7 @@ def multi_response(
 
 def file_response(
     content_type: str
-) -> dict:
+) -> dict[str | int, dict]:
     return {
         content_type:
         {
@@ -73,7 +73,7 @@ def multi_file_response(
     status: int,
     description: str,
     content_types: list[str]
-) -> dict:
+) -> dict[str | int, dict]:
     return {
         status:
         {

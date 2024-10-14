@@ -43,7 +43,7 @@ async def get__message(
 
 
 @router.post(
-    '/',
+    '',
     response_model=MessageModel,
     responses=docs.post__message)
 async def post__message(

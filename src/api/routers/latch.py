@@ -1,4 +1,4 @@
-from src.api.models.latch import LatchModel, LatchUpdateModel
+from src.api.models.latch import LatchModel, LatchUpdateModel, LatchCreateModel
 from src.api.auth import api_key_validator, TokenData
 from fastapi import HTTPException, Security
 from fastapi.responses import JSONResponse
@@ -57,6 +57,36 @@ async def patch__latch(
                 raise HTTPException(400, f'invalid field: {field}')
 
     await latch.save_changes()
+
+    return JSONResponse(
+        content=latch.model_dump_json(exclude={'id'})
+    )
+
+
+@router.post(
+    '',
+    response_model=LatchModel,
+    responses=docs.post__latch)
+async def post__latch(
+    latch: LatchCreateModel,
+    token: TokenData = Security(api_key_validator)
+) -> JSONResponse:
+    if await Latch.find_one({'user': token.user_id, 'guild': latch.guild}) is not None:
+        raise HTTPException(400, 'latch already exists')
+
+    member = await Member.find_one({'_id': latch.member})
+
+    if member is None or token.user_id not in (await member.get_group()).accounts:
+        raise HTTPException(404, 'member not found')
+
+    new_latch = Latch(
+        user=token.user_id,
+        guild=latch.guild,
+        enabled=latch.enabled,
+        member=latch.member
+    )
+
+    await new_latch.save()
 
     return JSONResponse(
         content=latch.model_dump_json(exclude={'id'})

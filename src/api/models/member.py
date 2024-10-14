@@ -6,6 +6,7 @@ from typing import Annotated
 
 
 class MemberModel(BaseModel):
+    id: PydanticObjectId = Field(description='the id of the member')
     name: str = Field(description='the name of the member', max_length=50)
     avatar: PydanticObjectId | None = Field(
         None,
@@ -29,5 +30,17 @@ class MemberUpdateModel(BaseModel):
         description='group id for the member')
     proxy_tags: Annotated[list[ProxyTag], Field(max_length=5)] = Field(
         None,
+        description='proxy tags for the member'
+    )
+
+
+class CreateMemberModel(BaseModel):
+    name: str = Field(description='the name of the group', max_length=32)
+    avatar: PydanticObjectId | None = Field(
+        None,
+        description='the avatar uuid of the group'
+    )
+    proxy_tags: Annotated[list[ProxyTag], Field(max_length=5)] = Field(
+        [],
         description='proxy tags for the member'
     )

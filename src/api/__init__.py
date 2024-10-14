@@ -11,11 +11,12 @@ async def lifespan(app: FastAPI):
 
     await DB.connect()
 
-    from .routers import image, message, latch, member
+    from .routers import image, message, latch, member, group
     app.include_router(message.router)
     app.include_router(member.router)
     app.include_router(latch.router)
     app.include_router(image.router)
+    app.include_router(group.router)
 
     yield
 

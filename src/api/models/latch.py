@@ -15,3 +15,11 @@ class LatchUpdateModel(BaseModel):
         None, description='whether the latch is enabled')
     member: PydanticObjectId = Field(
         None, description='the latched member id')
+
+
+class LatchCreateModel(BaseModel):
+    guild: int = Field(description='guild id')
+    enabled: bool = Field(False, description='whether the latch is enabled')
+    member: PydanticObjectId = Field(
+        None,
+        description='the latched member id')

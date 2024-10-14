@@ -6,6 +6,7 @@ get__member = {
         status=200,
         description='member found',
         example={
+            'id': '67018b8f74900a4cd3235558',
             'name': 'steve',
             'avatar': '67018b9074900a4cd323555c',
             'proxy_tags': [
@@ -41,6 +42,7 @@ patch__member = {
         status=200,
         description='member updated, returns updated member',
         example={
+            'id': '67018b8f74900a4cd3235558',
             'name': 'steve2',
             'avatar': '67018b9074900a4cd323555c',
             'proxy_tags': [
@@ -78,5 +80,23 @@ patch__member = {
                 'detail': 'name and group tag combined must be less than 80 characters (85/80)'
             }
         },
+    )
+}
+
+
+delete__member = {
+    **response(
+        status=200,
+        description='member deleted',
+        example={
+            'message': f'member steve of group default successfully deleted'
+        }
+    ),
+    **response(
+        status=404,
+        description='member not found',
+        example={
+            'detail': 'member not found'
+        }
     )
 }

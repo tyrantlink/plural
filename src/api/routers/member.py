@@ -3,8 +3,8 @@ from fastapi import HTTPException, Security, APIRouter
 from src.api.auth import api_key_validator, TokenData
 from fastapi.responses import JSONResponse
 from src.api.docs import member as docs
+from src.db import Member, Group, Image
 from beanie import PydanticObjectId
-from src.db import Member, Group
 from asyncio import gather
 
 router = APIRouter(prefix='/member', tags=['Member'])
@@ -24,7 +24,7 @@ async def get__member(
         raise HTTPException(404, 'member not found')
 
     return JSONResponse(
-        content=member.model_dump_json(exclude={'id'})
+        content=member.model_dump_json()
     )
 
 
@@ -57,6 +57,11 @@ async def patch__member(
 
                 member.name = patch.name
             case 'avatar':
+                image = await Image.find_one({'_id': patch.avatar})
+
+                if image is None:
+                    raise HTTPException(404, 'avatar not found')
+
                 member.avatar = patch.avatar
             case 'group':
                 current_group = await member.get_group()
@@ -81,5 +86,31 @@ async def patch__member(
     await gather(*tasks)
 
     return JSONResponse(
-        content=member.model_dump_json(exclude={'id'})
+        content=member.model_dump_json()
+    )
+
+
+@router.delete(
+    '/{member_id}',
+    responses=docs.delete__member)
+async def delete__member(
+    member_id: PydanticObjectId,
+    token: TokenData = Security(api_key_validator)
+) -> JSONResponse:
+    member = await Member.find_one({'_id': member_id})
+
+    if member is None or token.user_id not in (group := await member.get_group()).accounts:
+        raise HTTPException(404, 'member not found')
+
+    group.members.discard(member.id)
+
+    await gather(
+        member.delete(),
+        group.save_changes()
+    )
+
+    return JSONResponse(
+        content={
+            'message': f'member {member.name} of group {group.name} successfully deleted'
+        }
     )

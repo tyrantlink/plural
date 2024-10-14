@@ -7,7 +7,7 @@ get__latch = {
         description='latch found',
         example={
             'user': 250797109022818305,
-            'guild': 1025541831506804816,
+            'guild': 844127424526680084,
             'enabled': True,
             'member': '67018b8f74900a4cd323555a'
         }
@@ -27,7 +27,7 @@ patch__latch = {
         description='latch updated, returns updated latch',
         example={
             'user': 250797109022818305,
-            'guild': 1025541831506804816,
+            'guild': 844127424526680084,
             'enabled': True,
             'member': '67018b8f74900a4cd323555a'
         }
@@ -49,6 +49,34 @@ patch__latch = {
         description='invalid field',
         example={
             'detail': 'invalid field: invalid_field'
+        }
+    )
+}
+
+
+post__latch = {
+    **response(
+        status=200,
+        description='latch created, returns created latch',
+        example={
+            'user': 250797109022818305,
+            'guild': 844127424526680084,
+            'enabled': True,
+            'member': '67018b8f74900a4cd323555a'
+        }
+    ),
+    **response(
+        status=400,
+        description='latch already exists',
+        example={
+            'detail': 'latch already exists'
+        }
+    ),
+    **response(
+        status=404,
+        description='member not found',
+        example={
+            'detail': 'member not found'
         }
     )
 }

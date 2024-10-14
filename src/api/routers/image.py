@@ -1,9 +1,8 @@
+from fastapi import HTTPException, APIRouter
 from fastapi.responses import Response
 from src.api.docs import image as docs
 from beanie import PydanticObjectId
-from fastapi import HTTPException
 from mimetypes import guess_type
-from fastapi import APIRouter
 from src.db import Image
 
 router = APIRouter(prefix='/image', tags=['Image'])
