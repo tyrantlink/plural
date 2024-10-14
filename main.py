@@ -1,4 +1,8 @@
+from asyncio import set_event_loop_policy
 from argparse import ArgumentParser
+from uvloop import EventLoopPolicy
+
+set_event_loop_policy(EventLoopPolicy())
 
 
 def run_bot():
