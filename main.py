@@ -1,10 +1,10 @@
 from argparse import ArgumentParser
-from src.models import project
-from src.client import Client
-from discord import Intents
 
 
 def run_bot():
+    from src.models import project
+    from src.client import Client
+    from discord import Intents
     client = Client(intents=Intents.default() | Intents.message_content)
     client.run(project.bot_token)
 
