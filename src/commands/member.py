@@ -107,6 +107,7 @@ class MemberCommands(BaseCommands):
             Option(
                 str,
                 name='name',
+                max_length=50,
                 description='the new name of the member'),
             Option(
                 DBConverter,

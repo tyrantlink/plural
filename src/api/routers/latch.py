@@ -3,8 +3,6 @@ from src.api.auth import api_key_validator, TokenData
 from fastapi import HTTPException, Security
 from fastapi.responses import JSONResponse
 from src.api.docs import latch as docs
-from beanie import PydanticObjectId
-from bson.errors import InvalidId
 from src.db import Latch, Member
 from fastapi import APIRouter
 
@@ -43,35 +41,20 @@ async def patch__latch(
     if latch is None:
         raise HTTPException(404, 'latch not found')
 
-    latch.enabled = (
-        enabled
-        if (
-            (enabled := patch.enabled) is not None and
-            isinstance(enabled, bool)
-        )
-        else latch.enabled
+    for field in patch.model_fields_set:
+        match field:
+            case 'enabled':
+                latch.enabled = patch.enabled
+            case 'member':
+                member = await Member.find_one({'_id': patch.member})
 
-    )
+                if member is None or token.user_id not in (await member.get_group()).accounts:
+                    # ? be vauge to prevent user enumeration
+                    raise HTTPException(404, 'member not found')
 
-    if (
-        (member_id := patch.member) is not None and
-        isinstance(member_id, str)
-    ):
-        try:
-            member_id = PydanticObjectId(member_id)
-        except InvalidId:
-            raise HTTPException(400, 'invalid member id')
-
-        member = await Member.find_one({'_id': member_id})
-
-        if member is None:
-            raise HTTPException(404, 'member not found')
-
-        if token.user_id not in (await member.get_group()).accounts:
-            # ? be vauge to prevent user enumeration
-            raise HTTPException(404, 'member not found')
-
-        latch.member = member_id
+                latch.member = patch.member
+            case _:
+                raise HTTPException(400, f'invalid field: {field}')
 
     await latch.save_changes()
 

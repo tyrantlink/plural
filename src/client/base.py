@@ -334,7 +334,7 @@ class ClientBase(AutoShardedBot):
             image = await self.db.image(member.avatar, False)
             if image is not None:
                 avatar = (
-                    f'{project.base_url}/avatars/{image.id}.{image.extension}')
+                    f'{project.base_url}/avatar/{image.id}.{image.extension}')
 
         if debug_log:
             debug_log.append(DebugMessage.SUCCESS)

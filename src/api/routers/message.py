@@ -5,7 +5,7 @@ from fastapi import HTTPException, Query
 from fastapi import APIRouter
 from src.db import Message
 
-router = APIRouter(prefix='/messages', tags=['Message'])
+router = APIRouter(prefix='/message', tags=['Message'])
 
 
 @router.get(

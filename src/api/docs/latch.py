@@ -46,9 +46,9 @@ patch__latch = {
     ),
     **response(
         status=400,
-        description='invalid member id',
+        description='invalid field',
         example={
-            'detail': 'invalid member id'
+            'detail': 'invalid field: invalid_field'
         }
     )
 }
