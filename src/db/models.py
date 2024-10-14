@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator, ValidationError
+from pydantic import BaseModel, Field, model_validator
 from beanie import PydanticObjectId
 
 
@@ -16,7 +16,7 @@ class ProxyTag(BaseModel):
     @model_validator(mode='after')
     def check_prefix_and_suffix(cls, value):
         if not value.prefix and not value.suffix:
-            raise ValidationError(
+            raise ValueError(
                 'At least one of prefix or suffix must be non-empty')
 
         return value

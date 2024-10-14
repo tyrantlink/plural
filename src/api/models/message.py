@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from beanie import PydanticObjectId
 from datetime import datetime
 
@@ -14,5 +14,15 @@ class MessageModel(BaseModel):
 class SendMessageModel(BaseModel):
     member: PydanticObjectId = Field(
         description='the member id of the message')
-    content: str = Field(description='the content of the message')
+    content: str = Field(
+        description='the content of the message', min_length=1, max_length=2000)
     channel: int = Field(description='the channel id of the message')
+
+    @model_validator(mode='before')
+    def validate_content(cls, value):
+        if value.get('content') is None:
+            return value  # ? leave to standard validation
+
+        value['content'] = value['content'].strip()
+
+        return value
