@@ -210,7 +210,12 @@ class ImportHandler:
                 group = existing_groups[group_name]
             else:
                 group = self.client.db.new.group(group_name)
-                group.tag = self.data['tag']
+                if (tag := self.data['tag']) is not None and len(tag) <= 50:
+                    self.log.append(
+                        f'group {group_name} tag is over 50 characters, truncating')
+                    tag = tag[:50]
+
+                group.tag = tag
                 group.accounts.add(user_id)
                 tasks.append(self._save_object_with_avatar(
                     group, self.data['avatar_url']))
@@ -225,6 +230,11 @@ class ImportHandler:
                 if member['name'] in existing_group_members:
                     self.log.append(
                         f'failed to port member {member['name']} to group {group_name}, member already exists')
+                    continue
+
+                if group.tag and (len_sum := len(member['name']+group.tag)) > 80:
+                    self.log.append(
+                        f'failed to port member {member['name']} to group {group_name}, name and group tag combined must be less than 80 characters ({len_sum}/80)')
                     continue
 
                 member_model = await group.add_member(
@@ -274,11 +284,18 @@ class ImportHandler:
 
             if member['group_id'] is not None and member_group not in existing_groups:
                 group = self.client.db.new.group(member_group)
-                group.tag = [
+                tag = [
                     group['tag']
                     for group in self.data['groups']
                     if group['id'] == member['group_id']
                 ][0]
+
+                if tag is not None and len(tag) <= 50:
+                    self.log.append(
+                        f'group {member_group} tag is over 50 characters, truncating')
+                    tag = tag[:50]
+
+                group.tag = tag
                 group.accounts.add(user_id)
                 await group.save()
                 existing_groups[member_group] = group
@@ -291,6 +308,11 @@ class ImportHandler:
             ]:
                 self.log.append(
                     f'failed to port member {member['name']} to group {group.name}, member already exists')
+                continue
+
+            if group.tag and (len_sum := len(member['name']+group.tag)) > 80:
+                self.log.append(
+                    f'failed to port member {member['name']} to group {group.name}, name and group tag combined must be less than 80 characters ({len_sum}/80)')
                 continue
 
             member_model = await group.add_member(
