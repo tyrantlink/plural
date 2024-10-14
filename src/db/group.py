@@ -35,7 +35,9 @@ class Group(Document):
         indexes = ['accounts', 'members', 'name']
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
-    name: str = Field(description='the name of the system', max_length=32)
+    name: str = Field(
+        description='the name of the system',
+        min_length=1, max_length=32)
     accounts: set[int] = Field(
         default_factory=set,
         description='the discord accounts attached to this group'

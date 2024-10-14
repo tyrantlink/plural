@@ -21,7 +21,9 @@ class Member(Document):
         use_state_management = True
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
-    name: str = Field(description='the name of the member', max_length=50)
+    name: str = Field(
+        description='the name of the member',
+        min_length=1, max_length=50)
     avatar: PydanticObjectId | None = Field(
         None,
         description='the avatar uuid of the member; overrides the group avatar'
