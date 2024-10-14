@@ -25,7 +25,9 @@ app = FastAPI(
     title='/plu/ral API',
     description='get an API key by running /api on the bot',
     lifespan=lifespan,
-    version="0.1.0"
+    docs_url='/swdocs',
+    redoc_url='/docs',
+    version="1.0.0"
 )
 
 
