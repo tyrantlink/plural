@@ -5,11 +5,11 @@ from beanie import PydanticObjectId
 class ProxyTag(BaseModel):
     prefix: str = Field(
         '',
-        max_length=10,
+        max_length=25,
         description='tag must have a prefix or suffix')
     suffix: str = Field(
         '',
-        max_length=10,
+        max_length=25,
         description='tag must have a prefix or suffix')
     regex: bool = False
 
