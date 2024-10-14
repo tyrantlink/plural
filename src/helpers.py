@@ -1,9 +1,10 @@
 from discord import Interaction, ApplicationContext, Embed, Colour, MessageReference, Message, HTTPException, Forbidden
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
 from discord.ext.commands.converter import CONVERTER_MAPPING
-from typing import Literal, overload, Iterable
+from typing import Literal, overload, Iterable, Any
 from asyncio import sleep, create_task, Task
 from discord.ext.commands import Converter
+from collections.abc import Mapping
 from beanie import PydanticObjectId
 from bson.errors import InvalidId
 from src.db import Group, Member
@@ -347,6 +348,59 @@ class TTLSet[_T](set):
                 self._cancel_task(__item)
                 self._create_expire_task(__item)
 
+    def clear(self) -> None:
+        super().clear()
+
+        for __item in self:
+            self._cancel_task(__item)
+
+
+class TTLDict[KT, VT](dict):
+    def __init__(self, __iterable: Mapping[KT, VT] | None = None, ttl: int = 86400) -> None:
+        """a normal dict with an async time-to-live (seconds) for each item"""
+        __iterable = __iterable or {}
+        super().__init__(__iterable)
+        self.__ttl = ttl
+        self._tasks: dict[KT, Task] = {
+            __key: create_task(self._expire(__key))
+            for __key in
+            __iterable.keys()
+        }
+
+    def _create_expire_task(self, __key: KT) -> None:
+        self._tasks[__key] = create_task(self._expire(__key))
+
+    def _cancel_task(self, __key: KT) -> None:
+        if __key in self._tasks:
+            self._tasks[__key].cancel()
+            self._tasks.pop(__key, None)
+
+    async def _expire(self, __key: KT) -> None:
+        await sleep(self.__ttl)
+        self.pop(__key, None)
+
+    def __setitem__(self, __key: KT, __value: VT) -> None:
+        super().__setitem__(__key, __value)
+        self._cancel_task(__key)
+        self._create_expire_task(__key)
+
+    def __delitem__(self, __key: KT) -> None:
+        super().__delitem__(__key)
+        self._cancel_task(__key)
+
+    def update(self, __m: Mapping, **kwargs: VT) -> None:
+        super().update(__m, **kwargs)
+
+        for __key in __m.keys():
+            self._cancel_task(__key)
+            self._create_expire_task(__key)
+
+    def clear(self) -> None:
+        super().clear()
+
+        for __key in self.keys():
+            self._cancel_task(__key)
+
 
 def encode_b66(b10: int) -> str:
     b66 = ''
@@ -361,3 +415,16 @@ def decode_b66(b66: str) -> int:
     for i in range(len(b66)):
         b10 += BASE66CHARS.index(b66[i])*(66**(len(b66)-i-1))
     return b10
+
+
+def merge_dicts(*dicts: Mapping) -> dict:
+    """priority is first to last"""
+    out: dict[Any, Any] = {}
+
+    for d in reversed(dicts):
+        for k, v in d.items():
+            if isinstance(v, Mapping):
+                out[k] = merge_dicts(out.get(k, {}), v)
+            else:
+                out[k] = v
+    return out

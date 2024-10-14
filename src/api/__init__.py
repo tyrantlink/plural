@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from src.api.drest import start_drest
 from src.api.docs import root as docs
 from fastapi import FastAPI
 
@@ -10,6 +11,8 @@ async def lifespan(app: FastAPI):
     DB = MongoDatabase(project.mongo_uri)
 
     await DB.connect()
+    await start_drest()
+    from src.api.drest import drest_client
 
     from .routers import image, message, latch, member, group
     app.include_router(message.router)
@@ -19,6 +22,10 @@ async def lifespan(app: FastAPI):
     app.include_router(group.router)
 
     yield
+
+    await drest_client.close()
+    from src.api.drest import drest_app
+    await drest_app.close()
 
 
 app = FastAPI(

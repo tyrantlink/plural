@@ -5,6 +5,7 @@ from fastapi import HTTPException, Query, APIRouter, Security
 from src.api.auth import api_key_validator, TokenData
 from fastapi.responses import JSONResponse
 from src.api.docs import message as docs
+from src.api.drest import user_can_send
 from aiohttp import ClientSession
 from src.models import project
 
@@ -60,6 +61,10 @@ async def post__message(
 
     if member is None or token.user_id not in (await member.get_group()).accounts:
         raise HTTPException(404, 'member not found')
+
+    if not await user_can_send(token.user_id, message.channel):
+        raise HTTPException(
+            403, 'you do not have permission to send messages to this channel')
 
     avatar = None
     if member.avatar:
