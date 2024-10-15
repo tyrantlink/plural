@@ -1,8 +1,9 @@
-from discord import Interaction, ApplicationContext, Embed, Colour, MessageReference, Message, HTTPException, Forbidden
+from discord import Interaction, ApplicationContext, Embed, Colour, Message, HTTPException, Forbidden
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
 from discord.ext.commands.converter import CONVERTER_MAPPING
 from typing import Literal, overload, Iterable, Any
 from asyncio import sleep, create_task, Task
+from hikari import Message as HikariMessage
 from discord.ext.commands import Converter
 from collections.abc import Mapping
 from beanie import PydanticObjectId
@@ -59,6 +60,41 @@ class SuccessEmbed(Embed):
         self.title = 'success'
         self.description = message
         self.colour = Colour(0x69ff69)
+
+
+class ReplyEmbed(Embed):
+    # ? this is only here as a fallback if a message is too long for inline reply
+    def __init__(self, message: Message | HikariMessage, jump_url: str) -> None:
+        super().__init__()
+
+        avatar_url = (
+            message.author.display_avatar.url
+            if isinstance(message, Message) else
+            message.author.display_avatar_url
+        )
+
+        self.set_author(
+            name=f'{message.author.display_name} ↩️',
+            icon_url=avatar_url
+        )
+
+        content = (message.content or '').replace('\n', ' ')
+
+        formatted_content = (
+            content
+            if len(content) <= 75 else
+            f'{content[:75].strip()}…'
+        )
+
+        self.description = (
+            (  # ? i hate this autoformatter sometimes
+                f'**[Reply to:]({jump_url})** {formatted_content}')
+            if message.content else
+            (
+                f'*[(click to see attachment{"" if len(message.attachments)-1 else "s"})]({jump_url})*')
+            if message.attachments else
+            f'*[click to see message]({jump_url})*'
+        )
 
 
 async def send_error(ctx: ApplicationContext | Interaction, message: str) -> None:
@@ -136,23 +172,25 @@ def notify(
     create_task(__notify(message, reaction, delay))
 
 
-def format_reply(content: str, reference: MessageReference | None) -> str:
-    if reference is None:
-        return content
-
-    if not isinstance(reference.resolved, Message):
-        return content
-
-    refcontent = reference.resolved.content.replace('\n', ' ')
-    refattachments = reference.resolved.attachments
+def format_reply(
+    content: str,
+    reference: Message | HikariMessage,
+    guild_id: int | None = None
+) -> str | ReplyEmbed:
+    refcontent = (reference.content or '').replace('\n', ' ')
+    refattachments = reference.attachments
     mention = (
-        reference.resolved.author.mention
-        if reference.resolved.webhook_id is None else
-        f'`@{reference.resolved.author.name}`'
+        reference.author.mention
+        if reference.webhook_id is None else
+        f'`@{reference.author.display_name}`'
+    )
+    jump_url = (
+        reference.jump_url
+        if isinstance(reference, Message) else
+        reference.make_link(guild_id)
     )
 
-    base_reply = (
-        f'-# [↪](<{reference.resolved.jump_url}>) {mention}')
+    base_reply = f'-# [↪](<{jump_url}>) {mention}'
 
     formatted_refcontent = (
         refcontent
@@ -163,12 +201,16 @@ def format_reply(content: str, reference: MessageReference | None) -> str:
     reply_content = (
         formatted_refcontent
         if formatted_refcontent else
-        f'[*Click to see attachment*](<{reference.resolved.jump_url}>)'
+        f'[*Click to see attachment*](<{jump_url}>)'
         if refattachments else
-        f'[*Click to see message*](<{reference.resolved.jump_url}>)'
+        f'[*Click to see message*](<{jump_url}>)'
     )
 
-    return f'{base_reply} {reply_content}\n{content}'
+    total_content = f'{base_reply} {reply_content}\n{content}'
+    if len(total_content) <= 2000:
+        return total_content
+
+    return ReplyEmbed(reference, jump_url)
 
 
 class DBConversionError(Exception):

@@ -1,5 +1,6 @@
-from hikari import RESTApp, Snowflake, PermissionOverwrite, Permissions, Member, Role, Guild
-from src.helpers import merge_dicts, TTLSet, TTLDict
+from hikari import RESTApp, Snowflake, PermissionOverwrite, Permissions, Member, Role, Guild, Message
+from src.helpers import merge_dicts, TTLDict, format_reply, ReplyEmbed
+from src.api.models.message import SendMessageModel
 from hikari.channels import PermissibleGuildChannel
 from collections.abc import Mapping, Sequence
 from hikari.impl.rest import RESTClientImpl
@@ -16,6 +17,7 @@ CACHE_TTL = 60
 perm_cache = TTLDict[str, bool](ttl=CACHE_TTL)
 guild_cache = TTLDict[int, Guild](ttl=CACHE_TTL)
 member_cache = TTLDict[str, Member](ttl=CACHE_TTL)
+message_cache = TTLDict[str, Message](ttl=CACHE_TTL*10)
 role_cache = TTLDict[int, Sequence[Role]](ttl=CACHE_TTL)
 channel_cache = TTLDict[int, PermissibleGuildChannel](ttl=CACHE_TTL)
 
@@ -32,6 +34,20 @@ async def start_drest() -> None:
     drest_client = drest_app.acquire(project.bot_token, 'Bot')
 
     drest_client.start()
+
+
+async def _get_message(channel_id: int, message_id: int) -> Message:
+    if (cache_hash := f'{channel_id}::{message_id}') in message_cache:
+        return message_cache[cache_hash]
+
+    try:
+        message = await drest_client.fetch_message(channel_id, message_id)
+    except HikariError:
+        raise HTTPException(404, 'reference not found')
+
+    message_cache[cache_hash] = message
+
+    return message
 
 
 async def _get_member(guild_id: int, user_id: int) -> Member:
@@ -117,7 +133,6 @@ async def _compute_base_permissions(member: Member) -> Permissions:
 
     for role in [role for role in guild_roles if role.id in member_roles]:
         if role.id in member_roles:
-            print(role)
             permissions |= role.permissions
 
     if permissions & Permissions.ADMINISTRATOR:
@@ -175,19 +190,27 @@ async def compute_permissions(member: Member, channel: PermissibleGuildChannel) 
     )
 
 
-async def user_can_send(user_id: int, channel_id: int, guild_id: int) -> bool:
-    cache_hash = f'{user_id}::{channel_id}'
+async def user_can_send(user_id: int, guild_id: int, message: SendMessageModel) -> bool:
+    cache_hash = f'{user_id}::{message.channel}'
 
     if cache_hash in perm_cache:
         return perm_cache[cache_hash]
 
-    # ? getting guild and roles here so it's cached for later
-    member, channel, _, _ = await gather(
+    tasks = [
         _get_member(guild_id, user_id),
-        _get_permissible_channel(channel_id),
+        _get_permissible_channel(message.channel),
         _get_roles(guild_id),
         _get_guild(guild_id)
-    )
+    ]
+
+    if message.reference is not None:  # ? if there's a reference, get it now so it's cached for replies
+        tasks.append(_get_message(
+            message.thread or message.channel, message.reference))
+
+    # ? getting guild and roles here so it's cached for later
+    member, channel, *_ = await gather(*tasks)
+    assert isinstance(member, Member)
+    assert isinstance(channel, PermissibleGuildChannel)
 
     member_permissions = await compute_permissions(member, channel)
 
@@ -197,3 +220,19 @@ async def user_can_send(user_id: int, channel_id: int, guild_id: int) -> bool:
 
     perm_cache[cache_hash] = False
     return False
+
+
+async def insert_reference_text(message: SendMessageModel, guild_id: int) -> str | ReplyEmbed:
+    if message.reference is None:
+        return message
+
+    reference = await _get_message(
+        message.thread or message.channel,
+        message.reference
+    )
+
+    return format_reply(
+        message.content,
+        reference,
+        guild_id
+    )

@@ -1,14 +1,13 @@
-from discord import Webhook as DiscordWebhook, InvalidArgument, Object, MISSING
+from discord import Webhook as DiscordWebhook, InvalidArgument, Object, MISSING, AllowedMentions
 from src.api.models.message import MessageModel, SendMessageModel
 from src.db import Message, Webhook as DBWebhook, Member, Image
+from src.api.drest import user_can_send, insert_reference_text
 from fastapi import HTTPException, Query, APIRouter, Security
 from src.api.auth import api_key_validator, TokenData
 from fastapi.responses import JSONResponse
 from src.api.docs import message as docs
-from src.api.drest import user_can_send
 from aiohttp import ClientSession
 from src.models import project
-from re import match
 
 router = APIRouter(prefix='/message', tags=['Message'])
 
@@ -67,9 +66,19 @@ async def post__message(
     if member is None or token.user_id not in (await member.get_group()).accounts:
         raise HTTPException(404, 'member not found')
 
-    if not await user_can_send(token.user_id, message.channel, webhook.guild):
+    if not await user_can_send(token.user_id, webhook.guild, message):
         raise HTTPException(
             403, 'you do not have permission to send messages to this channel')
+
+    embed = MISSING
+    if message.reference is not None:
+        proxy_with_reply = await insert_reference_text(message, webhook.guild)
+
+        if isinstance(proxy_with_reply, str):
+            message.content = proxy_with_reply
+
+        else:
+            embed = proxy_with_reply
 
     avatar = None
     if member.avatar:
@@ -87,6 +96,8 @@ async def post__message(
                 400, 'invalid webhook url found, please send a message through the bot and try again')
 
         discord_message = await discord_webhook.send(
+            allowed_mentions=AllowedMentions(
+                everyone=False, roles=False, users=False),
             content=message.content,
             username=member.name,
             avatar_url=avatar,
@@ -94,8 +105,8 @@ async def post__message(
             thread=(
                 Object(message.thread)
                 if message.thread else
-                MISSING
-            )
+                MISSING),
+            embed=embed
         )
 
     db_message = Message(

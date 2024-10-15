@@ -20,6 +20,9 @@ class SendMessageModel(BaseModel):
     thread: int = Field(
         None,
         description='the thread id of the message; None if not in a thread')
+    reference: int = Field(
+        None,
+        description='the reference id of the message; None if not a reply')
 
     @model_validator(mode='before')
     def validate_content(cls, value):

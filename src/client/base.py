@@ -6,7 +6,6 @@ from src.models import project, DebugMessage
 from src.helpers import format_reply
 from typing import TYPE_CHECKING
 from .emoji import ProbableEmoji
-from .embeds import ReplyEmbed
 from time import perf_counter
 from asyncio import gather
 
@@ -339,12 +338,15 @@ class ClientBase(AutoShardedBot):
             )
             return False
 
-        proxy_with_reply = format_reply(proxy_content, message.reference)
+        embed = MISSING
+        if message.reference and isinstance(message.reference.resolved, Message):
+            proxy_with_reply = format_reply(
+                proxy_content, message.reference.resolved)
 
-        reply_with_embed = len(proxy_with_reply) > 2000
-
-        if not reply_with_embed:
-            proxy_content = proxy_with_reply
+            if isinstance(proxy_with_reply, str):
+                proxy_content = proxy_with_reply
+            else:
+                embed = proxy_with_reply
 
         avatar = None
         if member.avatar:
@@ -369,17 +371,7 @@ class ClientBase(AutoShardedBot):
                 wait=True,
                 username=member.name,
                 avatar_url=avatar,
-                embed=(
-                    ReplyEmbed(
-                        message.reference.resolved,
-                        color=0x69ff69)
-                    if (
-                        reply_with_embed and
-                        message.reference and
-                        isinstance(message.reference.resolved, Message)
-                    ) else
-                    MISSING
-                ),
+                embed=embed,
                 files=[
                     await attachment.to_file()
                     for attachment in message.attachments
@@ -394,7 +386,7 @@ class ClientBase(AutoShardedBot):
                     )
                 )
                 if (
-                    not reply_with_embed and
+                    not embed == MISSING and
                     message.reference is not None and
                     isinstance(message.reference.resolved, Message)
                 ) else
