@@ -34,7 +34,7 @@ HelpEmbed = Embed(
             name='getting started',
             value='\n'.join([
                 '- if you\'re coming from pluralkit or tupperbox, use the `/import` command and use your proxies as you have been',
-                '- otherwise, you can start by creating a new group with `/group create`',
+                '- otherwise, you can start by creating a new group with `/group new`',
                 '  - if you don\'t create a group, a group named "default" will be created for you when you create a member',
                 '- create a new member with `/member new`',
                 '  - all members *must* be a part of a group, specify in the `/member new` command, or leave it blank to use the default group',
