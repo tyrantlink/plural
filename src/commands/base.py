@@ -301,7 +301,7 @@ class BaseCommands(Cog):
 
         debug_log: list[DebugMessage | str] = [DebugMessage.ENABLER]
 
-        await self.client.process_proxy(message, debug_log)
+        await self.client.process_proxy(message, debug_log, ctx.app_permissions)
 
         debug_log.remove(DebugMessage.ENABLER)
 

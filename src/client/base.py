@@ -192,12 +192,17 @@ class ClientBase(AutoShardedBot):
 
         return None, None, None
 
-    async def permission_check(self, message: Message, debug_log: list[DebugMessage | str] | None = None) -> bool:
+    async def permission_check(
+        self,
+        message: Message,
+        debug_log: list[DebugMessage | str] | None = None,
+        channel_permissions: Permissions | None = None
+    ) -> bool:
         if message.guild is None:
             return False
 
         # ? mypy stupid
-        self_permissions = message.channel.permissions_for(  # type: ignore
+        self_permissions = channel_permissions or message.channel.permissions_for(  # type: ignore
             message.guild.me)
 
         if not isinstance(self_permissions, Permissions):
@@ -235,7 +240,12 @@ class ClientBase(AutoShardedBot):
 
         return True
 
-    async def process_proxy(self, message: Message, debug_log: list[DebugMessage | str] | None = None) -> bool:
+    async def process_proxy(
+        self,
+        message: Message,
+        debug_log: list[DebugMessage | str] | None = None,
+        channel_permissions: Permissions | None = None
+    ) -> bool:
         if debug_log is None:
             # ? if debug_log is given by debug command, it will have DebugMessage.ENABLER, being a truthy value
             # ? if it's not given, we set it to an empty list here and never append to it
@@ -280,7 +290,7 @@ class ClientBase(AutoShardedBot):
 
             return False
 
-        if not await self.permission_check(message, debug_log):
+        if not await self.permission_check(message, debug_log, channel_permissions):
             return False
 
         if len(proxy_content) > 1980:

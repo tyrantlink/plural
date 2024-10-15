@@ -94,3 +94,5 @@ class ClientListeners(ClientBase):
             return
 
         await send_error(ctx, error)
+
+        raise exception
