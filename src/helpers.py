@@ -45,6 +45,11 @@ class View(_View):
             item._view = self
             setattr(self, func.__name__, item)
 
+    def add_items(self, *items: Item) -> None:
+        for item in items:
+            if item not in self.children:
+                self.add_item(item)
+
 
 class ErrorEmbed(Embed):
     def __init__(self, message: str, *args, **kwargs):
@@ -316,8 +321,15 @@ class DBConverter(Converter):
         # ? group argument is None and member argument is not found, try to find by default
         group = await Group.find_one({'accounts': ctx.author.id, 'name': 'default'})
 
+        # ? ensure default group always exists
         if group is None:
-            raise DBConversionError('group not found')
+            group = Group(
+                accounts={ctx.author.id},
+                name='default',
+                avatar=None,
+                tag=None
+            )
+            await group.save()
 
         return group
 
