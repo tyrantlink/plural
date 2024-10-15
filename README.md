@@ -18,6 +18,7 @@ If you need any additional information, or have any questions, you can join my s
 - Toggle autoproxy with `/autoproxy`
 - Edit messages by right-clicking (hold on mobile) a message, clicking "Apps", then "/plu/ral edit"
 - Delete messages by reacting with ❌
+- Restrict a group to certain channels, with roleplay proxies for example, with `/group channels add`
 - And a fully featured API, anything you can do with the bot, you can do with the API https://api.plural.gg/docs
 
 ### Planned Features
