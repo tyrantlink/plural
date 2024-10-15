@@ -3,7 +3,7 @@
 
 /plu/ral is a plural/roleplay proxy Discord bot built to modern discord app standards, using slash commands and interactions, including autocomplete for member and group names, and an interactive message command for editing, so no more copying your entire message to edit.
 
-Made to be a simpler alternative to PluralKit and Tupperbox, no profiles, no public information, just groups, members, and proxies, and with the implementation of the new Discord features, there's no need for a web dashboard, everything can easily be done in Discord. if you're coming from PluralKit or Tupperbox, you can import your existing data with a single command.
+Made to be a simpler alternative to PluralKit and Tupperbox, no profiles, no public information, just groups, members, and proxies, and with the implementation of the new Discord features, there's no need for a web dashboard, everything can easily be done in Discord. If you're coming from PluralKit or Tupperbox, you can import your existing data with a single command.
 
 Once you've added the bot, you can just type `/` in any text channel to see a list of commands and their descriptions, or run `/help` to see instructions on getting started.
 
@@ -25,6 +25,7 @@ If you need any additional information, or have any questions, you can join my s
 - A GUI management menu for groups and members, accessible with `/manage`
 - Avatar uploading via API
 - Sharing groups between discord accounts (already built into the backend, if you urgently need this just join the support server and DM me (@tyrantlink))
+- export command to export your data to a json file
 
 # Hosting it yourself
 If you don't plan on hosting it yourself, you can simply add the bot with https://plural.gg/invite and stop reading here.
