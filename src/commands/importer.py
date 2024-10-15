@@ -1,8 +1,8 @@
 from discord import ApplicationContext, Option, Attachment, slash_command, Embed
-from src.import_handler import ImportHelpEmbed, ImportHandler
 from src.helpers import send_error, chunk_string
+from src.client.embeds import ImportHelpEmbed
+from src.import_handler import ImportHandler
 from src.commands.base import BaseCommands
-# from src.client.base import ClientBase
 
 
 class ImportCommand(BaseCommands):

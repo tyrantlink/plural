@@ -218,16 +218,16 @@ class DBConversionError(Exception):
 
 
 class DBConverter(Converter):
-    async def convert(self, ctx: ApplicationContext, argument: str):
-        match self._get_reversed_options(ctx).get(argument, None):
-            case 'member':
-                return await self._handle_member(ctx, argument)
-            case 'group':
-                return await self._handle_group(ctx, argument)
-            case _:  # ? should never happen
-                raise DBConversionError(f'invalid argument `{argument}`')
+    argument_name = str()
 
-        return argument
+    async def convert(self, ctx: ApplicationContext, value: str):
+        match self.argument_name:
+            case 'member':
+                return await self._handle_member(ctx, value)
+            case 'group':
+                return await self._handle_group(ctx, value)
+            case _:  # ? should never happen
+                raise DBConversionError(f'invalid argument `{value}`')
 
     def _get_options(self, ctx: ApplicationContext) -> dict[str, str]:
         if ctx.interaction.data is None:  # ? should never happen
@@ -246,31 +246,31 @@ class DBConverter(Converter):
         }
 
     @overload
-    async def _handle_member(self, ctx: ApplicationContext, argument: str) -> Member:
+    async def _handle_member(self, ctx: ApplicationContext, value: str) -> Member:
         ...
 
     @overload
-    async def _handle_member(self, ctx: ApplicationContext, argument: None) -> None:
+    async def _handle_member(self, ctx: ApplicationContext, value: None) -> None:
         ...
 
-    async def _handle_member(self, ctx: ApplicationContext, argument: str | None) -> Member | None:
-        if argument is None:
+    async def _handle_member(self, ctx: ApplicationContext, value: str | None) -> Member | None:
+        if value is None:
             return None
 
         try:
-            parsed_argument = PydanticObjectId(argument)
+            parsed_value = PydanticObjectId(value)
         except InvalidId:
-            parsed_argument = None
+            parsed_value = None
 
         member, group = None, None
 
-        if parsed_argument is not None:
-            member = await Member.find_one({'_id': parsed_argument})
+        if parsed_value is not None:
+            member = await Member.find_one({'_id': parsed_value})
 
         # ? member argument is not id, try to find by name
-        if parsed_argument is None and member is None:
+        if parsed_value is None and member is None:
             group = await self._handle_group(ctx, self._get_options(ctx).get('group', 'default') or 'default')
-            member = await group.get_member_by_name(argument)
+            member = await group.get_member_by_name(value)
 
         if member is None:
             raise DBConversionError('member not found')
@@ -283,21 +283,21 @@ class DBConverter(Converter):
 
         return member
 
-    async def _handle_group(self, ctx: ApplicationContext, argument: str | None) -> Group:
-        if isinstance(argument, str):
+    async def _handle_group(self, ctx: ApplicationContext, value: str | None) -> Group:
+        if isinstance(value, str):
             try:
-                parsed_argument = PydanticObjectId(argument)
+                parsed_value = PydanticObjectId(value)
             except InvalidId:
-                parsed_argument = None
+                parsed_value = None
 
             group = None
 
-            if parsed_argument is not None:
-                group = await Group.find_one({'_id': parsed_argument})
+            if parsed_value is not None:
+                group = await Group.find_one({'_id': parsed_value})
 
             # ? group argument is not id, try to find by name
-            if parsed_argument is None and group is None:
-                group = await Group.find_one({'accounts': ctx.author.id, 'name': argument})
+            if parsed_value is None and group is None:
+                group = await Group.find_one({'accounts': ctx.author.id, 'name': value})
 
             if group is None or ctx.author.id not in group.accounts:
                 raise DBConversionError('group not found')
@@ -322,10 +322,18 @@ class DBConverter(Converter):
         return group
 
 
+class MemberConverter(DBConverter):
+    argument_name = 'member'
+
+
+class GroupConverter(DBConverter):
+    argument_name = 'group'
+
+
 CONVERTER_MAPPING.update(
     {
-        Member: DBConverter,
-        Group: DBConverter
+        Member: MemberConverter,
+        Group: GroupConverter
     }
 )
 

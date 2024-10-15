@@ -1,6 +1,6 @@
 from __future__ import annotations
 from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING
-from src.helpers import CustomModal, send_error, send_success, DBConverter, include_all_options
+from src.helpers import CustomModal, send_error, send_success, include_all_options, GroupConverter, MemberConverter
 from src.db import Group, Member, Message as DBMessage
 from src.views import DeleteConfirmation, ApiKeyView
 import src.commands.autocomplete as autocomplete
@@ -124,13 +124,13 @@ class BaseCommands(Cog):
                 required=False
             ),
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='set to a specific member immediately',
                 required=False,
                 autocomplete=autocomplete.members),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='group to restrict results to',
                 required=False,
@@ -142,10 +142,6 @@ class BaseCommands(Cog):
             return
 
         if ctx.guild is None:
-            return
-
-        if group is None:
-            await send_error(ctx, f'group `{group}` not found')
             return
 
         latch = await self.client.db.latch(
@@ -196,12 +192,12 @@ class BaseCommands(Cog):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='member to reproxy as',
                 autocomplete=autocomplete.members),
             Option(  # ? not used in command, kept for autocomplete
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='group to restrict results to',
                 required=False,

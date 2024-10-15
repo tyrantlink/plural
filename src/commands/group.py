@@ -1,5 +1,5 @@
 from discord import ApplicationContext, Option, SlashCommandGroup, Attachment, User
-from src.helpers import send_error, send_success, DBConverter, include_all_options
+from src.helpers import send_error, send_success, MemberConverter, GroupConverter
 import src.commands.autocomplete as autocomplete
 from src.commands.base import BaseCommands
 from discord.abc import GuildChannel
@@ -51,7 +51,7 @@ class GroupCommands(BaseCommands):
         description='remove a group; group must have no members',
         options=[
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='name of the group',
                 autocomplete=autocomplete.groups)])
@@ -78,7 +78,7 @@ class GroupCommands(BaseCommands):
         description='share a group with another account',
         options=[
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='name of the group',
                 autocomplete=autocomplete.groups),
@@ -95,7 +95,7 @@ class GroupCommands(BaseCommands):
         description='set a group\'s name',
         options=[
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='name of the group',
                 autocomplete=autocomplete.groups),
@@ -117,7 +117,7 @@ class GroupCommands(BaseCommands):
         description='set a group\'s tag',
         options=[
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='name of the group',
                 autocomplete=autocomplete.groups),
@@ -157,7 +157,7 @@ class GroupCommands(BaseCommands):
         description='set a group\'s default avatar (4mb max, png, jpg, jpeg, gif, webp)',
         options=[
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='name of the group',
                 autocomplete=autocomplete.groups),
@@ -220,7 +220,7 @@ class GroupCommands(BaseCommands):
         description='restrict a group to a channel',
         options=[
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='name of the group',
                 autocomplete=autocomplete.groups),
@@ -243,7 +243,7 @@ class GroupCommands(BaseCommands):
         description='remove a channel from a group',
         options=[
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='name of the group',
                 autocomplete=autocomplete.groups),
@@ -266,7 +266,7 @@ class GroupCommands(BaseCommands):
         description='list all channels a group is restricted to',
         options=[
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='name of the group',
                 autocomplete=autocomplete.groups)])

@@ -5,7 +5,6 @@ from typing import Self, TYPE_CHECKING
 from beanie import PydanticObjectId
 from src.db.models import ProxyTag
 from src.helpers import send_error
-from .embed import ImportHelpEmbed
 from urllib.parse import urlparse
 from asyncio import sleep, gather
 from src.db import Member, Group

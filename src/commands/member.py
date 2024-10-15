@@ -1,4 +1,4 @@
-from src.helpers import send_error, send_success, DBConverter, include_all_options
+from src.helpers import send_error, send_success, include_all_options, MemberConverter, GroupConverter
 from discord import ApplicationContext, Option, SlashCommandGroup, Attachment
 import src.commands.autocomplete as autocomplete
 from src.commands.base import BaseCommands
@@ -32,7 +32,7 @@ class MemberCommands(BaseCommands):
                 max_length=50,
                 description='the name of the member'),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='the name of the group',
                 required=False,
@@ -57,12 +57,12 @@ class MemberCommands(BaseCommands):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='restrict results to a single group',
                 required=False,
@@ -78,7 +78,7 @@ class MemberCommands(BaseCommands):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='restrict results to a single group',
                 required=False,
@@ -100,7 +100,7 @@ class MemberCommands(BaseCommands):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
@@ -110,7 +110,7 @@ class MemberCommands(BaseCommands):
                 max_length=50,
                 description='the new name of the member'),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='restrict results to a single group',
                 required=False,
@@ -131,17 +131,17 @@ class MemberCommands(BaseCommands):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='new_group',
                 description='the name of the new group',
                 autocomplete=autocomplete.groups),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='restrict results to a single group',
                 required=False,
@@ -164,7 +164,7 @@ class MemberCommands(BaseCommands):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
@@ -174,7 +174,7 @@ class MemberCommands(BaseCommands):
                 required=False,
                 description='the avatar of the member'),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='restrict results to a single group',
                 required=False,
@@ -242,7 +242,7 @@ class MemberCommands(BaseCommands):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
@@ -262,7 +262,7 @@ class MemberCommands(BaseCommands):
                 description='whether the proxy tag is matched with regex',
                 default=False),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='restrict results to a single group',
                 required=False,
@@ -301,7 +301,7 @@ class MemberCommands(BaseCommands):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
@@ -312,7 +312,7 @@ class MemberCommands(BaseCommands):
                 max_value=4,
                 description='the index of the proxy tag to remove (check with /member proxy list)'),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='restrict results to a single group',
                 required=False,
@@ -343,12 +343,12 @@ class MemberCommands(BaseCommands):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='restrict results to a single group',
                 required=False,
@@ -374,12 +374,12 @@ class MemberCommands(BaseCommands):
         checks=[include_all_options],
         options=[
             Option(
-                DBConverter,
+                MemberConverter,
                 name='member',
                 description='the name of the member',
                 autocomplete=autocomplete.members),
             Option(
-                DBConverter,
+                GroupConverter,
                 name='group',
                 description='restrict results to a single group',
                 required=False,
