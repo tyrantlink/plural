@@ -114,8 +114,8 @@ class Group(Document):
         if member is None:
             raise ValueError(f'member {id} not found')
 
-        if member.group != self.id:
-            raise ValueError(f'member {id} not in group {self.id}')
+        if member.id not in self.members:
+            raise ValueError(f'member {id} not in group')
 
         self.members.remove(member.id)
 
