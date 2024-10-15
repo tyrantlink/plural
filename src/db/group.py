@@ -1,6 +1,7 @@
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
 from src.db.member import Member
+from re import sub, IGNORECASE
 from asyncio import gather
 from typing import Any
 
@@ -18,6 +19,20 @@ class Group(Document):
             value = values.get(variable, None)
             if value is not None and isinstance(value, list):
                 values[variable] = set(value)
+        return values
+
+    @model_validator(mode='before')
+    def _handle_clyde(cls, values: dict[Any, Any]) -> dict[Any, Any]:
+        if (tag := values.get('tag', None)) is None:
+            return values
+
+        # ? just stolen from pluralkit https://github.com/PluralKit/PluralKit/blob/214a6d5a4933b975068b0272c98d178a47b487d5/src/pluralkit/bot/proxy.py#L62
+        values['tag'] = sub(
+            '(c)(lyde)',
+            '\\1\u200A\\2',
+            tag,
+            flags=IGNORECASE
+        )
         return values
 
     def dict(self, *args, **kwargs) -> dict[str, Any]:

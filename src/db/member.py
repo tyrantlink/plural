@@ -1,8 +1,10 @@
 from __future__ import annotations
+from typing import Annotated, TYPE_CHECKING, Any
 from beanie import Document, PydanticObjectId
-from typing import Annotated, TYPE_CHECKING
+from pydantic import Field, model_validator
+from re import sub, IGNORECASE
 from .models import ProxyTag
-from pydantic import Field
+
 
 if TYPE_CHECKING:
     from src.db.group import Group
@@ -14,6 +16,20 @@ class Member(Document):
 
     def __hash__(self) -> int:
         return hash(self.id)
+
+    @model_validator(mode='before')
+    def _handle_clyde(cls, values: dict[Any, Any]) -> dict[Any, Any]:
+        if (name := values.get('name', None)) is None:
+            return values
+
+        # ? just stolen from pluralkit https://github.com/PluralKit/PluralKit/blob/214a6d5a4933b975068b0272c98d178a47b487d5/src/pluralkit/bot/proxy.py#L62
+        values['name'] = sub(
+            '(c)(lyde)',
+            '\\1\u200A\\2',
+            name,
+            flags=IGNORECASE
+        )
+        return values
 
     class Settings:
         name = 'members'
