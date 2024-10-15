@@ -22,8 +22,10 @@ role_cache = TTLDict[int, Sequence[Role]](ttl=CACHE_TTL)
 channel_cache = TTLDict[int, PermissibleGuildChannel](ttl=CACHE_TTL)
 
 REQUIRED_PERMISSIONS = (
-    Permissions.VIEW_CHANNEL |
-    Permissions.SEND_MESSAGES
+    # ? restricted until https://github.com/hikari-py/hikari/pull/1220 is closed
+    Permissions.MANAGE_GUILD
+    # Permissions.VIEW_CHANNEL |
+    # Permissions.SEND_MESSAGES
 )
 
 
@@ -117,9 +119,8 @@ async def _get_channel_permission_overwrites(channel: PermissibleGuildChannel) -
         )
     )
 
+
 # ? stole the permission checking code from https://discord.com/developers/docs/topics/permissions#permission-hierarchy
-
-
 async def _compute_base_permissions(member: Member) -> Permissions:
     guild = await _get_guild(member.guild_id)
 
