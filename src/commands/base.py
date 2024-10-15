@@ -365,3 +365,14 @@ class BaseCommands(Cog):
             embed=embed,
             ephemeral=True
         )
+
+    @slash_command(
+        name='help',
+        description='get started with the bot')
+    async def slash_help(self, ctx: ApplicationContext):
+        from src.client.embeds import HelpEmbed
+
+        await ctx.response.send_message(
+            embed=HelpEmbed,
+            ephemeral=True
+        )
