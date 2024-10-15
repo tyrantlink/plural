@@ -8,6 +8,7 @@ from src.api.docs import message as docs
 from src.api.drest import user_can_send
 from aiohttp import ClientSession
 from src.models import project
+from re import match
 
 router = APIRouter(prefix='/message', tags=['Message'])
 
@@ -57,12 +58,16 @@ async def post__message(
         raise HTTPException(
             404, 'webhook not found; make sure at least one message is sent via discord message before using the API')
 
+    if webhook.guild is None:
+        raise HTTPException(
+            400, 'invalid webhook url found, please send a message through the bot and try again')
+
     member = await Member.find_one({'_id': message.member})
 
     if member is None or token.user_id not in (await member.get_group()).accounts:
         raise HTTPException(404, 'member not found')
 
-    if not await user_can_send(token.user_id, message.channel):
+    if not await user_can_send(token.user_id, message.channel, webhook.guild):
         raise HTTPException(
             403, 'you do not have permission to send messages to this channel')
 

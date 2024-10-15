@@ -16,8 +16,12 @@ from time import time
 
 class _MongoNew:
     @staticmethod
-    def webhook(id: int, url: str) -> Webhook:
-        return Webhook(id=id, url=url)
+    def webhook(id: int, guild: int, url: str) -> Webhook:
+        return Webhook(
+            id=id,
+            guild=guild,
+            url=url
+        )
 
     @staticmethod
     def message(

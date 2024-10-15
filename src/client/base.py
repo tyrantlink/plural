@@ -57,6 +57,11 @@ class ClientBase(AutoShardedBot):
         webhook = await self.db.webhook(resolved_channel.id)
 
         if webhook is not None:
+            # ? temp migration
+            if webhook.guild is None:
+                webhook.guild = resolved_channel.guild.id
+                await webhook.save_changes()
+
             return Webhook.from_url(
                 webhook.url,
                 session=self.http._HTTPClient__session  # type: ignore # ? use it anyway
@@ -66,6 +71,7 @@ class ClientBase(AutoShardedBot):
             if webhook.name == '/plu/ral proxy':
                 await self.db.new.webhook(
                     resolved_channel.id,
+                    resolved_channel.guild.id,
                     webhook.url
                 ).save()
                 return webhook
@@ -77,6 +83,7 @@ class ClientBase(AutoShardedBot):
 
         await self.db.new.webhook(
             resolved_channel.id,
+            resolved_channel.guild.id,
             webhook.url
         ).save()
 

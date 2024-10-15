@@ -27,5 +27,9 @@ class DebugMessage(StrEnum):
     SUCCESS = 'would have successfully proxied message, no errors found'
 
 
+class APIResponse(StrEnum):
+    ...  # ? do this later
+
+
 with open('project.toml', 'r') as f:
     project = Project.model_validate(loads(f.read()))

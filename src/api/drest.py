@@ -16,7 +16,7 @@ CACHE_TTL = 60
 perm_cache = TTLDict[str, bool](ttl=CACHE_TTL)
 guild_cache = TTLDict[int, Guild](ttl=CACHE_TTL)
 member_cache = TTLDict[str, Member](ttl=CACHE_TTL)
-role_cache = TTLDict[Snowflake, Sequence[Role]](ttl=CACHE_TTL)
+role_cache = TTLDict[int, Sequence[Role]](ttl=CACHE_TTL)
 channel_cache = TTLDict[int, PermissibleGuildChannel](ttl=CACHE_TTL)
 
 REQUIRED_PERMISSIONS = (
@@ -34,27 +34,27 @@ async def start_drest() -> None:
     drest_client.start()
 
 
-async def _get_member(guild_id, user_id: int) -> Member:
+async def _get_member(guild_id: int, user_id: int) -> Member:
     if (cache_hash := f'{guild_id}::{user_id}') in member_cache:
         return member_cache[cache_hash]
 
     try:
         member = await drest_client.fetch_member(guild_id, user_id)
     except HikariError:
-        raise HTTPException(404, 'member not found')
+        raise HTTPException(404, 'channel not found')
 
     member_cache[cache_hash] = member
 
     return member
 
 
-async def _get_member_roles(member: Member) -> Sequence[Role]:
-    if member.id in role_cache:
-        return role_cache[member.id]
+async def _get_roles(guild_id: int) -> Sequence[Role]:
+    if guild_id in role_cache:
+        return role_cache[guild_id]
 
-    roles = await member.fetch_roles()
+    roles = await drest_client.fetch_roles(guild_id)
 
-    role_cache[member.id] = roles
+    role_cache[guild_id] = roles
 
     return roles
 
@@ -112,8 +112,13 @@ async def _compute_base_permissions(member: Member) -> Permissions:
 
     permissions = Permissions.NONE
 
-    for role in await _get_member_roles(member):
-        permissions |= role.permissions
+    guild_roles = await _get_roles(guild.id)
+    member_roles = set(member.role_ids)
+
+    for role in [role for role in guild_roles if role.id in member_roles]:
+        if role.id in member_roles:
+            print(role)
+            permissions |= role.permissions
 
     if permissions & Permissions.ADMINISTRATOR:
         return Permissions.all_permissions()
@@ -170,18 +175,19 @@ async def compute_permissions(member: Member, channel: PermissibleGuildChannel) 
     )
 
 
-async def user_can_send(user_id: int, channel_id: int) -> bool:
+async def user_can_send(user_id: int, channel_id: int, guild_id: int) -> bool:
     cache_hash = f'{user_id}::{channel_id}'
 
     if cache_hash in perm_cache:
         return perm_cache[cache_hash]
 
-    channel = await _get_permissible_channel(channel_id)
-
-    member = (await gather(  # ? getting guild here so it's cached for later
-        _get_member(channel.guild_id, user_id),
-        _get_guild(channel.guild_id)
-    ))[0]
+    # ? getting guild and roles here so it's cached for later
+    member, channel, _, _ = await gather(
+        _get_member(guild_id, user_id),
+        _get_permissible_channel(channel_id),
+        _get_roles(guild_id),
+        _get_guild(guild_id)
+    )
 
     member_permissions = await compute_permissions(member, channel)
 
