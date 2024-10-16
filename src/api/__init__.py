@@ -14,7 +14,8 @@ async def lifespan(app: FastAPI):
     await start_drest()
     from src.api.drest import drest_client
 
-    from .routers import image, message, latch, member, group
+    from .routers import image, message, latch, member, group, userproxy
+    app.include_router(userproxy.router)
     app.include_router(message.router)
     app.include_router(member.router)
     app.include_router(latch.router)
