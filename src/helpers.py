@@ -201,7 +201,7 @@ def format_reply(
         refcontent
         if len(refcontent) <= 75 else
         f'{refcontent[:75].strip()}…'
-    )
+    ).replace('://', ':/​/')  # ? add zero-width space to prevent link previews
 
     reply_content = (
         formatted_refcontent
