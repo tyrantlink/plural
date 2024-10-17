@@ -4,15 +4,46 @@ from src.helpers import CustomModal, send_error, send_success, include_all_optio
 from src.db import Group, Member, Message as DBMessage
 from src.views import DeleteConfirmation, ApiKeyView
 import src.commands.autocomplete as autocomplete
+from discord.utils import _bytes_to_base64_data
 from src.models import project, DebugMessage
 from discord.ext.commands import Cog
+from aiohttp import ClientSession
 from discord.ui import InputText
 from typing import TYPE_CHECKING
+from base64 import b64decode
 from asyncio import gather
 
 if TYPE_CHECKING:
     from discord.abc import MessageableChannel
     from src.client import Client
+
+
+USERPROXY_COMMANDS = [
+    {
+        'name': 'proxy',
+        'type': 1,
+        'description': 'send a message',
+        'options': [
+            {
+                'name': 'message',
+                'description': 'message to send',
+                'type': 3,
+                'required': True
+            }
+        ],
+        'integration_types': [1]
+    },
+    {
+        'name': 'reply',
+        'type': 3,
+        'integration_types': [1]
+    },
+    {
+        'name': 'edit',
+        'type': 3,
+        'integration_types': [1]
+    }
+]
 
 
 class BaseCommands(Cog):
@@ -201,7 +232,7 @@ class BaseCommands(Cog):
                 name='group',
                 description='group to restrict results to',
                 required=False,
-                autocomplete=autocomplete.groups)],)
+                autocomplete=autocomplete.groups)])
     async def slash_reproxy(self, ctx: ApplicationContext, member: Member, group: Group):
         if not isinstance(ctx.channel, MessageableChannel):
             await send_error(ctx, 'channel is not a messageable object')
@@ -376,3 +407,81 @@ class BaseCommands(Cog):
             embed=HelpEmbed,
             ephemeral=True
         )
+
+    @slash_command(  # ! branch this off into a separate cog, with subcommand /userproxy {new, delete, list}
+        name='create_userproxy',
+        description='create a userproxy, run with no arguments for more info',
+        options=[
+            Option(
+                MemberConverter,
+                name='member',
+                description='member to create a userproxy for',
+                required=False,
+                autocomplete=autocomplete.members),
+            Option(
+                str,
+                name='bot_token',
+                description='bot token to use for the userproxy',
+                required=False),
+            Option(
+                str,
+                name='public_key',
+                description='public key of the bot',
+                required=False)])
+    async def slash_create_userproxy(self, ctx: ApplicationContext, member: Member | None, bot_token: str | None, public_key: str | None):
+        assert ctx.interaction.user is not None
+        if member is None:
+            await send_error(ctx, 'not implemented yet')
+            return
+
+        if bot_token is None or public_key is None:
+            await send_error(ctx, 'you must provide a bot token and public key dummy')
+            return
+
+        await ctx.response.defer(ephemeral=True)
+
+        #! remember to add validation here
+        bot_id = int(b64decode(f'{bot_token.split('.')[0]}==').decode('utf-8'))
+
+        userproxy = await self.client.db.userproxy(bot_id, member.id)
+
+        if userproxy is not None:
+            await send_error(ctx, 'userproxy already exists')
+            return
+
+        async with ClientSession() as session:
+            for command in USERPROXY_COMMANDS:
+                await session.post(
+                    (  # ? stupid autoformatter
+                        f'https://discord.com/api/v10/applications/{bot_id}/commands'),
+                    headers={
+                        'Authorization': f'Bot {bot_token}'
+                    },
+                    json=command
+                )
+
+            patch = {
+                'username': member.name,
+            }
+
+            if member.avatar:
+                image = await self.client.db.image(member.avatar, True)
+                if image is not None:
+                    patch['avatar'] = _bytes_to_base64_data(image.data)
+
+            await session.patch(
+                f'https://discord.com/api/v10/users/@me',
+                headers={
+                    'Authorization': f'Bot {bot_token}'
+                },
+                json=patch
+            )
+
+        await self.client.db.new.userproxy(
+            bot_id=bot_id,
+            user_id=ctx.interaction.user.id,
+            member=member.id,
+            public_key=public_key
+        ).save()
+
+        await send_success(ctx, 'userproxy created successfully')

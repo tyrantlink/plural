@@ -3,6 +3,7 @@ from beanie import init_beanie, PydanticObjectId
 from typing import Type, overload, Literal
 from bcrypt import hashpw, gensalt
 from .models import DatalessImage
+from .userproxy import UserProxy
 from secrets import token_hex
 from .webhook import Webhook
 from .message import Message
@@ -86,6 +87,20 @@ class _MongoNew:
             token
         )
 
+    @staticmethod
+    def userproxy(
+        bot_id: int,
+        user_id: int,
+        member: PydanticObjectId,
+        public_key: str
+    ) -> UserProxy:
+        return UserProxy(
+            bot_id=bot_id,
+            user_id=user_id,
+            member=member,
+            public_key=public_key
+        )
+
 
 class MongoDatabase:
     def __init__(self, mongo_uri: str) -> None:
@@ -94,7 +109,7 @@ class MongoDatabase:
 
     async def connect(self) -> None:
         await init_beanie(self._client, document_models=[
-            Webhook, Message, Group, Member, Image, Latch, ApiKey
+            Webhook, Message, Group, Member, Image, Latch, ApiKey, UserProxy
         ])
 
     @property
@@ -165,3 +180,6 @@ class MongoDatabase:
 
     async def api_key(self, user_id: int) -> ApiKey | None:
         return await ApiKey.find_one({'_id': user_id})
+
+    async def userproxy(self, bot_id: int, member_id: PydanticObjectId) -> UserProxy | None:
+        return await UserProxy.find_one({'bot_id': bot_id, 'member': member_id})
