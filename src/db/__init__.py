@@ -92,13 +92,15 @@ class _MongoNew:
         bot_id: int,
         user_id: int,
         member: PydanticObjectId,
-        public_key: str
+        public_key: str,
+        token: str | None = None
     ) -> UserProxy:
         return UserProxy(
             bot_id=bot_id,
             user_id=user_id,
             member=member,
-            public_key=public_key
+            public_key=public_key,
+            token=token
         )
 
 
@@ -183,3 +185,6 @@ class MongoDatabase:
 
     async def userproxy(self, bot_id: int, member_id: PydanticObjectId) -> UserProxy | None:
         return await UserProxy.find_one({'bot_id': bot_id, 'member': member_id})
+
+    async def userproxies(self, user_id: int) -> list[UserProxy]:
+        return await UserProxy.find({'user_id': user_id}).to_list()

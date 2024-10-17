@@ -20,3 +20,10 @@ class UserProxy(Document):
     user_id: int = Field(description='user id')
     member: PydanticObjectId = Field(description='the userproxy member id')
     public_key: str = Field(description='the userproxy public key')
+    token: str | None = Field(
+        None,
+        description='the bot token, only stored when autosyncing is enabled')
+
+    @property
+    def autosync(self) -> bool:
+        return self.token is not None

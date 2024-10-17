@@ -88,7 +88,7 @@ class GroupCommands(BaseCommands):
                 description='account to share with')])
     async def group_share(self, ctx: ApplicationContext, group: Group, user: User):
         # ! figure out sharing groups with a code or something
-        await send_error(ctx, 'not implemented')
+        await send_error(ctx, 'not implemented yet')
 
     @group_set.command(
         name='name',

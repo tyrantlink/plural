@@ -10,6 +10,10 @@ from beanie import PydanticObjectId
 from bson.errors import InvalidId
 from src.db import Group, Member
 from functools import partial
+from base64 import b64encode
+from uuid import uuid4
+from io import BytesIO
+from json import dumps
 
 # ? this is a very unorganized file of anything that might be needed
 TOKEN_EPOCH = 1727988244890
@@ -490,3 +494,34 @@ def merge_dicts(*dicts: Mapping) -> dict:
             else:
                 out[k] = v
     return out
+
+
+def create_multipart(
+    json_payload: dict,
+    files: list[bytes]
+) -> tuple[str, bytes]:  # boundary, body
+    boundary = uuid4().hex
+
+    body = BytesIO()
+
+    body.write(f'--{boundary}\r\n'.encode('latin-1'))
+    body.write(
+        f'Content-Disposition: form-data; name="payload_json"\r\n'.encode('latin-1'))
+    body.write('Content-Type: application/json\r\n\n'.encode('latin-1'))
+    body.write(f'{dumps(json_payload)}\r\n'.encode('latin-1'))
+
+    for index, file in enumerate(files):
+        filename = json_payload['data']['attachments'][0]['filename']
+        content_type = json_payload['data']['attachments'][0]['content_type']
+
+        body.write(f'--{boundary}\r\n'.encode('latin-1'))
+        body.write(
+            f'Content-Disposition: form-data; name="files[{index}]"; filename="{filename}"\r\n'.encode('latin-1'))
+        body.write(
+            f'Content-Type: {content_type}\r\n\n'.encode('latin-1'))
+        body.write(file)
+        body.write('\r\n'.encode('latin-1'))
+
+    body.write(f'--{boundary}--\r\n'.encode('latin-1'))
+
+    return boundary, body.getvalue()

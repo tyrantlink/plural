@@ -7,6 +7,7 @@ class Project(BaseModel):
     bot_token: str
     mongo_uri: str
     base_url: str
+    api_url: str
     import_proxy_channel_id: int
 
 
