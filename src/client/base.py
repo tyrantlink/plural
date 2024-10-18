@@ -90,7 +90,7 @@ class ClientBase(AutoShardedBot):
 
     def _ensure_proxy_preserves_mentions(self, check: Match) -> bool:
         for safety_match in finditer(
-            r'<(?:[@#]|:\S+|\/(?:\w+ ?){3}:)\d+>',
+            r'<(?:(?:[@#]|:\S+|\/(?:\w+ ?){1,3}:)\d+|https?:\/\/[^\s]+)>',
             check.string
         ):
             if (
