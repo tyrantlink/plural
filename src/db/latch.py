@@ -1,5 +1,6 @@
 from beanie import Document, PydanticObjectId
 from pydantic import Field
+from .member import Member
 
 
 class Latch(Document):
@@ -21,3 +22,8 @@ class Latch(Document):
     enabled: bool = Field(False, description='whether the latch is enabled')
     member: PydanticObjectId | None = Field(
         description='the latched member id')
+
+    async def get_member(self) -> Member:
+        member = await Member.find_one({'id': self.member})
+        assert member is not None
+        return member

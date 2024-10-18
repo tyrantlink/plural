@@ -130,6 +130,7 @@ class ClientBase(AutoShardedBot):
             return None, None, None  # ? mypy stupid
 
         latch = await self.db.latch(message.author.id, message.guild.id)
+        latch_return: None | tuple[Member, str, Latch] = None
 
         for group in groups.copy():
             if (  # ? this is a mess, if the system restricts channels and the message isn't in one of them, skip
@@ -149,6 +150,11 @@ class ClientBase(AutoShardedBot):
 
                 if member is None:
                     continue
+
+                if latch and latch.enabled and latch.member == member.id:
+                    # ? putting this here, if there are proxy tags given, prioritize them
+                    # ? also having this check here ensures that channels are still checked
+                    latch_return = member, message.content, latch
 
                 for proxy_tag in member.proxy_tags:
                     if not proxy_tag.prefix and not proxy_tag.suffix:
@@ -180,11 +186,8 @@ class ClientBase(AutoShardedBot):
 
             return None, None, None
 
-        if latch.enabled and latch.member is not None:
-            member = await self.db.member(latch.member)
-
-            if member is not None:
-                return member, message.content, latch
+        if latch_return is not None:
+            return latch_return
 
         if debug_log:
             debug_log.append(DebugMessage.AUTHOR_NO_TAGS_NO_LATCH)
