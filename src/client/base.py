@@ -369,7 +369,7 @@ class ClientBase(AutoShardedBot):
                     MISSING
                 ),
                 wait=True,
-                username=member.name,
+                username=f'{member.name}{((await member.get_group()).tag or '')}',
                 avatar_url=avatar,
                 embed=embed,
                 files=[
