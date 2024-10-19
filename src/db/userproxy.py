@@ -1,4 +1,5 @@
 from beanie import Document, PydanticObjectId
+from src.db.member import Member
 from pydantic import Field
 
 
@@ -27,3 +28,8 @@ class UserProxy(Document):
     @property
     def autosync(self) -> bool:
         return self.token is not None
+
+    async def get_member(self) -> Member:
+        member = await Member.get(self.member)
+        assert member is not None
+        return member

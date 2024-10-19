@@ -1,7 +1,8 @@
 from discord import ApplicationContext, Option, SlashCommandGroup
-from src.helpers import send_error, send_success, MemberConverter
+from src.converters import MemberConverter, UserProxyConverter
 from aiohttp import ClientSession, ClientResponse
 import src.commands.autocomplete as autocomplete
+from src.helpers import send_error, send_success
 from discord.utils import _bytes_to_base64_data
 from src.commands.base import BaseCommands
 from discord.errors import HTTPException
@@ -22,7 +23,7 @@ USERPROXY_COMMANDS = [
                 'description': 'message to send',
                 'max_length': 2000,
                 'type': 3,
-                'required': True
+                'required': False
             },
             {
                 'name': 'queue_for_reply',
@@ -86,6 +87,66 @@ class UserProxyCommands(BaseCommands):
 
         return responses
 
+    def _get_bot_id(self, token: str) -> int:
+        #! do validation here too
+        return int(b64decode(f'{token.split(".")[0]}==').decode('utf-8'))
+
+    async def _sync_userproxy_with_member(
+        self,
+        ctx: ApplicationContext,
+        userproxy: UserProxy,
+        bot_token: str,
+        sync_commands: bool
+    ) -> None:
+        assert ctx.interaction.user is not None
+        member = await userproxy.get_member()
+        bot_id = self._get_bot_id(bot_token)
+
+        image_data = None
+
+        if member.avatar:
+            image = await self.client.db.image(member.avatar, True)
+            if image is not None:
+                image_data = _bytes_to_base64_data(image.data)
+
+        # ? remember to add user descriptions to userproxy
+        bot_patch = {
+            'username': member.name,
+            'description': f'userproxy for {ctx.interaction.user.id} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
+        }
+
+        app_patch = {
+            # 'interactions_endpoint_url': f'{project.api_url}/userproxy/interactions'
+        }
+
+        if image_data:
+            bot_patch['avatar'] = image_data
+            app_patch['icon'] = image_data
+
+        responses = await self._multi_request(
+            bot_token,
+            [
+                *(
+                    [
+                        (
+                            'post',
+                            f'applications/{bot_id}/commands',
+                            command
+                        )
+                        for command in []
+                    ]
+                    if sync_commands else
+                    []
+                ),
+                # ('patch', 'users/@me', bot_patch),
+                ('patch', 'applications/@me', app_patch)
+            ]
+        )
+
+        public_key = (await responses[-1].json())['verify_key']
+
+        userproxy.public_key = public_key
+
     @userproxy.command(
         name='help',
         description='information about userproxies')
@@ -104,19 +165,25 @@ class UserProxyCommands(BaseCommands):
             Option(
                 str,
                 name='bot_token',
-                description='bot token to use for the userproxy')])
+                description='bot token to use for the userproxy'),
+            Option(
+                bool,
+                name='autosync',
+                description='REQUIRES STORING BOT TOKEN; sync the userproxy with the bot',
+                default=False,
+                required=False)])
     async def slash_userproxy_new(
         self,
         ctx: ApplicationContext,
         member: Member,
-        bot_token: str
+        bot_token: str,
+        autosync: bool
     ) -> None:
         assert ctx.interaction.user is not None
 
         await ctx.response.defer(ephemeral=True)
 
-        #! remember to add validation here
-        bot_id = int(b64decode(f'{bot_token.split('.')[0]}==').decode('utf-8'))
+        bot_id = self._get_bot_id(bot_token)
 
         userproxy = await self.client.db.userproxy(bot_id, member.id)
 
@@ -124,51 +191,15 @@ class UserProxyCommands(BaseCommands):
             await send_error(ctx, 'userproxy already exists')
             return
 
-        image_data = None
-
-        if member.avatar:
-            image = await self.client.db.image(member.avatar, True)
-            if image is not None:
-                image_data = _bytes_to_base64_data(image.data)
-
-        # ? remember to add user descriptions to userproxy
-        bot_patch = {
-            'username': member.name,
-            'description': f'userproxy for tyrantlink powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
-        }
-
-        app_patch = {
-            # 'interactions_endpoint_url': f'{project.api_url}/userproxy/interactions'
-        }
-
-        if image_data:
-            bot_patch['avatar'] = image_data
-            app_patch['icon'] = image_data
-
-        responses = await self._multi_request(
-            bot_token,
-            [
-                *[
-                    (
-                        'post',
-                        f'applications/{bot_id}/commands',
-                        command
-                    )
-                    for command in []
-                ],
-                # ('patch', 'users/@me', bot_patch),
-                ('patch', 'applications/@me', app_patch)
-            ]
-        )
-
-        public_key = (await responses[-1].json())['verify_key']
-
-        await self.client.db.new.userproxy(
+        userproxy = UserProxy(
             bot_id=bot_id,
             user_id=ctx.interaction.user.id,
             member=member.id,
-            public_key=public_key
-        ).save()
+            public_key='',  # ? set by _sync_userproxy_with_member
+            token=bot_token if autosync else None
+        )
+
+        await self._sync_userproxy_with_member(ctx, userproxy, bot_token, True)
 
         await send_success(ctx, 'userproxy created successfully')
 
@@ -195,27 +226,46 @@ class UserProxyCommands(BaseCommands):
         description='delete a userproxy',
         options=[
             Option(
-                MemberConverter,
-                name='member',
-                description='member to delete the userproxy for',
-                autocomplete=autocomplete.members)])
+                UserProxyConverter,
+                name='userproxy',
+                description='userproxy to delete',
+                autocomplete=autocomplete.userproxies)])
     async def slash_userproxy_delete(
         self,
         ctx: ApplicationContext,
-        member: Member
+        userproxy: UserProxy
     ) -> None:
-        assert ctx.interaction.user is not None
-
-        userproxy = await UserProxy.find_one({
-            'user_id': ctx.interaction.user.id,
-            'member': member.id
-        })
-
-        if userproxy is None:
-            await send_error(ctx, 'userproxy does not exist')
-            return
-
         await gather(
             userproxy.delete(),
             send_success(ctx, 'userproxy deleted successfully')
         )
+
+    @userproxy.command(
+        name='sync',
+        description='sync userproxy with bot',
+        options=[
+            Option(
+                UserProxyConverter,
+                name='userproxy',
+                description='userproxy to sync with attached member',
+                autocomplete=autocomplete.userproxies),
+            Option(
+                str,
+                name='bot_token',
+                description='bot token to use to sync the userproxy')])
+    async def slash_userproxy_sync(
+        self,
+        ctx: ApplicationContext,
+        userproxy: UserProxy,
+        bot_token: str
+    ) -> None:
+        await ctx.response.defer(ephemeral=True)
+
+        await self._sync_userproxy_with_member(ctx, userproxy, bot_token, False)
+
+        msg = 'userproxy synced successfully'
+
+        if userproxy.autosync:
+            msg += '\n\n**Warning:** userproxy is set to autosync, running /userproxy sync manually is usually unnecessary'
+
+        await send_success(ctx, 'userproxy synced successfully')
