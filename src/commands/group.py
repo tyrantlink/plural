@@ -1,10 +1,11 @@
 from discord import ApplicationContext, Option, SlashCommandGroup, Attachment, User
-from src.helpers import send_error, send_success, MemberConverter, GroupConverter
+from src.helpers import send_error, send_success
 import src.commands.autocomplete as autocomplete
 from src.commands.base import BaseCommands
+from src.converters import GroupConverter
 from discord.abc import GuildChannel
-from src.db import Group, Member
 from asyncio import gather
+from src.db import Group
 
 
 class GroupCommands(BaseCommands):

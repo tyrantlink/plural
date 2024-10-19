@@ -1,16 +1,14 @@
 from __future__ import annotations
 from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING
-from src.helpers import CustomModal, send_error, send_success, include_all_options, GroupConverter, MemberConverter
+from src.converters import MemberConverter, GroupConverter, include_all_options
+from src.helpers import CustomModal, send_error, send_success
 from src.db import Group, Member, Message as DBMessage
 from src.views import DeleteConfirmation, ApiKeyView
 import src.commands.autocomplete as autocomplete
-from discord.utils import _bytes_to_base64_data
 from src.models import project, DebugMessage
 from discord.ext.commands import Cog
-from aiohttp import ClientSession
 from discord.ui import InputText
 from typing import TYPE_CHECKING
-from base64 import b64decode
 from asyncio import gather
 
 if TYPE_CHECKING:

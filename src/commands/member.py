@@ -1,6 +1,7 @@
-from src.helpers import send_error, send_success, include_all_options, MemberConverter, GroupConverter
+from src.converters import MemberConverter, GroupConverter, include_all_options
 from discord import ApplicationContext, Option, SlashCommandGroup, Attachment
 import src.commands.autocomplete as autocomplete
+from src.helpers import send_error, send_success
 from src.commands.base import BaseCommands
 from src.db.models import ProxyTag
 from src.db import Member, Group

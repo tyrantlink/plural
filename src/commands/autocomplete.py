@@ -1,4 +1,4 @@
-from discord import AutocompleteContext, OptionChoice, ApplicationContext
+from discord import AutocompleteContext, OptionChoice
 from beanie import PydanticObjectId
 from src.db import Group, UserProxy
 from typing import NamedTuple
