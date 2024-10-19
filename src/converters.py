@@ -151,15 +151,15 @@ class DBConverter(Converter):
 
 
 class MemberConverter(DBConverter):
-    argument_name = DBConversionType.MEMBER
+    argument = DBConversionType.MEMBER
 
 
 class GroupConverter(DBConverter):
-    argument_name = DBConversionType.GROUP
+    argument = DBConversionType.GROUP
 
 
 class UserProxyConverter(DBConverter):
-    argument_name = DBConversionType.USERPROXY
+    argument = DBConversionType.USERPROXY
 
 
 CONVERTER_MAPPING.update(

@@ -1,6 +1,6 @@
+from enum import StrEnum, Enum
 from pydantic import BaseModel
 from tomllib import loads
-from enum import StrEnum
 
 
 class Project(BaseModel):
@@ -9,6 +9,11 @@ class Project(BaseModel):
     base_url: str
     api_url: str
     import_proxy_channel_id: int
+
+
+class MemberUpdateType(Enum):
+    NAME = 1
+    AVATAR = 2
 
 
 class DebugMessage(StrEnum):

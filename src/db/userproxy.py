@@ -1,6 +1,10 @@
+from __future__ import annotations
 from beanie import Document, PydanticObjectId
-from src.db.member import Member
 from pydantic import Field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.db.member import Member
 
 
 class UserProxy(Document):
@@ -30,6 +34,7 @@ class UserProxy(Document):
         return self.token is not None
 
     async def get_member(self) -> Member:
+        from src.db.member import Member
         member = await Member.get(self.member)
         assert member is not None
         return member

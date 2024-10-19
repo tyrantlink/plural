@@ -1,19 +1,18 @@
 from discord import Interaction, ApplicationContext, Embed, Colour, Message, HTTPException, Forbidden
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
-from discord.ext.commands.converter import CONVERTER_MAPPING
-from typing import Literal, overload, Iterable, Any
+from aiohttp import ClientSession, ClientResponse
+from discord.utils import _bytes_to_base64_data
 from asyncio import sleep, create_task, Task
 from hikari import Message as HikariMessage
-from discord.ext.commands import Converter
 from collections.abc import Mapping
-from beanie import PydanticObjectId
-from bson.errors import InvalidId
-from src.db import Group, Member
+from src.db import Image, UserProxy
+from typing import Iterable, Any
+from src.models import project
 from functools import partial
-from base64 import b64encode
 from uuid import uuid4
-from io import BytesIO
 from json import dumps
+from io import BytesIO
+
 
 # ? this is a very unorganized file of anything that might be needed
 TOKEN_EPOCH = 1727988244890
@@ -374,3 +373,85 @@ def create_multipart(
     body.write(f'--{boundary}--\r\n'.encode('latin-1'))
 
     return boundary, body.getvalue()
+
+
+async def multi_request(
+    token: str,
+    requests: list[tuple[str, str, dict]]
+) -> list[ClientResponse]:
+    """requests is a list of tuples of method, endpoint, json"""
+    responses: list[ClientResponse] = []
+    async with ClientSession() as session:
+        for method, endpoint, json in requests:
+            resp = await session.request(
+                method,
+                f'https://discord.com/api/v10/{endpoint}',
+                headers={
+                    'Authorization': f'Bot {token}'
+                },
+                json=json
+            )
+
+            if resp.status != 200:
+                raise HTTPException(resp, await resp.text())
+
+            responses.append(resp)
+
+    return responses
+
+
+async def sync_userproxy_with_member(
+    ctx: ApplicationContext,
+    userproxy: UserProxy,
+    bot_token: str,
+    sync_commands: bool = False
+) -> None:
+    assert ctx.interaction.user is not None
+    member = await userproxy.get_member()
+
+    image_data = None
+
+    if member.avatar:
+        image = await Image.get(member.avatar)
+        if image is not None:
+            image_data = _bytes_to_base64_data(image.data)
+
+    # ? remember to add user descriptions to userproxy
+    bot_patch = {
+        'username': member.name,
+        'description': f'userproxy for {ctx.interaction.user.id} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
+    }
+
+    app_patch = {
+        # 'interactions_endpoint_url': f'{project.api_url}/userproxy/interactions'
+    }
+
+    if image_data:
+        bot_patch['avatar'] = image_data
+        app_patch['icon'] = image_data
+
+    responses = await multi_request(
+        bot_token,
+        [
+            *(
+                [
+                    (
+                        'post',
+                        f'applications/{userproxy.bot_id}/commands',
+                        command
+                    )
+                    for command in []
+                ]
+                if sync_commands else
+                []
+            ),
+            # ('patch', 'users/@me', bot_patch),
+            ('patch', 'applications/@me', app_patch)
+        ]
+    )
+
+    public_key = (await responses[-1].json())['verify_key']
+
+    userproxy.public_key = public_key
+
+    await userproxy.save()

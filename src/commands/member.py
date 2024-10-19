@@ -1,8 +1,10 @@
+from discord import ApplicationContext, Option, SlashCommandGroup, Attachment, HTTPException
 from src.converters import MemberConverter, GroupConverter, include_all_options
-from discord import ApplicationContext, Option, SlashCommandGroup, Attachment
+from src.helpers import send_error, send_success, multi_request
 import src.commands.autocomplete as autocomplete
-from src.helpers import send_error, send_success
+from discord.utils import _bytes_to_base64_data
 from src.commands.base import BaseCommands
+from src.models import MemberUpdateType
 from src.db.models import ProxyTag
 from src.db import Member, Group
 from asyncio import gather
@@ -21,6 +23,70 @@ class MemberCommands(BaseCommands):
         name='proxy',
         description='manage a member\'s proxy tags'
     )
+
+    async def _on_member_update(
+        self,
+        ctx: ApplicationContext,
+        member: Member,
+        type: MemberUpdateType
+    ) -> None:
+        if (userproxy := await member.get_userproxy()) is None:
+            return None
+
+        if userproxy.token is None:
+
+            return None
+
+        patches: list[tuple[str, str, dict]] = []
+
+        match type:
+            case MemberUpdateType.NAME:
+                patches = [
+                    ('patch', 'users/@me', {'username': member.name})
+                ]
+            case MemberUpdateType.AVATAR:
+                image_data = None
+
+                if member.avatar:
+                    image = await self.client.db.image(member.avatar, True)
+                    if image is not None:
+                        image_data = _bytes_to_base64_data(image.data)
+
+                patches = [
+                    ('patch', 'users/@me', {'avatar': image_data}),
+                    ('patch', 'applications/@me', {'icon': image_data})
+                ]
+            case _:
+                return None
+
+        if patches:
+            try:
+                await multi_request(
+                    userproxy.token,
+                    patches
+                )
+            except HTTPException as exception:
+                error = exception.text
+                code = 'UNKNOWN'
+                try:  # ? this is really really gross
+                    json_error: dict[str, dict[str, dict[str, list[dict[str, str]]]]] = await exception.response.json()
+                    error_detail = list(
+                        list(
+                            json_error['errors'].values()
+                        )[0].values())[0][0]
+                    code = error_detail['code']
+                    error = error_detail['message']
+                except Exception:
+                    pass
+
+                match code:
+                    case 'UNKNOWN':
+                        print(
+                            f'got unknown error code from discord on auto sync: {code}, {error}')
+                    case 'USERNAME_TOO_MANY_USERS':
+                        error += '\n\n**note**: username is still updated for the /plu/ral member'
+
+                await send_error(ctx, f'error updating userproxy: {error}')
 
     @member.command(
         name='new',
@@ -119,12 +185,14 @@ class MemberCommands(BaseCommands):
     async def slash_member_set_name(self, ctx: ApplicationContext, member: Member, name: str, group: Group) -> None:
         old_name, member.name = member.name, name
 
-        await gather(
+        updated_member, _ = await gather(
             member.save_changes(),
             send_success(
                 ctx,
                 f'member `{old_name}` of group `{group.name}` was renamed to `{member.name}`')
         )
+        if updated_member is not None:
+            await self._on_member_update(ctx, updated_member, MemberUpdateType.NAME)
 
     @member_set.command(
         name='group',
@@ -232,10 +300,12 @@ class MemberCommands(BaseCommands):
         if extension in {'gif'}:
             success_message += '\n\n**note:** gif avatars are not animated'
 
-        await gather(
+        updated_member, _ = await gather(
             member.save_changes(),
             send_success(ctx, success_message)
         )
+        if updated_member is not None:
+            await self._on_member_update(ctx, updated_member, MemberUpdateType.AVATAR)
 
     @member_proxy.command(
         name='add',

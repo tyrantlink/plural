@@ -1,15 +1,12 @@
+from src.helpers import send_error, send_success, sync_userproxy_with_member
 from discord import ApplicationContext, Option, SlashCommandGroup
 from src.converters import MemberConverter, UserProxyConverter
-from aiohttp import ClientSession, ClientResponse
 import src.commands.autocomplete as autocomplete
-from src.helpers import send_error, send_success
-from discord.utils import _bytes_to_base64_data
 from src.commands.base import BaseCommands
-from discord.errors import HTTPException
 from src.db import Member, UserProxy
-from src.models import project
 from base64 import b64decode
 from asyncio import gather
+
 
 # ! /userproxy {new, delete, list}
 USERPROXY_COMMANDS = [
@@ -63,89 +60,9 @@ class UserProxyCommands(BaseCommands):
         description='manage userproxies'
     )
 
-    async def _multi_request(
-        self,
-        token: str,
-        requests: list[tuple[str, str, dict]]
-    ) -> list[ClientResponse]:
-        responses: list[ClientResponse] = []
-        async with ClientSession() as session:
-            for method, endpoint, json in requests:
-                resp = await session.request(
-                    method,
-                    f'https://discord.com/api/v10/{endpoint}',
-                    headers={
-                        'Authorization': f'Bot {token}'
-                    },
-                    json=json
-                )
-
-                if resp.status != 200:
-                    raise HTTPException(resp, resp.reason)
-
-                responses.append(resp)
-
-        return responses
-
     def _get_bot_id(self, token: str) -> int:
         #! do validation here too
         return int(b64decode(f'{token.split(".")[0]}==').decode('utf-8'))
-
-    async def _sync_userproxy_with_member(
-        self,
-        ctx: ApplicationContext,
-        userproxy: UserProxy,
-        bot_token: str,
-        sync_commands: bool
-    ) -> None:
-        assert ctx.interaction.user is not None
-        member = await userproxy.get_member()
-        bot_id = self._get_bot_id(bot_token)
-
-        image_data = None
-
-        if member.avatar:
-            image = await self.client.db.image(member.avatar, True)
-            if image is not None:
-                image_data = _bytes_to_base64_data(image.data)
-
-        # ? remember to add user descriptions to userproxy
-        bot_patch = {
-            'username': member.name,
-            'description': f'userproxy for {ctx.interaction.user.id} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
-        }
-
-        app_patch = {
-            # 'interactions_endpoint_url': f'{project.api_url}/userproxy/interactions'
-        }
-
-        if image_data:
-            bot_patch['avatar'] = image_data
-            app_patch['icon'] = image_data
-
-        responses = await self._multi_request(
-            bot_token,
-            [
-                *(
-                    [
-                        (
-                            'post',
-                            f'applications/{bot_id}/commands',
-                            command
-                        )
-                        for command in []
-                    ]
-                    if sync_commands else
-                    []
-                ),
-                # ('patch', 'users/@me', bot_patch),
-                ('patch', 'applications/@me', app_patch)
-            ]
-        )
-
-        public_key = (await responses[-1].json())['verify_key']
-
-        userproxy.public_key = public_key
 
     @userproxy.command(
         name='help',
@@ -199,7 +116,7 @@ class UserProxyCommands(BaseCommands):
             token=bot_token if autosync else None
         )
 
-        await self._sync_userproxy_with_member(ctx, userproxy, bot_token, True)
+        await sync_userproxy_with_member(ctx, userproxy, bot_token, True)
 
         await send_success(ctx, 'userproxy created successfully')
 
@@ -261,7 +178,7 @@ class UserProxyCommands(BaseCommands):
     ) -> None:
         await ctx.response.defer(ephemeral=True)
 
-        await self._sync_userproxy_with_member(ctx, userproxy, bot_token, False)
+        await sync_userproxy_with_member(ctx, userproxy, bot_token, False)
 
         msg = 'userproxy synced successfully'
 

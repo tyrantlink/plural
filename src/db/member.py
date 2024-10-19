@@ -8,6 +8,7 @@ from .models import ProxyTag
 
 if TYPE_CHECKING:
     from src.db.group import Group
+    from src.db.userproxy import UserProxy
 
 
 class Member(Document):
@@ -58,3 +59,8 @@ class Member(Document):
             raise ValueError(f'member {self.id} is not in any group')
 
         return group
+
+    async def get_userproxy(self) -> UserProxy | None:
+        from src.db.userproxy import UserProxy
+
+        return await UserProxy.find_one({'member': self.id})
