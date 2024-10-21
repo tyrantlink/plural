@@ -38,6 +38,9 @@ async def discord_key_validator(
     except BadSignatureError:
         raise HTTPException(401, 'Invalid request signature')
 
+    if json_body['type'] == InteractionType.PING.value:
+        return True
+
     user_id = int(json_body['authorizing_integration_owners']['1'])
 
     if user_proxy.user_id != user_id:
