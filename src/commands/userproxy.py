@@ -25,7 +25,7 @@ class UserProxyCommands(BaseCommands):
         if m is None:
             raise ValueError('invalid token')
 
-        return int(b64decode(f'{m.group(0)}==').decode('utf-8'))
+        return int(b64decode(f'{m.group(3)}==').decode('utf-8'))
 
     @userproxy.command(
         name='help',
