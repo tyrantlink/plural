@@ -91,3 +91,20 @@ class MessageFlags(IntFlag):
     FAILED_TO_MENTION_SOME_ROLES_IN_THREAD = 1 << 8
     SUPPRESS_NOTIFICATIONS = 1 << 12
     IS_VOICE_MESSAGE = 1 << 13
+
+
+class ComponentType(Enum):
+    ACTION_ROW = 1
+    BUTTON = 2
+    STRING_SELECT = 3
+    TEXT_INPUT = 4
+    USER_SELECT = 5
+    ROLE_SELECT = 6
+    MENTIONABLE_SELECT = 7
+    CHANNEL_SELECT = 8
+
+
+class TextInputStyle(Enum):
+    SHORT = 1
+    PARAGRAPH = 2
+    LONG = 2

@@ -31,16 +31,16 @@ USERPROXY_COMMANDS = [
                 'required': False
             },
             {
+                'name': 'attachment',
+                'description': 'attachment to send',
+                'type': 11,
+                'required': False
+            },
+            {
                 'name': 'queue_for_reply',
                 'description': 'queue for reply message command (see /help)',
                 'type': 5,
                 'default': False,
-                'required': False
-            },
-            {
-                'name': 'attachment',
-                'description': 'attachment to send',
-                'type': 11,
                 'required': False
             }
         ],
@@ -420,7 +420,7 @@ def create_multipart(
 
 async def multi_request(
     token: str,
-    requests: list[tuple[str, str, dict | None]]
+    requests: list[tuple[str, str, dict[Any, Any]]]
 ) -> list[tuple[ClientResponse, str]]:
     """requests is a list of tuples of method, endpoint, json"""
     responses: list[tuple[ClientResponse, str]] = []
@@ -466,35 +466,48 @@ async def sync_userproxy_with_member(
     }
 
     app_patch = {
-        'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction'
+        'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction',
+        'integration_types_config': {
+            '1': {
+                'oauth2_install_params': {
+                    'scopes': ['applications.commands']
+                }
+            }
+        }
     }
 
-    # if image_data:
-    #     bot_patch['avatar'] = image_data
-    #     app_patch['icon'] = image_data
+    if image_data:
+        bot_patch['avatar'] = image_data
+        app_patch['icon'] = image_data
+
+    requests: list[tuple[str, str, dict]] = [
+        ('patch', 'users/@me', bot_patch)
+    ]
+
+    if sync_commands:
+        requests.insert(
+            0,
+            (
+                'put',
+                'applications/@me/commands',
+                USERPROXY_COMMANDS  # type: ignore # ? i don't wanna deal with mypy
+            )
+        )
 
     responses = await multi_request(
         bot_token,
-        [
-            *(
-                [
-                    (
-                        'post',
-                        f'applications/{userproxy.bot_id}/commands',
-                        command
-                    )
-                    for command in USERPROXY_COMMANDS
-                ]
-                if sync_commands else
-                []
-            ),
-            ('patch', 'users/@me', bot_patch),
-            ('get', 'applications/@me', None)
-        ]
+        requests
     )
 
-    for resp, text in responses:
-        print(text)
+    errors = [
+        text
+        for resp, text in responses
+        if resp.status != 200
+    ]
+
+    if errors:
+        await send_error(ctx, '\n'.join(errors))
+        return
 
     public_key = (loads(responses[-1][1]))['verify_key']
 

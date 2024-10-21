@@ -1,7 +1,7 @@
 from .enums import ChannelType, OverwriteType, VideoQualityMode
 from pydantic import BaseModel
-from .user import User
 from datetime import datetime
+from .user import User
 
 
 class Overwrite(BaseModel):

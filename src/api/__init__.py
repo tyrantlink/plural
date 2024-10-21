@@ -26,7 +26,9 @@ async def lifespan(app: FastAPI):
 
     await drest_client.close()
     from src.api.drest import drest_app
+    from src.api.models.discord.interaction.response import session
     await drest_app.close()
+    await session.close()
 
 
 app = FastAPI(

@@ -1,20 +1,6 @@
 from pydantic import BaseModel, Field
 from beanie import PydanticObjectId
 
-# {
-#     "id": "67018b8f74900a4cd3235555",
-#     "name": "test",
-#     "accounts": [
-#         250797109022818300
-#     ],
-#     "avatar": null,
-#     "channels": [],
-#     "tag": null,
-#     "members": [
-#         "67018b8f74900a4cd3235556"
-#     ]
-# }
-
 
 class GroupModel(BaseModel):
     id: PydanticObjectId = Field(description='the id of the group')

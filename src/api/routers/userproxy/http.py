@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, Header, Depends, Request
 from src.api.models.discord import Interaction, InteractionType
+from .commands import on_command, on_modal_submit
 from nacl.exceptions import BadSignatureError
 from fastapi.responses import Response
 from nacl.signing import VerifyKey
-from .commands import on_command
 from src.db import UserProxy
 from typing import Annotated
 from json import loads
@@ -18,7 +18,8 @@ async def discord_key_validator(
 ) -> bool:
     try:
         request_body = (await request.body()).decode()
-        application_id = int(loads(request_body)['application_id'])
+        json_body = loads(request_body)
+        application_id = int(json_body['application_id'])
     except Exception:
         raise HTTPException(400, 'Invalid request body')
 
@@ -37,6 +38,15 @@ async def discord_key_validator(
     except BadSignatureError:
         raise HTTPException(401, 'Invalid request signature')
 
+    user_id = int(json_body['authorizing_integration_owners']['1'])
+
+    if user_proxy.user_id != user_id:
+        member = await user_proxy.get_member()
+        group = await member.get_group()
+
+        if user_id not in group.accounts:
+            raise HTTPException(401, 'Invalid user id')
+
     return True
 
 
@@ -47,17 +57,16 @@ async def discord_key_validator(
 async def post__interaction(
     interaction_raw: dict
 ) -> Response:
-    print(interaction_raw)
     interaction = Interaction(**interaction_raw)
-    if interaction.type == InteractionType.PING:
-        return interaction.response.pong()
 
-    if interaction.data is None:
-        raise HTTPException(400, 'Invalid interaction data')
+    match interaction.type:
+        case InteractionType.PING:
+            await interaction.pong()
+        case InteractionType.APPLICATION_COMMAND:
+            await on_command(interaction)
+        case InteractionType.MODAL_SUBMIT:
+            await on_modal_submit(interaction)
+        case _:
+            raise HTTPException(400, 'Unsupported interaction type')
 
-    if interaction.type == InteractionType.APPLICATION_COMMAND:
-        return await on_command(interaction)
-
-    #! handle modal submit here too
-
-    raise HTTPException(400, 'Unsupported interaction type')
+    return Response(status_code=202)
