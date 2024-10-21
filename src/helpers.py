@@ -1,19 +1,65 @@
 from discord import Interaction, ApplicationContext, Embed, Colour, Message, HTTPException, Forbidden
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
-from discord.ext.commands.converter import CONVERTER_MAPPING
-from typing import Literal, overload, Iterable, Any
+from aiohttp import ClientSession, ClientResponse
+from discord.utils import _bytes_to_base64_data
 from asyncio import sleep, create_task, Task
 from hikari import Message as HikariMessage
-from discord.ext.commands import Converter
 from collections.abc import Mapping
-from beanie import PydanticObjectId
-from bson.errors import InvalidId
-from src.db import Group, Member
+from src.db import Image, UserProxy
+from typing import Iterable, Any
+from src.models import project
 from functools import partial
+from json import dumps, loads
+from uuid import uuid4
+from io import BytesIO
+
 
 # ? this is a very unorganized file of anything that might be needed
 TOKEN_EPOCH = 1727988244890
 BASE66CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789=-_~'
+USERPROXY_COMMANDS = [
+    {
+        'name': 'proxy',
+        'type': 1,
+        'description': 'send a message',
+        'options': [
+            {
+                'name': 'message',
+                'description': 'message to send',
+                'max_length': 2000,
+                'type': 3,
+                'required': False
+            },
+            {
+                'name': 'attachment',
+                'description': 'attachment to send',
+                'type': 11,
+                'required': False
+            },
+            {
+                'name': 'queue_for_reply',
+                'description': 'queue for reply message command (see /help)',
+                'type': 5,
+                'default': False,
+                'required': False
+            }
+        ],
+        'integration_types': [1],
+        'contexts': [0, 1, 2]
+    },
+    {
+        'name': 'reply',
+        'type': 3,
+        'integration_types': [1],
+        'contexts': [0, 1, 2]
+    },
+    {
+        'name': 'edit',
+        'type': 3,
+        'integration_types': [1],
+        'contexts': [0, 1, 2]
+    }
+]
 
 
 class CustomModal(_Modal):
@@ -218,157 +264,6 @@ def format_reply(
     return ReplyEmbed(reference, jump_url)
 
 
-class DBConversionError(Exception):
-    ...
-
-
-class DBConverter(Converter):
-    argument_name = str()
-
-    async def convert(self, ctx: ApplicationContext, value: str):
-        match self.argument_name:
-            case 'member':
-                return await self._handle_member(ctx, value)
-            case 'group':
-                return await self._handle_group(ctx, value)
-            case _:  # ? should never happen
-                raise DBConversionError(f'invalid argument `{value}`')
-
-    def _get_options(self, ctx: ApplicationContext) -> dict[str, str]:
-        if ctx.interaction.data is None:  # ? should never happen
-            raise DBConversionError('interaction data is None')
-
-        return {
-            # ? type is string, value will always be string
-            o['name']: o['value']  # type: ignore
-            for o in ctx.interaction.data.get('options', [])
-        }
-
-    def _get_reversed_options(self, ctx: ApplicationContext) -> dict[str, str]:
-        return {
-            v: k
-            for k, v in self._get_options(ctx).items()
-        }
-
-    @overload
-    async def _handle_member(self, ctx: ApplicationContext, value: str) -> Member:
-        ...
-
-    @overload
-    async def _handle_member(self, ctx: ApplicationContext, value: None) -> None:
-        ...
-
-    async def _handle_member(self, ctx: ApplicationContext, value: str | None) -> Member | None:
-        if value is None:
-            return None
-
-        try:
-            parsed_value = PydanticObjectId(value)
-        except InvalidId:
-            parsed_value = None
-
-        member, group = None, None
-
-        if parsed_value is not None:
-            member = await Member.find_one({'_id': parsed_value})
-
-        # ? member argument is not id, try to find by name
-        if parsed_value is None and member is None:
-            group = await self._handle_group(ctx, self._get_options(ctx).get('group', 'default') or 'default')
-            member = await group.get_member_by_name(value)
-
-        if member is None:
-            raise DBConversionError('member not found')
-
-        if group is None:
-            group = await member.get_group()
-
-        if ctx.author.id not in group.accounts:
-            raise DBConversionError('member not found')
-
-        return member
-
-    async def _handle_group(self, ctx: ApplicationContext, value: str | None) -> Group:
-        if isinstance(value, str):
-            try:
-                parsed_value = PydanticObjectId(value)
-            except InvalidId:
-                parsed_value = None
-
-            group = None
-
-            if parsed_value is not None:
-                group = await Group.find_one({'_id': parsed_value})
-
-            # ? group argument is not id, try to find by name
-            if parsed_value is None and group is None:
-                group = await Group.find_one({'accounts': ctx.author.id, 'name': value})
-
-            if group is None or ctx.author.id not in group.accounts:
-                raise DBConversionError('group not found')
-
-            return group
-
-        # ? group argument is None, try to find member argument
-        if (member := self._get_options(ctx).get('member', None)) is not None:
-            try:
-                return await (await self._handle_member(ctx, member)).get_group()
-            except DBConversionError:
-                # ? no need to actually raise the errors, if member is a supplied argument,
-                # ? then those errors will be raised by the member conversion
-                pass
-
-        # ? group argument is None and member argument is not found, try to find by default
-        group = await Group.find_one({'accounts': ctx.author.id, 'name': 'default'})
-
-        # ? ensure default group always exists
-        if group is None:
-            group = Group(
-                accounts={ctx.author.id},
-                name='default',
-                avatar=None,
-                tag=None
-            )
-            await group.save()
-
-        return group
-
-
-class MemberConverter(DBConverter):
-    argument_name = 'member'
-
-
-class GroupConverter(DBConverter):
-    argument_name = 'group'
-
-
-CONVERTER_MAPPING.update(
-    {
-        Member: MemberConverter,
-        Group: GroupConverter
-    }
-)
-
-
-def include_all_options(ctx: ApplicationContext) -> Literal[True]:
-    if ctx.interaction.data is None:
-        return True
-
-    ctx.interaction.data['options'] = [  # type: ignore # ? mypy stupid
-        *ctx.interaction.data.get('options', []),
-        *[
-            {
-                'value': o.default,
-                'type': o.input_type.value,
-                'name': o.name
-            }
-            for o in ctx.unselected_options or []
-        ]
-    ]
-
-    return True
-
-
 class TTLSet[_T](set):
     def __init__(self, __iterable: Iterable[_T] | None = None, ttl: int = 86400) -> None:
         """a normal set with an async time-to-live (seconds) for each item"""
@@ -490,3 +385,143 @@ def merge_dicts(*dicts: Mapping) -> dict:
             else:
                 out[k] = v
     return out
+
+
+def create_multipart(
+    json_payload: dict,
+    files: list[bytes]
+) -> tuple[str, bytes]:  # boundary, body
+    boundary = uuid4().hex
+
+    body = BytesIO()
+
+    body.write(f'--{boundary}\r\n'.encode('latin-1'))
+    body.write(
+        f'Content-Disposition: form-data; name="payload_json"\r\n'.encode('latin-1'))
+    body.write('Content-Type: application/json\r\n\n'.encode('latin-1'))
+    body.write(f'{dumps(json_payload)}\r\n'.encode('latin-1'))
+
+    for index, file in enumerate(files):
+        filename = json_payload['data']['attachments'][0]['filename']
+        content_type = json_payload['data']['attachments'][0]['content_type']
+
+        body.write(f'--{boundary}\r\n'.encode('latin-1'))
+        body.write(
+            f'Content-Disposition: form-data; name="files[{index}]"; filename="{filename}"\r\n'.encode('latin-1'))
+        body.write(
+            f'Content-Type: {content_type}\r\n\n'.encode('latin-1'))
+        body.write(file)
+        body.write('\r\n'.encode('latin-1'))
+
+    body.write(f'--{boundary}--\r\n'.encode('latin-1'))
+
+    return boundary, body.getvalue()
+
+
+async def multi_request(
+    token: str,
+    requests: list[tuple[str, str, dict[Any, Any]]]
+) -> list[tuple[ClientResponse, str]]:
+    """requests is a list of tuples of method, endpoint, json"""
+    responses: list[tuple[ClientResponse, str]] = []
+    async with ClientSession() as session:
+        for method, endpoint, json in requests:
+            resp = await session.request(
+                method,
+                f'https://discord.com/api/v10/{endpoint}',
+                headers={
+                    'Authorization': f'Bot {token}'
+                },
+                json=json
+            )
+
+            if resp.status not in {200, 201}:
+                raise HTTPException(resp, await resp.text())
+
+            responses.append((resp, await resp.text()))
+
+    return responses
+
+
+async def sync_userproxy_with_member(
+    ctx: ApplicationContext,
+    userproxy: UserProxy,
+    bot_token: str,
+    sync_commands: bool = False
+) -> None:
+    assert ctx.interaction.user is not None
+    member = await userproxy.get_member()
+
+    image_data = None
+
+    if member.avatar:
+        image = await Image.get(member.avatar)
+        if image is not None:
+            image_data = _bytes_to_base64_data(image.data)
+
+    # ? remember to add user descriptions to userproxy
+    bot_patch = {
+        'username': member.name,
+        'description': f'userproxy for @{ctx.interaction.user.name} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
+    }
+
+    app_patch = {
+        'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction',
+        'integration_types_config': {
+            '1': {
+                'oauth2_install_params': {
+                    'scopes': ['applications.commands']
+                }
+            }
+        }
+    }
+
+    if image_data:
+        bot_patch['avatar'] = image_data
+        app_patch['icon'] = image_data
+
+    requests: list[tuple[str, str, dict]] = [
+        ('patch', 'users/@me', bot_patch)
+    ]
+
+    if sync_commands:
+        requests.insert(
+            0,
+            (
+                'put',
+                'applications/@me/commands',
+                USERPROXY_COMMANDS  # type: ignore # ? i don't wanna deal with mypy
+            )
+        )
+
+    responses = await multi_request(
+        bot_token,
+        requests
+    )
+
+    errors = [
+        text
+        for resp, text in responses
+        if resp.status != 200
+    ]
+
+    if errors:
+        await send_error(ctx, '\n'.join(errors))
+        return
+
+    public_key = (loads(responses[-1][1]))['verify_key']
+
+    userproxy.public_key = public_key
+
+    await userproxy.save()
+
+    app_request = await multi_request(
+        bot_token,
+        [
+            ('patch', f'applications/@me', app_patch)
+        ]
+    )
+
+    for resp, text in app_request:
+        if resp.status != 200:
+            print(text)

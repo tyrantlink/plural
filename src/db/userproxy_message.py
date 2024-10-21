@@ -4,7 +4,7 @@ from pymongo import IndexModel
 from pydantic import Field
 
 
-class Message(Document):
+class UserProxyMessage(Document):
     def __eq__(self, other: object) -> bool:
         return isinstance(other, type(self)) and self.id == other.id
 
@@ -12,21 +12,19 @@ class Message(Document):
         return hash(self.id)
 
     class Settings:
-        name = 'messages'
+        name = 'userproxy_messages'
         validate_on_save = True
-        cache_expiration_time = timedelta(minutes=60)
+        cache_expiration_time = timedelta(minutes=15)
         indexes = [
-            'original_id',
-            'proxy_id',
-            'author_id',
-            IndexModel('ts', expireAfterSeconds=3600)
+            'message_id',
+            # ? tokens expire after 15 minutes
+            IndexModel('ts', expireAfterSeconds=880)
         ]
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
-    original_id: int | None = Field(
-        description='the original id of the message; None if message sent through api')
-    proxy_id: int = Field(description='the proxy id of the message')
-    author_id: int = Field(description='the author id of the message')
+    message_id: int = Field(
+        description='the original id of the message')
+    token: str = Field(description='the token of the interaction')
     ts: datetime = Field(
         default_factory=datetime.utcnow,
         description='the timestamp of the message')
