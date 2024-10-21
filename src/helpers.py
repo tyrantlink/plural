@@ -489,7 +489,7 @@ async def sync_userproxy_with_member(
             0,
             (
                 'put',
-                'applications/@me/commands',
+                f'applications/{userproxy.bot_id}/commands',
                 USERPROXY_COMMANDS  # type: ignore # ? i don't wanna deal with mypy
             )
         )

@@ -6,6 +6,7 @@ from src.commands.base import BaseCommands
 from src.db import Member, UserProxy
 from base64 import b64decode
 from asyncio import gather
+from re import match
 
 
 class UserProxyCommands(BaseCommands):
@@ -15,8 +16,15 @@ class UserProxyCommands(BaseCommands):
     )
 
     def _get_bot_id(self, token: str) -> int:
-        #! do validation here too
-        return int(b64decode(f'{token.split(".")[0]}==').decode('utf-8'))
+        m = match(
+            r'^(mfa\.[a-z0-9_-]{20,})|(([a-z0-9_-]{23,28})\.[a-z0-9_-]{6,7}\.(?:[a-z0-9_-]{27}|[a-z0-9_-]{38}))$',
+            token
+        )
+
+        if m is None:
+            raise ValueError('invalid token')
+
+        return int(b64decode(f'{m.group(0)}==').decode('utf-8'))
 
     @userproxy.command(
         name='help',
