@@ -1,7 +1,22 @@
+from logging import getLogger, Filter, LogRecord
 from contextlib import asynccontextmanager
 from src.api.drest import start_drest
 from src.api.docs import root as docs
 from fastapi import FastAPI, Response
+from re import match
+
+
+class LocalHealthcheckFilter(Filter):
+    def filter(self, record: LogRecord) -> bool:
+        return bool(
+            match(  # ? yes, this does not need to be this specific
+                r'^INFO: +172\.\d+\.\d+\.\d+:\d+ - "GET \/healthcheck HTTP\/\d+\.\d+" 204 No Content$',
+                record.getMessage()
+            )
+        )
+
+
+getLogger("uvicorn.access").addFilter(LocalHealthcheckFilter())
 
 
 @asynccontextmanager
