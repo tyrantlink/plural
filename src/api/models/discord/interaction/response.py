@@ -53,13 +53,6 @@ class InteractionResponse(BaseModel):
             token=self.token
         ).save()
 
-    async def pong(self) -> None:
-        await self._request(
-            'POST',
-            self._callback_url,
-            {'type': InteractionCallbackType.PONG.value}
-        )
-
     async def send_message(
         self,
         content: str | None = None,

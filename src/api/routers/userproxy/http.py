@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, Header, Depends, Request
 from src.api.models.discord import Interaction, InteractionType
+from fastapi.responses import Response, JSONResponse
 from .commands import on_command, on_modal_submit
 from nacl.exceptions import BadSignatureError
-from fastapi.responses import Response
 from nacl.signing import VerifyKey
 from src.db import UserProxy
 from typing import Annotated
@@ -62,7 +62,7 @@ async def post__interaction(
 ) -> Response:
     match interaction.type:
         case InteractionType.PING:
-            await interaction.pong()
+            return JSONResponse({'type': 1})
         case InteractionType.APPLICATION_COMMAND:
             await on_command(interaction)
         case InteractionType.MODAL_SUBMIT:

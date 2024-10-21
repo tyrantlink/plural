@@ -10,7 +10,7 @@ from ..user import User
 
 class Interaction(InteractionResponse):
     type: InteractionType
-    data: InteractionData | None
+    data: InteractionData | None = None
     guild: PartialGuild | None = None
     guild_id: str | None = None
     channel: Channel | None = None

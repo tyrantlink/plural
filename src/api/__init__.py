@@ -8,7 +8,7 @@ from re import match
 
 class LocalHealthcheckFilter(Filter):
     def filter(self, record: LogRecord) -> bool:
-        return bool(
+        return not bool(
             match(  # ? yes, this does not need to be this specific
                 r'^INFO: +172\.\d+\.\d+\.\d+:\d+ - "GET \/healthcheck HTTP\/\d+\.\d+" 204 No Content$',
                 record.getMessage()
