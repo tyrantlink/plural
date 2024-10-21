@@ -466,14 +466,7 @@ async def sync_userproxy_with_member(
     }
 
     app_patch = {
-        'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction',
-        'integration_types_config': {
-            '1': {
-                'oauth2_install_params': {
-                    'scopes': ['applications.commands']
-                }
-            }
-        }
+        'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction'
     }
 
     if image_data:
