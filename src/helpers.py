@@ -9,14 +9,57 @@ from src.db import Image, UserProxy
 from typing import Iterable, Any
 from src.models import project
 from functools import partial
+from json import dumps, loads
 from uuid import uuid4
-from json import dumps
 from io import BytesIO
 
 
 # ? this is a very unorganized file of anything that might be needed
 TOKEN_EPOCH = 1727988244890
 BASE66CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789=-_~'
+USERPROXY_COMMANDS = [
+    {
+        'name': 'proxy',
+        'type': 1,
+        'description': 'send a message',
+        'options': [
+            {
+                'name': 'message',
+                'description': 'message to send',
+                'max_length': 2000,
+                'type': 3,
+                'required': False
+            },
+            {
+                'name': 'queue_for_reply',
+                'description': 'queue for reply message command (see /help)',
+                'type': 5,
+                'default': False,
+                'required': False
+            },
+            {
+                'name': 'attachment',
+                'description': 'attachment to send',
+                'type': 11,
+                'required': False
+            }
+        ],
+        'integration_types': [1],
+        'contexts': [0, 1, 2]
+    },
+    {
+        'name': 'reply',
+        'type': 3,
+        'integration_types': [1],
+        'contexts': [0, 1, 2]
+    },
+    {
+        'name': 'edit',
+        'type': 3,
+        'integration_types': [1],
+        'contexts': [0, 1, 2]
+    }
+]
 
 
 class CustomModal(_Modal):
@@ -377,10 +420,10 @@ def create_multipart(
 
 async def multi_request(
     token: str,
-    requests: list[tuple[str, str, dict]]
-) -> list[ClientResponse]:
+    requests: list[tuple[str, str, dict | None]]
+) -> list[tuple[ClientResponse, str]]:
     """requests is a list of tuples of method, endpoint, json"""
-    responses: list[ClientResponse] = []
+    responses: list[tuple[ClientResponse, str]] = []
     async with ClientSession() as session:
         for method, endpoint, json in requests:
             resp = await session.request(
@@ -392,10 +435,10 @@ async def multi_request(
                 json=json
             )
 
-            if resp.status != 200:
+            if resp.status not in {200, 201}:
                 raise HTTPException(resp, await resp.text())
 
-            responses.append(resp)
+            responses.append((resp, await resp.text()))
 
     return responses
 
@@ -423,12 +466,12 @@ async def sync_userproxy_with_member(
     }
 
     app_patch = {
-        # 'interactions_endpoint_url': f'{project.api_url}/userproxy/interactions'
+        'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction'
     }
 
-    if image_data:
-        bot_patch['avatar'] = image_data
-        app_patch['icon'] = image_data
+    # if image_data:
+    #     bot_patch['avatar'] = image_data
+    #     app_patch['icon'] = image_data
 
     responses = await multi_request(
         bot_token,
@@ -440,18 +483,32 @@ async def sync_userproxy_with_member(
                         f'applications/{userproxy.bot_id}/commands',
                         command
                     )
-                    for command in []
+                    for command in USERPROXY_COMMANDS
                 ]
                 if sync_commands else
                 []
             ),
-            # ('patch', 'users/@me', bot_patch),
-            ('patch', 'applications/@me', app_patch)
+            ('patch', 'users/@me', bot_patch),
+            ('get', 'applications/@me', None)
         ]
     )
 
-    public_key = (await responses[-1].json())['verify_key']
+    for resp, text in responses:
+        print(text)
+
+    public_key = (loads(responses[-1][1]))['verify_key']
 
     userproxy.public_key = public_key
 
     await userproxy.save()
+
+    app_request = await multi_request(
+        bot_token,
+        [
+            ('patch', f'applications/@me', app_patch)
+        ]
+    )
+
+    for resp, text in app_request:
+        if resp.status != 200:
+            print(text)

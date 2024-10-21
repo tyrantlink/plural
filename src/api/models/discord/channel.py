@@ -16,7 +16,7 @@ class ThreadMetadata(BaseModel):
     auto_archive_duration: int
     archive_timestamp: datetime
     locked: bool
-    invitable: bool
+    invitable: bool | None = None
     create_timestamp: datetime
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from beanie import Document, PydanticObjectId
-from pydantic import Field
 from typing import TYPE_CHECKING
+from pydantic import Field
 
 if TYPE_CHECKING:
     from src.db.member import Member

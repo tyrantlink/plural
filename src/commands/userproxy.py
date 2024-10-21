@@ -8,52 +8,6 @@ from base64 import b64decode
 from asyncio import gather
 
 
-# ! /userproxy {new, delete, list}
-USERPROXY_COMMANDS = [
-    {
-        'name': 'proxy',
-        'type': 1,
-        'description': 'send a message',
-        'options': [
-            {
-                'name': 'message',
-                'description': 'message to send',
-                'max_length': 2000,
-                'type': 3,
-                'required': False
-            },
-            {
-                'name': 'queue_for_reply',
-                'description': 'queue for reply message command (see /help)',
-                'type': 5,
-                'default': False,
-                'required': False
-            },
-            {
-                'name': 'attachment',
-                'description': 'attachment to send',
-                'type': 11,
-                'required': False
-            }
-        ],
-        'integration_types': [1],
-        'contexts': [0, 1, 2]
-    },
-    {
-        'name': 'reply',
-        'type': 3,
-        'integration_types': [1],
-        'contexts': [0, 1, 2]
-    },
-    {
-        'name': 'edit',
-        'type': 3,
-        'integration_types': [1],
-        'contexts': [0, 1, 2]
-    }
-]
-
-
 class UserProxyCommands(BaseCommands):
     userproxy = SlashCommandGroup(
         name='userproxy',
@@ -169,16 +123,30 @@ class UserProxyCommands(BaseCommands):
             Option(
                 str,
                 name='bot_token',
-                description='bot token to use to sync the userproxy')])
+                description='bot token to use to sync the userproxy',
+                required=False),
+            Option(
+                bool,
+                name='sync_commands',
+                description='resync userproxy commands',
+                default=False)])
     async def slash_userproxy_sync(
         self,
         ctx: ApplicationContext,
         userproxy: UserProxy,
-        bot_token: str
+        bot_token: str | None,
+        sync_commands: bool
     ) -> None:
         await ctx.response.defer(ephemeral=True)
 
-        await sync_userproxy_with_member(ctx, userproxy, bot_token, False)
+        if bot_token is None and userproxy.token is None:
+            await send_error(ctx, 'you must provide a bot token if you did not store one when creating the userproxy')
+            return
+
+        token = bot_token or userproxy.token
+        assert token is not None
+
+        await sync_userproxy_with_member(ctx, userproxy, token, sync_commands)
 
         msg = 'userproxy synced successfully'
 

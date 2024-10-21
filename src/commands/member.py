@@ -37,7 +37,7 @@ class MemberCommands(BaseCommands):
 
             return None
 
-        patches: list[tuple[str, str, dict]] = []
+        patches: list[tuple[str, str, dict | None]] = []
 
         match type:
             case MemberUpdateType.NAME:

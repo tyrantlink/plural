@@ -1,6 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from beanie import init_beanie, PydanticObjectId
 from typing import Type, overload, Literal
+from src.models import ReplyAttachment
 from bcrypt import hashpw, gensalt
 from .models import DatalessImage
 from .userproxy import UserProxy
@@ -12,6 +13,7 @@ from .member import Member
 from .group import Group
 from .latch import Latch
 from .image import Image
+from .reply import Reply
 from time import time
 
 
@@ -111,7 +113,7 @@ class MongoDatabase:
 
     async def connect(self) -> None:
         await init_beanie(self._client, document_models=[
-            Webhook, Message, Group, Member, Image, Latch, ApiKey, UserProxy
+            Webhook, Message, Group, Member, Image, Latch, ApiKey, UserProxy, Reply
         ])
 
     @property

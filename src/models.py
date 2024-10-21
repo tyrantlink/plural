@@ -11,6 +11,16 @@ class Project(BaseModel):
     import_proxy_channel_id: int
 
 
+class ReplyAttachment(BaseModel):
+    id: str
+    filename: str
+    size: int
+    url: str
+    proxy_url: str
+    height: int | None = None
+    width: int | None = None
+
+
 class MemberUpdateType(Enum):
     NAME = 1
     AVATAR = 2
