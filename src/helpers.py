@@ -481,7 +481,9 @@ async def sync_userproxy_with_member(
         app_patch['icon'] = image_data
 
     requests: list[tuple[str, str, dict]] = [
-        ('patch', 'users/@me', bot_patch)
+        ('patch', 'users/@me', bot_patch),
+        # ? effectively a get, to get public key
+        ('patch', 'applications/@me', {})
     ]
 
     if sync_commands:
