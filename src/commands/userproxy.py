@@ -4,9 +4,9 @@ from src.converters import MemberConverter, UserProxyConverter
 import src.commands.autocomplete as autocomplete
 from src.commands.base import BaseCommands
 from src.db import Member, UserProxy
+from re import match, IGNORECASE
 from base64 import b64decode
 from asyncio import gather
-from re import match
 
 
 class UserProxyCommands(BaseCommands):
@@ -18,7 +18,8 @@ class UserProxyCommands(BaseCommands):
     def _get_bot_id(self, token: str) -> int:
         m = match(
             r'^(mfa\.[a-z0-9_-]{20,})|(([a-z0-9_-]{23,28})\.[a-z0-9_-]{6,7}\.(?:[a-z0-9_-]{27}|[a-z0-9_-]{38}))$',
-            token
+            token,
+            IGNORECASE
         )
 
         if m is None:
