@@ -1,13 +1,29 @@
+from enum import StrEnum, Enum
 from pydantic import BaseModel
 from tomllib import loads
-from enum import StrEnum
 
 
 class Project(BaseModel):
     bot_token: str
     mongo_uri: str
     base_url: str
+    api_url: str
     import_proxy_channel_id: int
+
+
+class ReplyAttachment(BaseModel):
+    id: str
+    filename: str
+    size: int
+    url: str
+    proxy_url: str
+    height: int | None = None
+    width: int | None = None
+
+
+class MemberUpdateType(Enum):
+    NAME = 1
+    AVATAR = 2
 
 
 class DebugMessage(StrEnum):

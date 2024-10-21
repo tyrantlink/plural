@@ -1,10 +1,11 @@
 from discord import ApplicationContext, Option, SlashCommandGroup, Attachment, User
-from src.helpers import send_error, send_success, MemberConverter, GroupConverter
+from src.helpers import send_error, send_success
 import src.commands.autocomplete as autocomplete
 from src.commands.base import BaseCommands
+from src.converters import GroupConverter
 from discord.abc import GuildChannel
-from src.db import Group, Member
 from asyncio import gather
+from src.db import Group
 
 
 class GroupCommands(BaseCommands):
@@ -88,7 +89,7 @@ class GroupCommands(BaseCommands):
                 description='account to share with')])
     async def group_share(self, ctx: ApplicationContext, group: Group, user: User):
         # ! figure out sharing groups with a code or something
-        await send_error(ctx, 'not implemented')
+        await send_error(ctx, 'not implemented yet')
 
     @group_set.command(
         name='name',

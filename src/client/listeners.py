@@ -1,8 +1,7 @@
 from discord import ApplicationContext, DiscordException, Message, RawReactionActionEvent
-from src.helpers import send_error, DBConversionError
+from src.helpers import send_error
 from time import perf_counter
 from .base import ClientBase
-from asyncio import gather
 
 
 class ClientListeners(ClientBase):

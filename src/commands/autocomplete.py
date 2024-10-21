@@ -1,8 +1,8 @@
-from discord import AutocompleteContext, OptionChoice, ApplicationContext
+from discord import AutocompleteContext, OptionChoice
 from beanie import PydanticObjectId
+from src.db import Group, UserProxy
 from typing import NamedTuple
 from thefuzz import process  # type: ignore
-from src.db import Group
 
 
 class ProcessedMember(NamedTuple):
@@ -10,16 +10,16 @@ class ProcessedMember(NamedTuple):
     member_name: str
     score: int
     group_name: str
+    userproxy_id: PydanticObjectId | None = None
 
 
 async def groups(ctx: AutocompleteContext) -> list[str]:
-    if ctx.interaction.user is None:
-        return ['you do not exist']
+    assert ctx.interaction.user is not None
 
     groups = [group.name for group in await Group.find({'accounts': ctx.interaction.user.id}).to_list()]
 
     if not groups:
-        return ['no groups found, run /manage to create one']
+        return ['no groups found, run /group new to create one']
 
     if ctx.value == '' or ctx.value.isspace():
         return groups[:25]
@@ -33,13 +33,12 @@ async def groups(ctx: AutocompleteContext) -> list[str]:
         processed_groups
         if group[1] > 60 or process_failed
     ] or [
-        'no groups matched, run /manage to create a new one'
+        'no groups matched, run /group new to create a new one'
     ]
 
 
 async def members(ctx: AutocompleteContext) -> list[OptionChoice]:
-    if ctx.interaction.user is None:
-        return [OptionChoice(name='you do not exist', value='None')]
+    assert ctx.interaction.user is not None
 
     selected_group: str = ctx.options.get('group', None)
 
@@ -55,7 +54,7 @@ async def members(ctx: AutocompleteContext) -> list[OptionChoice]:
     ]
 
     if not members:
-        return [OptionChoice(name='no members found, run /manage to create one', value='None')]
+        return [OptionChoice(name='no members found, run /member new to create one', value='None')]
 
     if ctx.value == '' or ctx.value.isspace():
         return [
@@ -103,5 +102,67 @@ async def members(ctx: AutocompleteContext) -> list[OptionChoice]:
         if processed.score > 60 or process_failed
     ] or [
         OptionChoice(
-            name='no members matched, run /manage to create a new one', value='None')
+            name='no members matched, run /member new to create a new one', value='None')
+    ]
+
+
+async def userproxies(ctx: AutocompleteContext) -> list[OptionChoice]:
+    assert ctx.interaction.user is not None
+
+    members = [
+        (userproxy, await userproxy.get_member())
+        for userproxy in [
+            userproxy
+            for userproxy in
+            await UserProxy.find({'user_id': ctx.interaction.user.id}).to_list()
+        ]
+    ]
+
+    if not userproxies:
+        return [OptionChoice(name='no userproxies found, run /userproxy new to create one', value='None')]
+
+    if ctx.value == '' or ctx.value.isspace():
+        return [
+            OptionChoice(
+                name=(
+                    ''.join(['{', (await member.get_group()).name, '} ', member.name])
+                ),
+                value=str(userproxy.id))
+            for userproxy, member in members[:25]
+        ]
+
+    processed_userproxies = [
+        ProcessedMember(
+            processed[2][1],
+            processed[0],
+            processed[1],
+            processed[2][0],
+            processed[2][2]
+        )
+        for processed in
+        process.extract(
+            ctx.value,
+            {
+                ((await member.get_group()).name, member.id, userproxy.id): member.name
+                for userproxy, member
+                in members
+            },
+            limit=5
+        )
+    ]
+
+    process_failed = all(m.score == 0 for m in processed_userproxies)
+
+    return [
+        OptionChoice(
+            name=(
+                ''.join(
+                    ['{', processed.group_name, '} ', processed.member_name])
+            ),
+            value=str(processed.userproxy_id))
+        for processed in processed_userproxies
+        if processed.score > 60 or process_failed
+    ] or [
+        OptionChoice(
+            name='no userproxies matched, run /userproxy new to create a new one', value='None')
     ]

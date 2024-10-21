@@ -1,6 +1,7 @@
 from __future__ import annotations
 from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING
-from src.helpers import CustomModal, send_error, send_success, include_all_options, GroupConverter, MemberConverter
+from src.converters import MemberConverter, GroupConverter, include_all_options
+from src.helpers import CustomModal, send_error, send_success
 from src.db import Group, Member, Message as DBMessage
 from src.views import DeleteConfirmation, ApiKeyView
 import src.commands.autocomplete as autocomplete
@@ -201,7 +202,7 @@ class BaseCommands(Cog):
                 name='group',
                 description='group to restrict results to',
                 required=False,
-                autocomplete=autocomplete.groups)],)
+                autocomplete=autocomplete.groups)])
     async def slash_reproxy(self, ctx: ApplicationContext, member: Member, group: Group):
         if not isinstance(ctx.channel, MessageableChannel):
             await send_error(ctx, 'channel is not a messageable object')

@@ -1,5 +1,6 @@
-from beanie import Document, PydanticObjectId  # , TimeSeriesConfig, Granularity
+from beanie import Document, PydanticObjectId
 from datetime import timedelta, datetime
+from pymongo import IndexModel
 from pydantic import Field
 
 
@@ -13,13 +14,13 @@ class Message(Document):
     class Settings:
         name = 'messages'
         validate_on_save = True
-        cache_expiration_time = timedelta(minutes=30)
-        indexes = ['original_id', 'proxy_id', 'author_id']
-        # timeseries = TimeSeriesConfig( #! https://github.com/BeanieODM/beanie/issues/1005
-        #     time_field='ts',
-        #     granularity=Granularity.seconds,
-        #     expire_after_seconds=30
-        # )
+        cache_expiration_time = timedelta(minutes=60)
+        indexes = [
+            'original_id',
+            'proxy_id',
+            'author_id',
+            IndexModel('ts', expireAfterSeconds=3600)
+        ]
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
     original_id: int | None = Field(
@@ -27,5 +28,5 @@ class Message(Document):
     proxy_id: int = Field(description='the proxy id of the message')
     author_id: int = Field(description='the author id of the message')
     ts: datetime = Field(
-        default_factory=datetime.now,
+        default_factory=datetime.utcnow,
         description='the timestamp of the message')
