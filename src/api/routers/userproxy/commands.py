@@ -21,6 +21,7 @@ async def _slash_proxy(
                 TextInput(
                     custom_id='message',
                     style=TextInputStyle.LONG,
+                    max_length=2000,
                     label='message',
                     placeholder='message content\nyou should only use this if you need to send a message with newlines',
                     required=True
@@ -70,6 +71,7 @@ async def _message_reply(
                 TextInput(
                     custom_id='message',
                     style=TextInputStyle.LONG,
+                    max_length=2000,
                     label='message',
                     required=True
                 )
