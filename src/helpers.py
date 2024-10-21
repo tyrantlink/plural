@@ -462,7 +462,7 @@ async def sync_userproxy_with_member(
     # ? remember to add user descriptions to userproxy
     bot_patch = {
         'username': member.name,
-        'description': f'userproxy for @{ctx.interaction.user.name} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
+        # 'description': f'userproxy for @{ctx.interaction.user.name} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
     }
 
     app_patch = {
