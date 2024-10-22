@@ -39,7 +39,7 @@ USERPROXY_COMMANDS = [
             },
             {
                 'name': 'queue_for_reply',
-                'description': 'queue for reply message command (see /help)',
+                'description': 'queue for reply message command (stores message until reply is used or 5 minutes pass)',
                 'type': 5,
                 'default': False,
                 'required': False
