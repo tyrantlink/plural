@@ -1,7 +1,7 @@
 from discord import Interaction, ApplicationContext, Embed, Colour, Message, HTTPException, Forbidden
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
+from discord.utils import _bytes_to_base64_data, escape_markdown
 from aiohttp import ClientSession, ClientResponse
-from discord.utils import _bytes_to_base64_data
 from asyncio import sleep, create_task, Task
 from hikari import Message as HikariMessage
 from collections.abc import Mapping
@@ -12,6 +12,7 @@ from functools import partial
 from json import dumps, loads
 from uuid import uuid4
 from io import BytesIO
+from re import match
 
 
 # ? this is a very unorganized file of anything that might be needed
@@ -228,7 +229,7 @@ def format_reply(
     reference: Message | HikariMessage,
     guild_id: int | None = None
 ) -> str | ReplyEmbed:
-    refcontent = (reference.content or '').replace('\n', ' ')
+    refcontent = reference.content or ''
     refattachments = reference.attachments
     mention = (
         reference.author.mention
@@ -242,6 +243,16 @@ def format_reply(
     )
 
     base_reply = f'-# [↪](<{jump_url}>) {mention}'
+
+    if (
+        match(
+            r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\)',
+            refcontent
+        )
+    ):
+        refcontent = '\n'.join(refcontent.split('\n')[1:])
+
+    refcontent = escape_markdown(refcontent.replace('\n', ' '))
 
     formatted_refcontent = (
         refcontent
