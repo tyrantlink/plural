@@ -1,5 +1,5 @@
 from __future__ import annotations
-from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, Message, Permissions, MISSING, AllowedMentions
+from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, ForumChannel, Message, Permissions, MISSING, AllowedMentions
 from src.db import MongoDatabase, Member, Latch
 from re import finditer, match, escape, Match
 from src.models import project, DebugMessage
@@ -13,7 +13,7 @@ from asyncio import gather
 if TYPE_CHECKING:
     from discord.abc import MessageableChannel
 
-GuildChannel = TextChannel | VoiceChannel | StageChannel
+GuildChannel = TextChannel | VoiceChannel | StageChannel | ForumChannel
 
 
 class ClientBase(AutoShardedBot):
