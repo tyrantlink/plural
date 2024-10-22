@@ -9,6 +9,9 @@ from base64 import b64decode
 from asyncio import gather
 
 
+INVITE_URL = '[add the bot to your account](https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands)'
+
+
 class UserProxyCommands(BaseCommands):
     userproxy = SlashCommandGroup(
         name='userproxy',
@@ -81,7 +84,11 @@ class UserProxyCommands(BaseCommands):
 
         await sync_userproxy_with_member(ctx, userproxy, bot_token, True)
 
-        await send_success(ctx, 'userproxy created successfully')
+        await send_success(
+            ctx,
+            (
+                f'userproxy created successfully\n{INVITE_URL.format(bot_id=bot_id)}')
+        )
 
     @userproxy.command(
         name='list',

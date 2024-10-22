@@ -1,9 +1,9 @@
 from __future__ import annotations
 from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING
 from src.converters import MemberConverter, GroupConverter, include_all_options
+from src.views import DeleteConfirmation, ApiKeyView, HelpView
 from src.helpers import CustomModal, send_error, send_success
 from src.db import Group, Member, Message as DBMessage
-from src.views import DeleteConfirmation, ApiKeyView
 import src.commands.autocomplete as autocomplete
 from src.models import project, DebugMessage
 from discord.ext.commands import Cog
@@ -371,9 +371,9 @@ class BaseCommands(Cog):
         name='help',
         description='get started with the bot')
     async def slash_help(self, ctx: ApplicationContext):
-        from src.client.embeds import HelpEmbed
-
+        view = HelpView()
         await ctx.response.send_message(
-            embed=HelpEmbed,
+            embed=view.embed,
+            view=view,
             ephemeral=True
         )
