@@ -131,27 +131,41 @@ class BaseCommands(Cog):
                 required=False,
                 autocomplete=autocomplete.members),
             Option(
+                bool,
+                name='server_only',
+                description='whether to enable/disable in every server or just this one',
+                default=True),
+            Option(
                 GroupConverter,
                 name='group',
                 description='group to restrict results to',
                 required=False,
                 autocomplete=autocomplete.groups)],
         contexts={InteractionContextType.guild})
-    async def slash_autoproxy(self, ctx: ApplicationContext, enabled: bool | None, member: Member | None, group: Group):
-        if ctx.interaction.user is None:
-            await send_error(ctx, 'you do not exist')
-            return
-
-        if ctx.guild is None:
+    async def slash_autoproxy(
+        self,
+        ctx: ApplicationContext,
+        enabled: bool | None,
+        member: Member | None,
+        server_only: bool,
+        group: Group | None
+    ) -> None:
+        assert ctx.interaction.user is not None
+        if ctx.guild is None and server_only:
+            await send_error(ctx, 'you must use this command in a server when the `server_only` option is enabled')
             return
 
         latch = await self.client.db.latch(
             ctx.interaction.user.id,
-            ctx.guild.id,
+            ctx.guild.id if server_only else 0,  # type: ignore #? mypy is stupid
             create=True
         )
 
-        latch.enabled = bool(enabled or member or not latch.enabled)
+        latch.enabled = bool(
+            enabled
+            if enabled is not None else
+            member or not latch.enabled
+        )
 
         if member is not None:
             latch.member = member.id
@@ -159,8 +173,14 @@ class BaseCommands(Cog):
         if not latch.enabled:
             latch.member = None
 
-        success_message = f'autoproxying in `{ctx.guild.name}` is now {
-            'enabled' if latch.enabled else 'disabled'}'
+        success_message = (
+            # ? mypy is stupid
+            f'autoproxying in `{ctx.guild.name}` is now '  # type: ignore
+            if server_only else
+            'global autoproxy is now '
+        )
+
+        success_message += 'enabled' if latch.enabled else 'disabled'
 
         if latch.enabled:
             success_message += f' and set to {
@@ -174,9 +194,27 @@ class BaseCommands(Cog):
         )
 
     @slash_command(
+        name='switch',
+        description='quickly switch global autoproxy',
+        options=[
+            Option(
+                MemberConverter,
+                name='member',
+                description='member to switch to',
+                required=True,
+                autocomplete=autocomplete.members),
+            Option(
+                bool,
+                name='enabled',
+                description='enable or disable auto proxying',
+                default=True)])
+    async def slash_switch(self, ctx: ApplicationContext, member: Member, enabled: bool) -> None:
+        await self.slash_autoproxy(ctx, enabled, member, False, None)
+
+    @slash_command(
         name='delete_all_data',
         description='delete all your data')
-    async def slash_delete_all_data(self, ctx: ApplicationContext):
+    async def slash_delete_all_data(self, ctx: ApplicationContext) -> None:
         await ctx.response.send_message(
             embed=Embed(
                 title='are you sure?',

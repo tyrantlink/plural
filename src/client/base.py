@@ -129,7 +129,13 @@ class ClientBase(AutoShardedBot):
         if message.guild is None:
             return None, None, None  # ? mypy stupid
 
-        latch = await self.db.latch(message.author.id, message.guild.id)
+        # ? get global latch if it exists
+        latch = await self.db.latch(message.author.id, 0)
+
+        if latch is None or latch.enabled is False:
+            # ? if it doesn't exist or is disabled, get the guild latch
+            latch = await self.db.latch(message.author.id, message.guild.id)
+
         latch_return: None | tuple[Member, str, Latch] = None
 
         for group in groups.copy():
