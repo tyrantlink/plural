@@ -1,4 +1,5 @@
 from discord import AutocompleteContext, OptionChoice
+from thefuzz.utils import full_process
 from beanie import PydanticObjectId
 from src.db import Group, UserProxy
 from typing import NamedTuple
@@ -21,7 +22,7 @@ async def groups(ctx: AutocompleteContext) -> list[str]:
     if not groups:
         return ['no groups found, run /group new to create one']
 
-    if ctx.value == '' or ctx.value.isspace():
+    if not full_process(ctx.value):
         return groups[:25]
 
     processed_groups = process.extract(ctx.value, groups, limit=5)
@@ -56,7 +57,7 @@ async def members(ctx: AutocompleteContext) -> list[OptionChoice]:
     if not members:
         return [OptionChoice(name='no members found, run /member new to create one', value='None')]
 
-    if ctx.value == '' or ctx.value.isspace():
+    if not full_process(ctx.value):
         return [
             OptionChoice(
                 name=(
