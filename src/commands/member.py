@@ -31,7 +31,6 @@ class MemberCommands(BaseCommands):
         member: Member,
         type: MemberUpdateType
     ) -> None:
-        print('on_member_update')
         assert ctx.interaction.user is not None
         if (userproxy := await member.get_userproxy()) is None:
             return None
