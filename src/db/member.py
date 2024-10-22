@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Annotated, TYPE_CHECKING, Any
+from src.models import USERPROXY_FOOTER_LIMIT
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
 from re import sub, IGNORECASE
@@ -40,7 +41,13 @@ class Member(Document):
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
     name: str = Field(
         description='the name of the member',
-        min_length=1, max_length=50)
+        min_length=1, max_length=50
+    )
+    description: str | None = Field(
+        None,
+        description='the description of the member, only used for userproxies',
+        max_length=USERPROXY_FOOTER_LIMIT
+    )
     avatar: PydanticObjectId | None = Field(
         None,
         description='the avatar uuid of the member; overrides the group avatar'

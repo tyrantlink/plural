@@ -2,12 +2,12 @@ from discord import Interaction, ApplicationContext, Embed, Colour, Message, HTT
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
 from discord.utils import _bytes_to_base64_data, escape_markdown
 from aiohttp import ClientSession, ClientResponse
+from src.models import project, USERPROXY_FOOTER
 from asyncio import sleep, create_task, Task
 from hikari import Message as HikariMessage
 from collections.abc import Mapping
 from src.db import Image, UserProxy
 from typing import Iterable, Any
-from src.models import project
 from functools import partial
 from json import dumps, loads
 from uuid import uuid4
@@ -472,12 +472,12 @@ async def sync_userproxy_with_member(
 
     # ? remember to add user descriptions to userproxy
     bot_patch = {
-        'username': member.name,
-        # 'description': f'userproxy for @{ctx.interaction.user.name} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
+        'username': member.name
     }
 
     app_patch = {
-        'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction'
+        'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction',
+        'description': f'{member.description or ''}\n\n{USERPROXY_FOOTER.format(username=ctx.interaction.user.name)}'.strip()
     }
 
     if image_data:
@@ -528,6 +528,12 @@ async def sync_userproxy_with_member(
         ]
     )
 
-    for resp, text in app_request:
-        if resp.status != 200:
-            print(text)
+    errors = [
+        text
+        for resp, text in app_request
+        if resp.status != 200
+    ]
+
+    if errors:
+        await send_error(ctx, '\n'.join(errors))
+        return

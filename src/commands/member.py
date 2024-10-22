@@ -1,11 +1,12 @@
-from discord import ApplicationContext, Option, SlashCommandGroup, Attachment, HTTPException
+from discord import ApplicationContext, Option, SlashCommandGroup, Attachment, HTTPException, InputTextStyle
+from src.models import MemberUpdateType, USERPROXY_FOOTER_LIMIT, USERPROXY_FOOTER
 from src.converters import MemberConverter, GroupConverter, include_all_options
-from src.helpers import send_error, send_success, multi_request
+from src.helpers import send_error, send_success, multi_request, CustomModal
 import src.commands.autocomplete as autocomplete
 from discord.utils import _bytes_to_base64_data
 from src.commands.base import BaseCommands
-from src.models import MemberUpdateType
 from src.db.models import ProxyTag
+from discord.ui import InputText
 from src.db import Member, Group
 from asyncio import gather
 
@@ -30,6 +31,8 @@ class MemberCommands(BaseCommands):
         member: Member,
         type: MemberUpdateType
     ) -> None:
+        print('on_member_update')
+        assert ctx.interaction.user is not None
         if (userproxy := await member.get_userproxy()) is None:
             return None
 
@@ -56,6 +59,13 @@ class MemberCommands(BaseCommands):
                     ('patch', 'users/@me', {'avatar': image_data}),
                     ('patch', 'applications/@me', {'icon': image_data})
                 ]
+            case MemberUpdateType.DESCRIPTION:
+                description = f'{member.description or ""}\n\n{
+                    USERPROXY_FOOTER.format(username=ctx.interaction.user.name)}'.strip()
+                patches = [
+                    ('patch', 'applications/@me',
+                     {'description': description})
+                ]
             case _:
                 return None
 
@@ -63,7 +73,7 @@ class MemberCommands(BaseCommands):
             try:
                 await multi_request(
                     userproxy.token,
-                    patches
+                    patches  # type: ignore # ? i don't wanna deal with mypy right now
                 )
             except HTTPException as exception:
                 error = exception.text
@@ -306,6 +316,60 @@ class MemberCommands(BaseCommands):
         )
         if updated_member is not None:
             await self._on_member_update(ctx, updated_member, MemberUpdateType.AVATAR)
+
+    @member_set.command(
+        name='description',
+        description='set a member\'s description (will be set in pop up modal)',
+        checks=[include_all_options],
+        options=[
+            Option(
+                MemberConverter,
+                name='member',
+                description='the name of the member',
+                autocomplete=autocomplete.members),
+            Option(
+                GroupConverter,
+                name='group',
+                description='restrict results to a single group',
+                required=False,
+                autocomplete=autocomplete.groups)])
+    async def slash_member_set_description(
+        self,
+        ctx: ApplicationContext,
+        member: Member,
+        group: Group
+    ) -> None:
+        modal = CustomModal(
+            title='set member description',
+            children=[
+                InputText(
+                    max_length=USERPROXY_FOOTER_LIMIT,
+                    value=member.description or '',
+                    placeholder='description',
+                    style=InputTextStyle.long,
+                    label='description',
+                    required=False
+                )
+            ]
+        )
+
+        await ctx.response.send_modal(modal)
+
+        await modal.wait()
+
+        description = modal.children[0].value or None
+
+        member.description = description
+
+        updated_member, _ = await gather(
+            member.save_changes(),
+            send_success(
+                modal.interaction,
+                f'member `{member.name}` of group `{group.name}` now has description `{description}`')
+        )
+
+        if updated_member is not None:
+            await self._on_member_update(ctx, updated_member, MemberUpdateType.DESCRIPTION)
 
     @member_proxy.command(
         name='add',

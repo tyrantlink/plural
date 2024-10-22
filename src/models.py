@@ -3,6 +3,10 @@ from pydantic import BaseModel
 from tomllib import loads
 
 
+USERPROXY_FOOTER = 'userproxy for @{username} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
+USERPROXY_FOOTER_LIMIT = 400 - len(USERPROXY_FOOTER.format(username='*' * 32))
+
+
 class Project(BaseModel):
     bot_token: str
     mongo_uri: str
@@ -24,6 +28,7 @@ class ReplyAttachment(BaseModel):
 class MemberUpdateType(Enum):
     NAME = 1
     AVATAR = 2
+    DESCRIPTION = 3
 
 
 class DebugMessage(StrEnum):

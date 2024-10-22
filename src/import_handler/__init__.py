@@ -1,5 +1,6 @@
 from __future__ import annotations
 from discord import ApplicationContext, Attachment, TextChannel
+from src.models import project, USERPROXY_FOOTER_LIMIT
 from aiohttp import ClientSession, ClientTimeout
 from typing import Self, TYPE_CHECKING
 from beanie import PydanticObjectId
@@ -9,7 +10,6 @@ from urllib.parse import urlparse
 from asyncio import sleep, gather
 from src.db import Member, Group
 from asyncio import create_task
-from src.models import project
 from .models import ImportType
 from typing import Any
 from json import loads
@@ -241,6 +241,13 @@ class ImportHandler:
                     save=False
                 )
 
+                if description := member['description']:
+                    if len(description) > USERPROXY_FOOTER_LIMIT:
+                        self.log.append(
+                            f'member {member['name']} description is over {USERPROXY_FOOTER_LIMIT} characters, truncating')
+                        description = description[:USERPROXY_FOOTER_LIMIT]
+                    member_model.description = description
+
                 for tag in member['proxy_tags']:
                     member_model.proxy_tags.append(
                         ProxyTag(
@@ -318,6 +325,13 @@ class ImportHandler:
                 member['name'],
                 save=False
             )
+
+            if description := member['description']:
+                if len(description) > USERPROXY_FOOTER_LIMIT:
+                    self.log.append(
+                        f'member {member['name']} description is over {USERPROXY_FOOTER_LIMIT} characters, truncating')
+                    description = description[:USERPROXY_FOOTER_LIMIT]
+                member_model.description = description
 
             if member['brackets']:
                 member_model.proxy_tags.append(
