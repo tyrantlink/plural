@@ -97,7 +97,7 @@ class InteractionResponse(BaseModel):
             }
         ]
 
-        url = attachment.proxy_url or attachment.url
+        url = attachment.url or attachment.proxy_url
         assert url is not None
 
         boundary, body = create_multipart(
