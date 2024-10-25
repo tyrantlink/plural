@@ -84,6 +84,9 @@ class UserProxyCommands(BaseCommands):
 
         if command_name is not None:
             command_name = command_name.lower()
+            if command_name in {'reply', 'edit'}:
+                await send_error(ctx, 'invalid command name; cannot be "reply" or "edit"')
+                return
 
             if not match(
                 r'^[-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$',
