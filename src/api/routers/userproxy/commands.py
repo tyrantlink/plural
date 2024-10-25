@@ -3,9 +3,9 @@ from src.api.models.discord.interaction import CommandInteractionData, ModalInte
 from src.api.models.discord.component import TextInput
 from src.db.reply import Reply, ReplyAttachment
 from typing import TYPE_CHECKING
+from src.db import UserProxy
 
 
-#! remember to rename to attachment when you fix command
 async def _slash_proxy(
     interaction: Interaction,
     message: str | None = None,
@@ -122,6 +122,14 @@ async def _message_edit(
     )
 
 
+async def _custom_command_name(interaction: Interaction) -> str | None:
+    user_proxy = await UserProxy.find_one({'bot_id': int(interaction.application_id)})
+    if user_proxy is None:
+        return None
+
+    return user_proxy.command
+
+
 async def on_command(interaction: Interaction) -> None:
     assert interaction.type == InteractionType.APPLICATION_COMMAND
     if TYPE_CHECKING:
@@ -144,6 +152,11 @@ async def on_command(interaction: Interaction) -> None:
             await _message_reply(interaction)
         case 'edit':
             await _message_edit(interaction)
+        case unknown if unknown == await _custom_command_name(interaction):
+            await _slash_proxy(
+                interaction,
+                **options  # type: ignore #? i don't wanna deal with this
+            )
         case _:
             raise ValueError('Invalid command name')
 

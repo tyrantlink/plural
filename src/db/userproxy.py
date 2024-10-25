@@ -28,6 +28,8 @@ class UserProxy(Document):
     token: str | None = Field(
         None,
         description='the bot token, only stored when autosyncing is enabled')
+    command: str | None = Field(
+        'proxy', description='name of the proxy command')
 
     @property
     def autosync(self) -> bool:

@@ -2,9 +2,9 @@ from src.helpers import send_error, send_success, sync_userproxy_with_member
 from discord import ApplicationContext, Option, SlashCommandGroup
 from src.converters import MemberConverter, UserProxyConverter
 import src.commands.autocomplete as autocomplete
+from regex import match, IGNORECASE, UNICODE
 from src.commands.base import BaseCommands
 from src.db import Member, UserProxy
-from re import match, IGNORECASE
 from base64 import b64decode
 from asyncio import gather
 
@@ -54,13 +54,21 @@ class UserProxyCommands(BaseCommands):
                 name='autosync',
                 description='REQUIRES STORING BOT TOKEN; sync the userproxy with the bot',
                 default=False,
+                required=False),
+            Option(
+                str,
+                name='command_name',
+                description='name of the command to use for the userproxy (default: proxy)',
+                min_length=1,
+                max_length=32,
                 required=False)])
     async def slash_userproxy_new(
         self,
         ctx: ApplicationContext,
         member: Member,
         bot_token: str,
-        autosync: bool
+        autosync: bool,
+        command_name: str | None
     ) -> None:
         assert ctx.interaction.user is not None
 
@@ -74,12 +82,24 @@ class UserProxyCommands(BaseCommands):
             await send_error(ctx, 'userproxy already exists')
             return
 
+        if command_name is not None:
+            command_name = command_name.lower()
+
+            if not match(
+                r'^[-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$',
+                command_name,
+                UNICODE
+            ):
+                await send_error(ctx, 'invalid command name; must only contain letters, numbers, and -_\n[more info](<https://discord.com/developers/docs/interactions/application-commands#application-command-object-application-command-naming>)')
+                return
+
         userproxy = UserProxy(
             bot_id=bot_id,
             user_id=ctx.interaction.user.id,
             member=member.id,
             public_key='',  # ? set by _sync_userproxy_with_member
-            token=bot_token if autosync else None
+            token=bot_token if autosync else None,
+            command=command_name or 'proxy'
         )
 
         await sync_userproxy_with_member(ctx, userproxy, bot_token, True)

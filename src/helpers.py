@@ -10,6 +10,7 @@ from src.db import Image, UserProxy
 from typing import Iterable, Any
 from functools import partial
 from json import dumps, loads
+from copy import deepcopy
 from uuid import uuid4
 from io import BytesIO
 from re import match
@@ -491,12 +492,17 @@ async def sync_userproxy_with_member(
     ]
 
     if sync_commands:
+        commands = USERPROXY_COMMANDS
+        if userproxy.command is not None:
+            commands = deepcopy(USERPROXY_COMMANDS)
+            commands[0]['name'] = userproxy.command
+
         requests.insert(
             0,
             (
                 'put',
                 f'applications/{userproxy.bot_id}/commands',
-                USERPROXY_COMMANDS  # type: ignore # ? i don't wanna deal with mypy
+                commands  # type: ignore # ? i don't wanna deal with mypy
             )
         )
 

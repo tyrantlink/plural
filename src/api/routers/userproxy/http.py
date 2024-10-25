@@ -18,7 +18,7 @@ async def discord_key_validator(
 ) -> bool:
     try:
         request_body = (await request.body()).decode()
-        json_body = loads(request_body)
+        json_body: dict = loads(request_body)
         application_id = int(json_body['application_id'])
     except Exception:
         raise HTTPException(400, 'Invalid request body')
