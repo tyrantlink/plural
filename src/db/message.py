@@ -14,12 +14,12 @@ class Message(Document):
     class Settings:
         name = 'messages'
         validate_on_save = True
-        cache_expiration_time = timedelta(minutes=60)
+        cache_expiration_time = timedelta(days=1)
         indexes = [
             'original_id',
             'proxy_id',
             'author_id',
-            IndexModel('ts', expireAfterSeconds=3600)
+            IndexModel('ts', expireAfterSeconds=1*24*60*60)
         ]
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
