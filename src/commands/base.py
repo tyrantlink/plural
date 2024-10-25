@@ -400,6 +400,10 @@ class BaseCommands(Cog):
                 f'original message id: {db_message.original_id or 'sent through /plu/ral api'}'),
         )
 
+        embed.set_thumbnail(
+            url=message.author.display_avatar.url
+        )
+
         await ctx.response.send_message(
             embed=embed,
             ephemeral=True
