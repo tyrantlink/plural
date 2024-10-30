@@ -241,7 +241,7 @@ class ImportHandler:
                     save=False
                 )
 
-                if description := member['description']:
+                if description := member.get('description', None):
                     if len(description) > USERPROXY_FOOTER_LIMIT:
                         self.log.append(
                             f'member {member['name']} description is over {USERPROXY_FOOTER_LIMIT} characters, truncating')
