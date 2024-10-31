@@ -260,10 +260,13 @@ class ClientBase(AutoShardedBot):
             # ? if it's not given, we set it to an empty list here and never append to it
             debug_log = []
 
+        valid_content = bool(
+            message.content or message.attachments or message.stickers or message.poll)
+
         if (
             message.author.bot or
             message.guild is None or
-            not (message.content or message.attachments or message.stickers) or
+            not valid_content or
             (message.attachments and message.stickers)
         ):
             if debug_log:
@@ -273,7 +276,7 @@ class ClientBase(AutoShardedBot):
                 if message.guild is None:
                     debug_log.append(DebugMessage.NOT_IN_GUILD)
 
-                if not (message.content or message.attachments or message.stickers):
+                if not valid_content:
                     debug_log.append(DebugMessage.NO_CONTENT)
 
                 if message.attachments and message.stickers:
@@ -425,7 +428,8 @@ class ClientBase(AutoShardedBot):
                     not embed == MISSING and
                     message.reference is not None and
                     isinstance(message.reference.resolved, Message)
-                ) else MISSING
+                ) else MISSING,
+                poll=message.poll or MISSING
             )
         )
 

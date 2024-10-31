@@ -24,7 +24,7 @@ msgspec==0.18.6
 multidict==6.1.0
 orjson==3.10.7
 pillow==11.0.0
-py-cord @ git+https://github.com/Pycord-Development/pycord@05cf45e064286bd99c87e663dd87bf31fd9cdf47
+py-cord @ git+https://github.com/tyrantlink/pycord@eef5b46e776bbf971f211f06250405c74c39c200
 pycares==4.4.0
 pycparser==2.22
 pydantic==2.9.2
