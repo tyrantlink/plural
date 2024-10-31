@@ -39,12 +39,13 @@ class InteractionResponse(BaseModel):
         )
 
     async def _save_original_message_to_db(self) -> None:
+        # ? probably replace this with with_response query param when less tired
         resp = await session.get(
             f'{self._followup_url}/messages/@original'
         )
 
         if resp.status != 200:
-            raise Exception(f'Failed to fetch original message | {await resp.text()}')
+            raise Exception(f'Failed to fetch original message | {resp.status} | {await resp.text()}')
 
         message_id = int((await resp.json())['id'])
 
@@ -87,6 +88,13 @@ class InteractionResponse(BaseModel):
             )
             return await self._save_original_message_to_db()
 
+        await session.post(
+            self._callback_url,
+            json={
+                'type': InteractionCallbackType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE.value
+            }
+        )
+
         data['attachments'] = [
             {
                 'id': 0,
@@ -101,22 +109,20 @@ class InteractionResponse(BaseModel):
         assert url is not None
 
         boundary, body = create_multipart(
-            {
-                'type': InteractionCallbackType.CHANNEL_MESSAGE_WITH_SOURCE.value,
-                'data': data
-            },
+            data,
             [
                 await (await session.get(url)).read()
             ]
         )
 
-        await session.post(
-            self._callback_url,
+        await session.patch(
+            f'{self._followup_url}/messages/@original',
             data=body,
             headers={
                 'Content-Type': f'multipart/form-data; boundary={boundary}'
             }
         )
+
         return await self._save_original_message_to_db()
 
     async def send_modal(
@@ -156,7 +162,7 @@ class InteractionResponse(BaseModel):
         followup = FOLLOWUP.format(
             application_id=self.application_id, token=message.token)
 
-        resp = await self._request(
+        await self._request(
             'PATCH',
             f'{followup}/messages/{message_id}',
             {'content': content}

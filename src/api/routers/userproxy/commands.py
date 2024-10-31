@@ -78,9 +78,7 @@ async def _message_reply(
             ]
         )
 
-    await reply.delete()
-
-    return await interaction.send_message(
+    await interaction.send_message(
         content=reply.content,
         attachment=(
             Attachment.model_validate(reply.attachment.model_dump())
@@ -89,6 +87,8 @@ async def _message_reply(
         ),
         ephemeral=False
     )
+
+    await reply.delete()
 
 
 async def _message_edit(

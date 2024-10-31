@@ -414,8 +414,9 @@ def create_multipart(
     body.write(f'{dumps(json_payload)}\r\n'.encode('latin-1'))
 
     for index, file in enumerate(files):
-        filename = json_payload['data']['attachments'][0]['filename']
-        content_type = json_payload['data']['attachments'][0]['content_type']
+        message = json_payload.get('data', None) or json_payload
+        filename = message['attachments'][0]['filename']
+        content_type = message['attachments'][0]['content_type']
 
         body.write(f'--{boundary}\r\n'.encode('latin-1'))
         body.write(
