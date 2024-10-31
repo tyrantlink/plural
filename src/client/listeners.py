@@ -35,7 +35,8 @@ class ClientListeners(ClientBase):
             return
 
         if (  # ? stealing the pk easter egg because it's funny
-            message.content.strip().replace(' ', '') == 'pk;fire' and
+            message.content.startswith('pk;') and
+            message.content.lstrip('pk;').strip() == 'fire' and
             message.channel.can_send()
         ):
             await message.channel.send('*A giant lightning bolt promptly erupts into a pillar of fire as it hits your opponent.*')
