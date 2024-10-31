@@ -31,7 +31,14 @@ class ClientListeners(ClientBase):
         if await self.process_proxy(message):
             return
 
-        await self.handle_ping_reply(message)
+        if await self.handle_ping_reply(message):
+            return
+
+        if (  # ? stealing the pk easter egg because it's funny
+            message.content.strip().replace(' ', '') == 'pk;fire' and
+            message.channel.can_send()
+        ):
+            await message.channel.send('*A giant lightning bolt promptly erupts into a pillar of fire as it hits your opponent.*')
 
     async def on_message_edit(self, before: Message, after: Message) -> None:
         if before.content == after.content:

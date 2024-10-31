@@ -454,12 +454,12 @@ class ClientBase(AutoShardedBot):
 
         return True
 
-    async def handle_ping_reply(self, message: Message) -> None:
-        #! discord does put webhook ids in message.mentions,
+    async def handle_ping_reply(self, message: Message) -> bool:
+        #! discord doesn't put webhook ids in message.mentions,
         #! so i can't tell if the reply is a ping or not,
         #! disabling this for now
 
-        return
+        return False
 
         if (
             message.reference is None or
