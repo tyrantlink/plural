@@ -3,8 +3,6 @@ from warnings import catch_warnings, simplefilter
 from discord import HTTPClient, StickerFormatType
 from dataclasses import dataclass
 from asyncio import to_thread
-from os import mkdir, remove
-from os.path import exists
 from io import BytesIO
 
 
@@ -34,12 +32,7 @@ class ProbableSticker:
         return f'{self.name}.{ext}'
 
     def _apng_to_gif(self, data: bytes) -> bytes:
-        assert self.format == StickerFormatType.apng
-        # ? figure something out to cache this later
-        if not exists('.sticker_conversions'):
-            mkdir('.sticker_conversions')
-
-        file_path = f'.sticker_conversions/{self.id}'
+        output = BytesIO()
 
         with pil_open(BytesIO(data)) as img:
             resized_frames: list[Image] = []
@@ -56,17 +49,13 @@ class ProbableSticker:
                 # ? because of palleting nonsense, PIL warns "Couldn't allocate palette entry for transparency"
                 simplefilter('ignore')
                 resized_frames[0].save(
-                    fp=f'{file_path}.gif',
+                    fp=output,
+                    format='gif',
                     save_all=True,
                     append_images=resized_frames[1:]
                 )
 
-        with open(f'{file_path}.gif', 'rb') as f:
-            new_data = f.read()
-
-        remove(f'{file_path}.gif')
-
-        return new_data
+        return output.getvalue()
 
     async def read(self, http: HTTPClient) -> bytes:
         if self.format == StickerFormatType.lottie:
