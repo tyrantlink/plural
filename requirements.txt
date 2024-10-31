@@ -16,14 +16,15 @@ dnspython==2.6.1
 fastapi==0.115.0
 frozenlist==1.4.1
 h11==0.14.0
-hikari @ git+https://github.com/tyrantlink/hikari.git@b0b9ac3dff82bd1dbae52543482baadf8d3f19b1
+hikari==2.1.0
 idna==3.10
 lazy-model==0.2.0
 motor==3.6.0
 msgspec==0.18.6
 multidict==6.1.0
 orjson==3.10.7
-py-cord @ git+https://github.com/NeloBlivion/pycord@9b018ebb1d5876ff214eec66db725cbc472b816c
+pillow==11.0.0
+py-cord @ git+https://github.com/Pycord-Development/pycord@05cf45e064286bd99c87e663dd87bf31fd9cdf47
 pycares==4.4.0
 pycparser==2.22
 pydantic==2.9.2
