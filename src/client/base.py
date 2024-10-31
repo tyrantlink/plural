@@ -5,6 +5,7 @@ from src.db import MongoDatabase, Member, Latch
 from re import finditer, match, escape, Match
 from src.models import project, DebugMessage
 from src.helpers import format_reply
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING
 from time import perf_counter
 from asyncio import gather
@@ -401,6 +402,15 @@ class ClientBase(AutoShardedBot):
                     format=_sticker.format
                 )).format.name != 'lottie'
             ]
+
+        if (
+            message.poll and
+            message.poll.duration is None and
+            isinstance(message.poll.expiry, datetime)
+        ):
+            message.poll.duration = round((
+                message.poll.expiry - message.created_at
+            ).total_seconds() / 60 / 60)
 
         responses = await gather(
             message.delete(reason='/plu/ral proxy'),
