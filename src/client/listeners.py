@@ -35,6 +35,7 @@ class ClientListeners(ClientBase):
             return
 
         if (  # ? stealing the pk easter egg because it's funny
+            not message.author.bot and
             message.content.startswith('pk;') and
             message.content.lstrip('pk;').strip() == 'fire' and
             message.channel.can_send()
