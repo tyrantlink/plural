@@ -1,7 +1,7 @@
 from __future__ import annotations
+from aiohttp import ClientSession, ClientTimeout, ClientPayloadError
 from discord import ApplicationContext, Attachment, TextChannel
 from src.models import project, USERPROXY_FOOTER_LIMIT
-from aiohttp import ClientSession, ClientTimeout
 from typing import Self, TYPE_CHECKING
 from beanie import PydanticObjectId
 from src.db.models import ProxyTag
@@ -136,8 +136,7 @@ class ImportHandler:
                 if url_data.hostname == 'cdn.discordapp.com' and response.status == 404:
                     return await self._url_to_image(
                         await self._refresh_discord_attachment(url),
-                        name,
-
+                        name
                     )
 
                 if response.status != 200:
@@ -151,13 +150,17 @@ class ImportHandler:
                     return None
 
                 content = bytearray()
-
-                async for chunk in response.content.iter_chunked(1024):
-                    content.extend(chunk)
-                    if len(content) > 2 ** 22:
-                        self.log.append(
-                            f'failed to port `{name}` avatar, image is too large, 4MB max')
-                        return None
+                try:
+                    async for chunk in response.content.iter_chunked(1024):
+                        content.extend(chunk)
+                        if len(content) > 2 ** 22:
+                            self.log.append(
+                                f'failed to port `{name}` avatar, image is too large, 4MB max')
+                            return None
+                except ClientPayloadError:
+                    self.log.append(
+                        f'failed to port `{name}` avatar, image was corrupted')
+                    return None
 
         image = self.client.db.new.image(
             data=content,
