@@ -1,13 +1,14 @@
 from __future__ import annotations
-from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, ForumChannel, Message, Permissions, MISSING, AllowedMentions
+from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, ForumChannel, Message, Permissions, MISSING, AllowedMentions, File
+from .emoji import ProbableEmoji, ProbableSticker
 from src.db import MongoDatabase, Member, Latch
 from re import finditer, match, escape, Match
 from src.models import project, DebugMessage
 from src.helpers import format_reply
 from typing import TYPE_CHECKING
-from .emoji import ProbableEmoji
 from time import perf_counter
 from asyncio import gather
+from io import BytesIO
 
 
 if TYPE_CHECKING:
@@ -262,7 +263,8 @@ class ClientBase(AutoShardedBot):
         if (
             message.author.bot or
             message.guild is None or
-            not (message.content or message.attachments)
+            not (message.content or message.attachments or message.stickers) or
+            (message.attachments and message.stickers)
         ):
             if debug_log:
                 if message.author.bot:
@@ -271,8 +273,11 @@ class ClientBase(AutoShardedBot):
                 if message.guild is None:
                     debug_log.append(DebugMessage.NOT_IN_GUILD)
 
-                if not (message.content or message.attachments):
+                if not (message.content or message.attachments or message.stickers):
                     debug_log.append(DebugMessage.NO_CONTENT)
+
+                if message.attachments and message.stickers:
+                    debug_log.append(DebugMessage.ATTACHMENTS_AND_STICKERS)
 
             return False
 
@@ -368,6 +373,32 @@ class ClientBase(AutoShardedBot):
             debug_log.append(DebugMessage.SUCCESS)
             return True
 
+        attachments = [
+            await attachment.to_file()
+            for attachment in message.attachments
+        ]
+        if message.stickers and not attachments:
+            if any(
+                sticker.format.name == 'lottie'
+                for sticker in message.stickers
+            ):
+                if debug_log:
+                    debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
+                return False
+
+            attachments = [
+                File(
+                    BytesIO(await sticker.read(self.http)),
+                    filename=sticker.filename
+                )
+                for _sticker in message.stickers
+                if (sticker := ProbableSticker(
+                    name=_sticker.name,
+                    id=_sticker.id,
+                    format=_sticker.format
+                )).format.name != 'lottie'
+            ]
+
         responses = await gather(
             message.delete(reason='/plu/ral proxy'),
             webhook.send(
@@ -381,10 +412,7 @@ class ClientBase(AutoShardedBot):
                 username=f'{member.name} {((await member.get_group()).tag or '')}',
                 avatar_url=avatar,
                 embed=embed,
-                files=[
-                    await attachment.to_file()
-                    for attachment in message.attachments
-                ],
+                files=attachments,
                 allowed_mentions=(
                     AllowedMentions(
                         users=(
@@ -393,13 +421,11 @@ class ClientBase(AutoShardedBot):
                             []
                         )
                     )
-                )
-                if (
+                ) if (
                     not embed == MISSING and
                     message.reference is not None and
                     isinstance(message.reference.resolved, Message)
-                ) else
-                MISSING
+                ) else MISSING
             )
         )
 
