@@ -6,10 +6,18 @@ from fastapi import HTTPException, Query, APIRouter, Security
 from src.api.auth import api_key_validator, TokenData
 from fastapi.responses import JSONResponse
 from src.api.docs import message as docs
+from datetime import datetime, UTC
 from aiohttp import ClientSession
 from src.models import project
+from asyncio import sleep
 
 router = APIRouter(prefix='/message', tags=['Message'])
+
+
+def _snowflake_to_age(snowflake: int) -> float:
+    return (datetime.fromtimestamp(
+        (snowflake >> 22) + 1420070400000 / 1000
+    ) - datetime.now(UTC)).total_seconds()
 
 
 @router.get(
@@ -20,15 +28,19 @@ async def get__message(
     message_id: int,
     only_check_existence: bool = Query(default=False)
 ) -> JSONResponse:
-    message = await Message.find_one(
-        {
-            '$or':
+    _find = {
+        '$or':
             [
                 {'original_id': message_id},
                 {'proxy_id': message_id}
             ]
-        }
-    )
+    }
+    message = await Message.find_one(_find)
+    # ? /plu/ral deletes the original message and replaces it silmultaneously
+    # ? due to discord ratelimiting, the original message may be deleted before the proxy is created
+    while message is None and _snowflake_to_age(message_id) < 5:
+        await sleep(0.5)
+        message = await Message.find_one(_find)
 
     if only_check_existence:
         return JSONResponse(
