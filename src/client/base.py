@@ -5,8 +5,8 @@ from src.db import MongoDatabase, Member, Latch
 from re import finditer, match, escape, Match
 from src.models import project, DebugMessage
 from src.helpers import format_reply
-from datetime import datetime, UTC
 from typing import TYPE_CHECKING
+from datetime import datetime
 from time import perf_counter
 from asyncio import gather
 from io import BytesIO
@@ -22,7 +22,15 @@ class ClientBase(AutoShardedBot):
     def __init__(self, *args, **kwargs):
         self._st = perf_counter()
         self.db = MongoDatabase(project.mongo_uri)
+        self._emoji_index = -1
         super().__init__(*args, **kwargs)
+
+    @property
+    def emoji_index(self) -> str:
+        if self._emoji_index == 99:
+            self._emoji_index = -1
+        self._emoji_index += 1
+        return f'{self._emoji_index:02}'
 
     async def process_emotes(self, message: str) -> tuple[set[AppEmoji], str]:
         guild_emojis = {
@@ -36,7 +44,7 @@ class ClientBase(AutoShardedBot):
 
         app_emojis = {
             emoji.id: await self.create_emoji(
-                name=emoji.name,
+                name=f'{emoji.name[:29]}_{self.emoji_index}',
                 image=await emoji.read(self.http),
             )
             for emoji in guild_emojis
@@ -255,7 +263,7 @@ class ClientBase(AutoShardedBot):
         message: Message,
         debug_log: list[DebugMessage | str] | None = None,
         channel_permissions: Permissions | None = None
-    ) -> bool:
+    ) -> tuple[bool, set[AppEmoji] | None]:
         if debug_log is None:
             # ? if debug_log is given by debug command, it will have DebugMessage.ENABLER, being a truthy value
             # ? if it's not given, we set it to an empty list here and never append to it
@@ -283,12 +291,12 @@ class ClientBase(AutoShardedBot):
                 if message.attachments and message.stickers:
                     debug_log.append(DebugMessage.ATTACHMENTS_AND_STICKERS)
 
-            return False
+            return False, None
 
         member, proxy_content, latch = await self.get_proxy_for_message(message, debug_log)
 
         if member is None or proxy_content is None:
-            return False
+            return False, None
 
         if (
             latch is not None and
@@ -305,10 +313,10 @@ class ClientBase(AutoShardedBot):
             if debug_log:
                 debug_log.append(DebugMessage.AUTOPROXY_BYPASSED)
 
-            return False
+            return False, None
 
         if not await self.permission_check(message, debug_log, channel_permissions):
-            return False
+            return False, None
 
         if len(proxy_content) > 1980:
             await message.channel.send(
@@ -321,7 +329,7 @@ class ClientBase(AutoShardedBot):
             if debug_log:
                 debug_log.append(DebugMessage.OVER_TEXT_LIMIT)
 
-            return False
+            return False, None
 
         if sum(
             attachment.size
@@ -338,7 +346,7 @@ class ClientBase(AutoShardedBot):
             if debug_log:
                 debug_log.append(DebugMessage.OVER_FILE_LIMIT)
 
-            return False
+            return False, None
 
         webhook = await self.get_proxy_webhook(message.channel)
 
@@ -354,7 +362,7 @@ class ClientBase(AutoShardedBot):
                 mention_author=False,
                 delete_after=10
             )
-            return False
+            return False, app_emojis
 
         embed = MISSING
         if message.reference and isinstance(message.reference.resolved, Message):
@@ -375,7 +383,7 @@ class ClientBase(AutoShardedBot):
 
         if debug_log:
             debug_log.append(DebugMessage.SUCCESS)
-            return True
+            return True, app_emojis
 
         attachments = [
             await attachment.to_file()
@@ -388,7 +396,7 @@ class ClientBase(AutoShardedBot):
             ):
                 if debug_log:
                     debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
-                return False
+                return False, app_emojis
 
             attachments = [
                 File(
@@ -449,10 +457,7 @@ class ClientBase(AutoShardedBot):
             author_id=message.author.id
         ).save()
 
-        for app_emoji in app_emojis:
-            await app_emoji.delete()
-
-        return True
+        return True, app_emojis
 
     async def handle_ping_reply(self, message: Message) -> bool:
         #! discord doesn't put webhook ids in message.mentions,

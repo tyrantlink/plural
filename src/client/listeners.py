@@ -28,7 +28,10 @@ class ClientListeners(ClientBase):
             f'{self.user.name} connected to discord in {round(perf_counter()-self._st, 2)} seconds{shards}')
 
     async def on_message(self, message: Message) -> None:
-        if await self.process_proxy(message):
+        proxied, app_emojis = await self.process_proxy(message)
+        if proxied:
+            for emoji in app_emojis or set():
+                await emoji.delete()
             return
 
         if await self.handle_ping_reply(message):
