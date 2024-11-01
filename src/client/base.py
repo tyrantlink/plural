@@ -1,8 +1,8 @@
 from __future__ import annotations
 from discord import AutoShardedBot, AppEmoji, Webhook, TextChannel, VoiceChannel, StageChannel, ForumChannel, Message, Permissions, MISSING, AllowedMentions, File
+from re import finditer, match, escape, Match, IGNORECASE
 from .emoji import ProbableEmoji, ProbableSticker
 from src.db import MongoDatabase, Member, Latch
-from re import finditer, match, escape, Match
 from src.models import project, DebugMessage
 from src.helpers import format_reply
 from typing import TYPE_CHECKING
@@ -100,7 +100,7 @@ class ClientBase(AutoShardedBot):
 
     def _ensure_proxy_preserves_mentions(self, check: Match) -> bool:
         for safety_match in finditer(
-            r'<(?:(?:[@#]|sound:|a?:\S+|\/(?:\w+ ?){1,3}:)\d+|https?:\/\/[^\s]+)>',
+            r'<(?:(?:[@#]|sound:|:\S+|\/(?:\w+ ?){1,3}:)\d+|https?:\/\/[^\s]+)>',
             check.string
         ):
             if (
@@ -184,7 +184,8 @@ class ClientBase(AutoShardedBot):
 
                     check = match(
                         f'^({prefix})([\\s\\S]+)({suffix})$',
-                        message.content
+                        message.content,
+                        IGNORECASE if not proxy_tag.case_sensitive else 0
                     )
 
                     if check is not None:

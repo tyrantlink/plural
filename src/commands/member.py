@@ -396,6 +396,11 @@ class MemberCommands(BaseCommands):
                 description='whether the proxy tag is matched with regex',
                 default=False),
             Option(
+                bool,
+                name='case_sensitive',
+                description='whether the proxy tag is case sensitive',
+                default=False),
+            Option(
                 GroupConverter,
                 name='group',
                 description='restrict results to a single group',
@@ -408,6 +413,7 @@ class MemberCommands(BaseCommands):
         prefix: str | None,
         suffix: str | None,
         regex: bool,
+        case_sensitive: bool,
         group: Group
     ) -> None:
         if len(member.proxy_tags) >= 5:
@@ -418,7 +424,8 @@ class MemberCommands(BaseCommands):
             ProxyTag(
                 prefix=prefix or '',
                 suffix=suffix or '',
-                regex=regex
+                regex=regex,
+                case_sensitive=case_sensitive
             )
         )
 

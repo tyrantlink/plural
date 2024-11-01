@@ -12,6 +12,7 @@ class ProxyTag(BaseModel):
         max_length=25,
         description='tag must have a prefix or suffix')
     regex: bool = False
+    case_sensitive: bool = False
 
     @model_validator(mode='after')
     def check_prefix_and_suffix(cls, value):
