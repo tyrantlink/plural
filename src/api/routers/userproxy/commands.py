@@ -1,4 +1,4 @@
-from src.api.models.discord import Interaction, Attachment, TextInput, TextInputStyle, InteractionType
+from src.api.models.discord import Interaction, Attachment, TextInput, TextInputStyle, InteractionType, Permission
 from src.api.models.discord.interaction import CommandInteractionData, ModalInteractionData
 from src.api.models.discord.component import TextInput
 from src.db.reply import Reply, ReplyAttachment
@@ -34,6 +34,15 @@ async def _slash_proxy(
             content=message,
             attachment=attachment,
             ephemeral=False
+        )
+
+    if (
+        attachment and
+        not int(interaction.app_permissions) & Permission.ATTACH_FILES.value
+    ):
+        return await interaction.send_message(
+            content='you do not have permission to send attachments in this channel!',
+            ephemeral=True
         )
 
     reply = Reply(

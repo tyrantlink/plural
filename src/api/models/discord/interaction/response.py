@@ -1,5 +1,5 @@
 from __future__ import annotations
-from ..enums import InteractionCallbackType, MessageFlags
+from ..enums import InteractionCallbackType, MessageFlags, Permission
 from aiohttp import ClientSession, ClientResponse
 from ..component import TextInput, ActionRow
 from src.helpers import create_multipart
@@ -16,6 +16,7 @@ FOLLOWUP = 'https://discord.com/api/v10/webhooks/{application_id}/{token}'
 class InteractionResponse(BaseModel):
     id: str
     application_id: str
+    app_permissions: str
     token: str
 
     @property
@@ -87,6 +88,19 @@ class InteractionResponse(BaseModel):
                 }
             )
             return await self._save_original_message_to_db()
+
+        if not int(self.app_permissions) & Permission.ATTACH_FILES.value:
+            await session.post(
+                self._callback_url,
+                json={
+                    'type': InteractionCallbackType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+                    'data': {
+                        'content': 'you do not have permission to send attachments in this channel!',
+                        'flags': MessageFlags.EPHEMERAL.value
+                    }
+                }
+            )
+            return
 
         await session.post(
             self._callback_url,

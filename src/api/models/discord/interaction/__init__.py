@@ -19,7 +19,6 @@ class Interaction(InteractionResponse):
     user: User | None = None
     version: int
     message: dict | None = None  # !
-    app_permissions: str
     locale: str | None = None
     guild_locale: str | None = None
     entitlements: list[dict]
