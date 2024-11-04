@@ -1,7 +1,10 @@
-from discord import ApplicationContext, DiscordException, Message, RawReactionActionEvent
+from discord import ApplicationContext, ApplicationCommandInvokeError, Message, RawReactionActionEvent, Webhook, File
 from src.helpers import send_error
+from traceback import format_tb
+from src.models import project
 from time import perf_counter
 from .base import ClientBase
+from io import StringIO
 
 
 class ClientListeners(ClientBase):
@@ -96,7 +99,7 @@ class ClientListeners(ClientBase):
                     )
                 )
 
-    async def on_application_command_error(self, ctx: ApplicationContext, exception: DiscordException) -> None:
+    async def on_application_command_error(self, ctx: ApplicationContext, exception: ApplicationCommandInvokeError) -> None:
         error = str(exception).removeprefix(
             'Application Command raised an exception: ')
 
@@ -105,5 +108,30 @@ class ClientListeners(ClientBase):
             return
 
         await send_error(ctx, error)
+
+        traceback = "".join(format_tb(exception.original.__traceback__))
+        print(traceback)
+
+        wh = Webhook.from_url(
+            project.error_webhook, session=self.http.__session)
+
+        assert self.user is not None
+
+        if len(traceback)+8 > 2000:
+            await wh.send(
+                username=self.user.name,
+                avatar_url=self.user.display_avatar.url,
+                file=File(
+                    StringIO(traceback),  # type: ignore #? mypy is stupid
+                    'error.txt'
+                )
+            )
+            return
+
+        await wh.send(
+            f'```\n{traceback}\n```',
+            username=self.user.name,
+            avatar_url=self.user.display_avatar.url
+        )
 
         raise exception

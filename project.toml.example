@@ -3,3 +3,4 @@ mongo_uri = ''
 base_url = ''
 api_url = ''
 import_proxy_channel_id = 0
+error_webhook = ''

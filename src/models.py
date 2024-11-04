@@ -13,6 +13,7 @@ class Project(BaseModel):
     base_url: str
     api_url: str
     import_proxy_channel_id: int
+    error_webhook: str
 
 
 class ReplyAttachment(BaseModel):
