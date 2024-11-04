@@ -1,12 +1,18 @@
 from __future__ import annotations
-from ..enums import InteractionCallbackType, MessageFlags, Permission
+from ..enums import InteractionCallbackType, MessageFlags, Permission, InteractionType, InteractionContextType
 from aiohttp import ClientSession, ClientResponse
 from ..component import TextInput, ActionRow
 from src.helpers import create_multipart
 from ..attachment import Attachment
 from src.db import UserProxyMessage
+from .data import InteractionData
+from ..guild import PartialGuild
 from pydantic import BaseModel
+from ..channel import Channel
+from ..member import Member
 from ..embed import Embed
+from ..user import User
+
 
 session = ClientSession()
 CALLBACK = 'https://discord.com/api/v10/interactions/{id}/{token}/callback'
@@ -18,6 +24,25 @@ class InteractionResponse(BaseModel):
     application_id: str
     app_permissions: str
     token: str
+    type: InteractionType
+    data: InteractionData | None = None
+    guild: PartialGuild | None = None
+    guild_id: str | None = None
+    channel: Channel | None = None
+    channel_id: str | None = None
+    member: Member | None = None
+    user: User | None = None
+    version: int
+    message: dict | None = None  # !
+    locale: str | None = None
+    guild_locale: str | None = None
+    entitlements: list[dict]
+    authorizing_integration_owners: dict
+    context: InteractionContextType | None = None
+
+    @property
+    def author(self) -> User | Member | None:
+        return self.member or self.user
 
     @property
     def _callback_url(self) -> str:
@@ -96,6 +121,19 @@ class InteractionResponse(BaseModel):
                     'type': InteractionCallbackType.CHANNEL_MESSAGE_WITH_SOURCE.value,
                     'data': {
                         'content': 'you do not have permission to send attachments in this channel!',
+                        'flags': MessageFlags.EPHEMERAL.value
+                    }
+                }
+            )
+            return
+
+        if (attachment.size or 0) > (self.guild.upload_limit if self.guild else 1024 * 1024 * 25):
+            await session.post(
+                self._callback_url,
+                json={
+                    'type': InteractionCallbackType.CHANNEL_MESSAGE_WITH_SOURCE.value,
+                    'data': {
+                        'content': 'attachment too large!',
                         'flags': MessageFlags.EPHEMERAL.value
                     }
                 }
