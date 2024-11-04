@@ -92,7 +92,7 @@ class MemberCommands(BaseCommands):
                     case 'UNKNOWN':
                         print(
                             f'got unknown error code from discord on auto sync: {code}, {error}')
-                    case 'USERNAME_TOO_MANY_USERS':
+                    case 'USERNAME_TOO_MANY_USERS' | 'USERNAME_RATE_LIMIT':
                         error += '\n\n**note**: username is still updated for the /plu/ral member'
 
                 await send_error(ctx, f'error updating userproxy: {error}')

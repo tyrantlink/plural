@@ -100,7 +100,7 @@ class View(_View):
 
 
 class ErrorEmbed(Embed):
-    def __init__(self, message: str, *args, **kwargs):
+    def __init__(self, message: str | None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = 'error'
         self.description = message
@@ -108,7 +108,7 @@ class ErrorEmbed(Embed):
 
 
 class SuccessEmbed(Embed):
-    def __init__(self, message: str, *args, **kwargs):
+    def __init__(self, message: str | None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.title = 'success'
         self.description = message
@@ -150,32 +150,26 @@ class ReplyEmbed(Embed):
         )
 
 
-async def send_error(ctx: ApplicationContext | Interaction, message: str) -> None:
+async def _send_embed(ctx: ApplicationContext | Interaction, embed: Embed) -> None:
     if ctx.response.is_done():
         await ctx.followup.send(
-            embed=ErrorEmbed(message),
+            embed=embed,
             ephemeral=True
         )
         return
 
     await ctx.response.send_message(
-        embed=ErrorEmbed(message),
+        embed=embed,
         ephemeral=True
     )
+
+
+async def send_error(ctx: ApplicationContext | Interaction, message: str) -> None:
+    await _send_embed(ctx, ErrorEmbed(message))
 
 
 async def send_success(ctx: ApplicationContext | Interaction, message: str) -> None:
-    if ctx.response.is_done():
-        await ctx.followup.send(
-            embed=SuccessEmbed(message),
-            ephemeral=True
-        )
-        return
-
-    await ctx.response.send_message(
-        embed=SuccessEmbed(message),
-        ephemeral=True
-    )
+    await _send_embed(ctx, SuccessEmbed(message))
 
 
 def chunk_string(string: str, chunk_size: int) -> list[str]:
@@ -456,6 +450,27 @@ async def multi_request(
     return responses
 
 
+def prettify_discord_errors(errors: list[str]) -> ErrorEmbed:
+    embed = ErrorEmbed(None)
+    for raw_error in errors:
+        try:  # ? this is really gross
+            json_error: dict[
+                str, dict[str, dict[str, list[dict[str, str]]]]] = loads(raw_error)
+
+            error_detail = list(
+                list(
+                    json_error['errors'].values()
+                )[0].values())[0][0]
+
+            code, error = error_detail['code'], error_detail['message']
+
+            embed.add_field(name=code, value=error)
+        except Exception:
+            embed.add_field(name='unknown error', value=raw_error)
+
+    return embed
+
+
 async def sync_userproxy_with_member(
     ctx: ApplicationContext,
     userproxy: UserProxy,
@@ -519,7 +534,7 @@ async def sync_userproxy_with_member(
     ]
 
     if errors:
-        await send_error(ctx, '\n'.join(errors))
+        await _send_embed(ctx, prettify_discord_errors(errors))
         return
 
     public_key = (loads(responses[-1][1]))['verify_key']
@@ -542,5 +557,5 @@ async def sync_userproxy_with_member(
     ]
 
     if errors:
-        await send_error(ctx, '\n'.join(errors))
+        await _send_embed(ctx, prettify_discord_errors(errors))
         return
