@@ -127,13 +127,15 @@ class InteractionResponse(BaseModel):
             )
             return
 
-        if (attachment.size or 0) > (self.guild.upload_limit if self.guild else 1024 * 1024 * 25):
+        upload_limit = self.guild.upload_limit if self.guild else 1024 * 1024 * 25
+
+        if (attachment.size or 0) > upload_limit:
             await session.post(
                 self._callback_url,
                 json={
                     'type': InteractionCallbackType.CHANNEL_MESSAGE_WITH_SOURCE.value,
                     'data': {
-                        'content': 'attachment too large!',
+                        'content': f'attachment too large! (max: {int(upload_limit / 1024 / 1024)}MB)',
                         'flags': MessageFlags.EPHEMERAL.value
                     }
                 }
