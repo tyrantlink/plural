@@ -384,11 +384,13 @@ class MemberCommands(BaseCommands):
                 str,
                 name='prefix',
                 description='the prefix of the proxy tag',
+                max_length=50,
                 required=False),
             Option(
                 str,
                 name='suffix',
                 description='the suffix of the proxy tag',
+                max_length=50,
                 required=False),
             Option(
                 bool,
