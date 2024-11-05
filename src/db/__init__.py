@@ -94,6 +94,7 @@ class _MongoNew:
         bot_id: int,
         user_id: int,
         member: PydanticObjectId,
+        command: str,
         public_key: str,
         token: str | None = None
     ) -> UserProxy:
@@ -101,6 +102,7 @@ class _MongoNew:
             bot_id=bot_id,
             user_id=user_id,
             member=member,
+            command=command,
             public_key=public_key,
             token=token
         )

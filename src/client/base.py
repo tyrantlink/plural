@@ -375,13 +375,6 @@ class ClientBase(AutoShardedBot):
             else:
                 embed = proxy_with_reply
 
-        avatar = None
-        if member.avatar:
-            image = await self.db.image(member.avatar, False)
-            if image is not None:
-                avatar = (
-                    f'{project.base_url}/avatar/{image.id}.{image.extension}')
-
         if debug_log:
             debug_log.append(DebugMessage.SUCCESS)
             return True, app_emojis
@@ -432,7 +425,7 @@ class ClientBase(AutoShardedBot):
                 ),
                 wait=True,
                 username=f'{member.name} {((await member.get_group()).tag or '')}',
-                avatar_url=avatar,
+                avatar_url=await member.get_avatar_url(),
                 embed=embed,
                 files=attachments,
                 allowed_mentions=(

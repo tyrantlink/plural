@@ -71,3 +71,18 @@ class Member(Document):
         from src.db.userproxy import UserProxy
 
         return await UserProxy.find_one({'member': self.id})
+
+    async def get_avatar_url(self) -> str | None:
+        from src.models import project
+        from src.db.image import Image
+        from src.db.models import DatalessImage
+
+        if self.avatar is None or (
+                image := await Image.find_one(
+                    {'_id': self.avatar},
+                    projection_model=DatalessImage
+                )
+        ) is None:
+            return None
+
+        return f'{project.base_url}/avatar/{image.id}.{image.extension}'

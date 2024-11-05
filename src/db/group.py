@@ -139,3 +139,18 @@ class Group(Document):
             self.save_changes(),
             member.delete()
         )
+
+    async def get_avatar_url(self) -> str | None:
+        from src.models import project
+        from src.db.image import Image
+        from src.db.models import DatalessImage
+
+        if self.avatar is None or (
+                image := await Image.find_one(
+                    {'_id': self.avatar},
+                    projection_model=DatalessImage
+                )
+        ) is None:
+            return None
+
+        return f'{project.base_url}/avatar/{image.id}.{image.extension}'
