@@ -32,6 +32,11 @@ class MemberUpdateType(Enum):
     DESCRIPTION = 3
 
 
+class ManageTargetType(Enum):
+    GROUP = 0
+    MEMBER = 1
+
+
 class DebugMessage(StrEnum):
     ENABLER = 'starting message debug on message'  # ? gets stripped out of message
     AUTHOR_BOT = 'message author was a bot, skipping proxy'

@@ -32,18 +32,18 @@ class BaseCommands(Cog):
         description='manage your system',
         options=[
             Option(
-                str,
+                GroupConverter,
                 name='group',
                 description='group to select from',
                 default='default',
                 autocomplete=autocomplete.groups),
             Option(
-                str,
+                MemberConverter,
                 name='member',
                 description='member to manage',
                 required=False,
                 autocomplete=autocomplete.members)])
-    async def slash_manage(self, ctx: ApplicationContext, group: str, member: str) -> None:
+    async def slash_manage(self, ctx: ApplicationContext, group: Group, member: Member | None) -> None:
         await send_error(ctx, 'menu management has not been implemented yet')
 
     @message_command(
