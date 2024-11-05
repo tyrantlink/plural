@@ -27,24 +27,24 @@ class BaseCommands(Cog):
             ephemeral=True
         )
 
-    @slash_command(
-        name='manage',
-        description='manage your system',
-        options=[
-            Option(
-                str,
-                name='group',
-                description='group to select from',
-                default='default',
-                autocomplete=autocomplete.groups),
-            Option(
-                str,
-                name='member',
-                description='member to manage',
-                required=False,
-                autocomplete=autocomplete.members)])
-    async def slash_manage(self, ctx: ApplicationContext, group: str, member: str) -> None:
-        await send_error(ctx, 'menu management has not been implemented yet')
+    # @slash_command(
+    #     name='manage',
+    #     description='manage your system',
+    #     options=[
+    #         Option(
+    #             str,
+    #             name='group',
+    #             description='group to select from',
+    #             default='default',
+    #             autocomplete=autocomplete.groups),
+    #         Option(
+    #             str,
+    #             name='member',
+    #             description='member to manage',
+    #             required=False,
+    #             autocomplete=autocomplete.members)])
+    # async def slash_manage(self, ctx: ApplicationContext, group: str, member: str) -> None:
+    #     await send_error(ctx, 'menu management has not been implemented yet')
 
     @message_command(
         name='/plu/ral edit',
