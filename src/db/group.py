@@ -104,6 +104,7 @@ class Group(Document):
 
         member = Member(
             name=name,
+            description=None,
             avatar=None,
             proxy_tags=[]
         )
