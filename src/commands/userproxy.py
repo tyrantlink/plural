@@ -38,7 +38,7 @@ class UserProxyCommands(BaseCommands):
 
     @userproxy.command(
         name='new',
-        description='create a userproxy, use /userproxy help for more information',
+        description='create a userproxy, use /help for more information',
         options=[
             Option(
                 MemberConverter,
