@@ -113,7 +113,8 @@ class ClientListeners(ClientBase):
         print(traceback)
 
         wh = Webhook.from_url(
-            project.error_webhook, session=self.http.__session)
+            project.error_webhook, session=self.http._HTTPClient__session  # type: ignore
+        )
 
         assert self.user is not None
 
