@@ -82,6 +82,10 @@ class UserProxyCommands(BaseCommands):
             await send_error(ctx, 'userproxy already exists')
             return
 
+        if len(member.name) > 32:
+            await send_error(ctx, 'member name is too long for userproxy; must be 32 characters or less')
+            return
+
         if command_name is not None:
             command_name = command_name.lower()
             if command_name in {'reply', 'edit'}:
