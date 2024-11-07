@@ -52,7 +52,7 @@ class Member(Document):
         None,
         description='the avatar uuid of the member; overrides the group avatar'
     )
-    proxy_tags: Annotated[list[ProxyTag], Field(max_length=5)] = Field(
+    proxy_tags: Annotated[list[ProxyTag], Field(max_length=15)] = Field(
         [],
         description='proxy tags for the member'
     )
