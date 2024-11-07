@@ -1,15 +1,18 @@
 from __future__ import annotations
-from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING
+from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING, File
+from src.db import Group, Member, Message as DBMessage,  UserProxy, ApiKey, Latch, Reply, DatalessImage, Image
+from src.export_models import UserDataExport, ExportMember, ExportGroup, ExportProxyTag, CompleteRawExport
 from src.converters import MemberConverter, GroupConverter, include_all_options
+from discord.ext.commands import Cog, Cooldown, CooldownMapping, BucketType
 from src.views import DeleteConfirmation, ApiKeyView, HelpView
 from src.helpers import CustomModal, send_error, send_success
-from src.db import Group, Member, Message as DBMessage
 import src.commands.autocomplete as autocomplete
 from src.models import project, DebugMessage
-from discord.ext.commands import Cog
+from beanie import PydanticObjectId
 from discord.ui import InputText
 from typing import TYPE_CHECKING
 from asyncio import gather
+from io import StringIO
 
 if TYPE_CHECKING:
     from discord.abc import MessageableChannel
@@ -417,5 +420,119 @@ class BaseCommands(Cog):
         await ctx.response.send_message(
             embed=view.embed,
             view=view,
+            ephemeral=True
+        )
+
+    async def _get_export(
+        self,
+        ctx: ApplicationContext,
+        full: bool
+    ) -> UserDataExport | CompleteRawExport:
+        assert ctx.interaction.user is not None
+
+        if full:
+            groups = await Group.find({'accounts': ctx.interaction.user.id}).to_list(None)
+
+            members = [
+                member
+                for group in groups
+                for member in await group.get_members()
+            ]
+
+            image_ids: list[PydanticObjectId] = [
+                obj.avatar for obj in [*groups, *members] if obj.avatar]
+
+            userproxies = await UserProxy.find({'user_id': ctx.interaction.user.id}).to_list(None)
+            userproxy_bot_ids = list({up.bot_id for up in userproxies})
+
+            return CompleteRawExport(
+                api_keys=await ApiKey.find({'_id': ctx.interaction.user.id}).to_list(None),
+                groups=groups,
+                members=members,
+                messages=await DBMessage.find({'author_id': ctx.interaction.user.id}).to_list(None),
+                latches=await Latch.find({'user': ctx.interaction.user.id}).to_list(None),
+                userproxies=await UserProxy.find({'user_id': ctx.interaction.user.id}).to_list(None),
+                replies=await Reply.find({'bot_id': {'$in': userproxy_bot_ids}}).to_list(None),
+                images=await Image.find({'_id': {'$in': image_ids}}, projection_model=DatalessImage).to_list(None)
+            )
+
+        real_groups = await Group.find({'accounts': ctx.interaction.user.id}).to_list(None)
+
+        real_members = {
+            member: group.id
+            for group in real_groups
+            for member in await group.get_members()
+        }
+
+        id_map = {}
+
+        for index, group in enumerate(real_groups):
+            id_map[group.id] = index
+
+        for index, member in enumerate(real_members.keys()):
+            id_map[member.id] = index
+
+        return UserDataExport(
+            groups=[
+                ExportGroup(
+                    id=id_map[group.id],
+                    name=group.name,
+                    accounts=[str(account) for account in group.accounts],
+                    avatar=await group.get_avatar_url(),
+                    channels=[str(channel) for channel in group.channels],
+                    tag=group.tag,
+                    members=[
+                        id_map[member_id]
+                        for member_id in group.members
+                    ]
+                )
+                for group in real_groups
+            ],
+            members=[
+                ExportMember(
+                    id=id_map[member.id],
+                    name=member.name,
+                    description=member.description,
+                    avatar=await member.get_avatar_url(),
+                    proxy_tags=[
+                        ExportProxyTag(**tag.model_dump())
+                        for tag in member.proxy_tags
+                    ],
+                    group=id_map[real_group_id]
+                )
+                for member, real_group_id in real_members.items()
+            ]
+        )
+
+    @slash_command(
+        name='export',
+        description='export your data',
+        options=[
+            Option(
+                bool,
+                name='full',
+                description='export data required for an import, or all possible data (incompatible with import)',
+                default=False)],
+        cooldown=CooldownMapping(
+            Cooldown(1, 60),
+            BucketType.user
+        ))  # ? 1 use every minute
+    async def slash_export(self, ctx: ApplicationContext, full: bool):
+        await ctx.response.defer(ephemeral=True)
+
+        export = await self._get_export(ctx, full)
+
+        msg = await ctx.followup.send(
+            file=File(
+                StringIO(  # type: ignore # ? mypy is stupid
+                    export.model_dump_json(indent=2)),
+                'export.json'
+            ),
+            wait=True,
+            ephemeral=True
+        )
+
+        await ctx.followup.send(
+            msg.attachments[0].url,
             ephemeral=True
         )

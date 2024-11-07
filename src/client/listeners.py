@@ -1,4 +1,5 @@
 from discord import ApplicationContext, ApplicationCommandInvokeError, Message, RawReactionActionEvent, Webhook, File
+from discord.ext.commands.errors import CommandOnCooldown
 from src.helpers import send_error
 from traceback import format_tb
 from src.models import project
@@ -99,7 +100,14 @@ class ClientListeners(ClientBase):
                     )
                 )
 
-    async def on_application_command_error(self, ctx: ApplicationContext, exception: ApplicationCommandInvokeError) -> None:
+    async def on_application_command_error(
+        self,
+        ctx: ApplicationContext,
+        exception: ApplicationCommandInvokeError | CommandOnCooldown
+    ) -> None:
+        if isinstance(exception, CommandOnCooldown):
+            return
+
         error = str(exception).removeprefix(
             'Application Command raised an exception: ')
 
