@@ -251,13 +251,17 @@ class ImportHandler:
                         description = description[:USERPROXY_FOOTER_LIMIT]
                     member_model.description = description
 
-                for tag in member['proxy_tags']:
+                for tag in member['proxy_tags'][:15]:
                     member_model.proxy_tags.append(
                         ProxyTag(
                             prefix=tag['prefix'] or '',
                             suffix=tag['suffix'] or '',
                             regex=False
                         ))
+
+                if len(member['proxy_tags']) > 15:
+                    self.log.append(
+                        f'member {member['name']} has more than 15 proxy tags, only the first 15 will be ported')
 
                 tasks.append(self._save_object_with_avatar(
                     member_model, member['avatar_url']))
@@ -336,13 +340,17 @@ class ImportHandler:
                     description = description[:USERPROXY_FOOTER_LIMIT]
                 member_model.description = description
 
-            if member['brackets']:
+            if member['brackets'][:15]:
                 member_model.proxy_tags.append(
                     ProxyTag(
                         prefix=member['brackets'][0],
                         suffix=member['brackets'][1],
                         regex=False
                     ))
+
+            if len(member['brackets']) > 15:
+                self.log.append(
+                    f'member {member['name']} has more than 15 proxy tags, only the first 15 will be ported')
 
             tasks.append(self._save_object_with_avatar(
                 member_model, member['avatar_url'] or None))
