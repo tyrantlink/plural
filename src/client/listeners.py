@@ -105,8 +105,6 @@ class ClientListeners(ClientBase):
         ctx: ApplicationContext,
         exception: ApplicationCommandInvokeError | CommandOnCooldown
     ) -> None:
-        if isinstance(exception, CommandOnCooldown):
-            return
 
         error = str(exception).removeprefix(
             'Application Command raised an exception: ')
@@ -116,6 +114,9 @@ class ClientListeners(ClientBase):
             return
 
         await send_error(ctx, error)
+
+        if isinstance(exception, CommandOnCooldown):
+            return
 
         traceback = "".join(format_tb(exception.original.__traceback__))
         print(traceback)
