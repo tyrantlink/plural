@@ -49,22 +49,37 @@ class GroupCommands(BaseCommands):
 
     @group.command(
         name='remove',
-        description='remove a group; group must have no members',
+        description='remove a group',
         options=[
             Option(
                 GroupConverter,
                 name='group',
                 description='name of the group',
-                autocomplete=autocomplete.groups)])
-    async def group_remove(self, ctx: ApplicationContext, group: Group):
-        if group.members:
-            await send_error(ctx, f'group `{group}` has {len(group.members)} members\nremove all members before deleting')
+                autocomplete=autocomplete.groups),
+            Option(
+                bool,
+                name='with_members',
+                description='all members in the group will be deleted as well',
+                default=False)])
+    async def group_remove(self, ctx: ApplicationContext, group: Group, with_members: bool):
+        if group.members and not with_members:
+            await send_error(ctx, f'group `{group}` has {len(group.members)} members\nremove all members before deleting or set the `with_members` option to `True`')
             return
 
-        await gather(
+        tasks = [
             group.delete(),
             send_success(ctx, f'deleted group `{group.name}`')
-        )
+        ]
+
+        if with_members:
+            tasks.extend(
+                [
+                    member.delete()
+                    for member in await group.get_members()
+                ]
+            )
+
+        await gather(*tasks)
 
     @group.command(
         name='list',
