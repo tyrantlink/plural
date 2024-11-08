@@ -5,7 +5,7 @@ from src.helpers import View
 
 
 PAGES = {
-    'main': 'please select a category',
+    'main': 'please select a category\n\n[privacy policy](<https://plural.gg/privacy-policy>)\n[terms of service](<https://plural.gg/terms-of-service>)',
     'getting started': '\n'.join([
         '- if you\'re coming from pluralkit or tupperbox, use the `/import` command and use your proxies as you have been',
         '- otherwise, you can start by creating a new group with `/group new`',
