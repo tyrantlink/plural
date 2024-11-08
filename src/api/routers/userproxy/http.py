@@ -58,7 +58,7 @@ async def discord_key_validator(
     include_in_schema=False,
     dependencies=[Depends(discord_key_validator)])
 async def post__interaction(
-    interaction_raw: Interaction
+    interaction: Interaction
 ) -> Response:
     match interaction.type:
         case InteractionType.PING:
