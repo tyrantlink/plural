@@ -76,10 +76,17 @@ class UserProxyCommands(BaseCommands):
 
         bot_id = self._get_bot_id(bot_token)
 
-        userproxy = await self.client.db.userproxy(bot_id, member.id)
+        userproxy = await self.client.db.userproxy(bot_id, None)
 
         if userproxy is not None:
-            await send_error(ctx, 'userproxy already exists')
+            up_member = await self.client.db.member(userproxy.member)
+            await send_error(
+                ctx,
+                f'this bot already has a userproxy' + (
+                    f' with the member {up_member.name}'
+                    if up_member is not None else ''
+                )
+            )
             return
 
         if len(member.name) > 32:
