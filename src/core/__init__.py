@@ -2,7 +2,6 @@ from logging import getLogger, Filter, LogRecord
 from fastapi import FastAPI, Response, Request
 from contextlib import asynccontextmanager
 from src.docs import root as docs
-from .session import session
 
 
 class LocalHealthcheckFilter(Filter):
@@ -26,12 +25,14 @@ getLogger("uvicorn.access").addFilter(LocalHealthcheckFilter())
 async def lifespan(app: FastAPI):
     from src.models import project
     from src.db import MongoDatabase
+    from .session import session
+
     DB = MongoDatabase(project.mongo_uri)
 
     await DB.connect()
 
-    from src.routers import image, latch, member, group
-    # app.include_router(userproxy.router) #! moving to discord router
+    from src.routers import image, latch, member, group, discord
+    app.include_router(discord.router)
     # app.include_router(message.router) #! on hold until discord library is implemented
     app.include_router(member.router)
     app.include_router(latch.router)
@@ -56,10 +57,11 @@ app = FastAPI(
 @app.middleware("http")
 async def set_client_ip(request: Request, call_next):
     client_ip = request.headers.get('CF-Connecting-IP')
+
     if client_ip and request.client is not None:
         request.scope['client'] = (client_ip, request.scope['client'][1])
-    response = await call_next(request)
-    return response
+
+    return await call_next(request)
 
 
 @app.get(

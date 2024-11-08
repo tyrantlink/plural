@@ -1,12 +1,16 @@
+from fastapi import Security, HTTPException, Request, Header
 from src.helpers import decode_b66, BASE66CHARS, TTLSet
 from fastapi.security.api_key import APIKeyHeader
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import Security, HTTPException
+from nacl.exceptions import BadSignatureError
+from typing import NamedTuple, Annotated
+from src.db import ApiKey, UserProxy
+from nacl.signing import VerifyKey
 from asyncio import get_event_loop
-from typing import NamedTuple
+from src.models import project
 from re import match, escape
 from bcrypt import checkpw
-from src.db import ApiKey
+from json import loads
 
 
 TOKEN_MATCH_PATTERN = ''.join([
@@ -59,3 +63,69 @@ async def api_key_validator(api_key: str = Security(API_KEY)) -> TokenData:
         VALID_TOKENS.add(key_doc.token)
 
     return token
+
+
+async def discord_key_validator(
+    request: Request,
+    x_signature_ed25519: Annotated[str, Header()],
+    x_signature_timestamp: Annotated[str, Header()],
+) -> bool:
+    try:
+        request_body = (await request.body()).decode()
+        # ! make this load pydantic Interaction model
+        json_body: dict = loads(request_body)
+        application_id = int(json_body['application_id'])
+    except Exception:
+        raise HTTPException(400, 'Invalid request body')
+
+    user_proxy = await UserProxy.find_one({'bot_id': application_id})
+
+    if user_proxy is None:
+        raise HTTPException(400, 'Invalid application id')
+
+    verify_key = VerifyKey(bytes.fromhex(user_proxy.public_key))
+
+    try:
+        verify_key.verify(
+            f'{x_signature_timestamp}{request_body}'.encode(),
+            bytes.fromhex(x_signature_ed25519)
+        )
+    except BadSignatureError:
+        raise HTTPException(401, 'Invalid request signature')
+
+    if json_body['type'] == 1:  # InteractionType.PING.value:
+        return True
+
+    user_id = int(json_body['authorizing_integration_owners']['1'])
+
+    if user_proxy.user_id != user_id:
+        member = await user_proxy.get_member()
+        group = await member.get_group()
+
+        if user_id not in group.accounts:
+            raise HTTPException(401, 'Invalid user id')
+
+    return True
+
+
+async def gateway_key_validator(
+    request: Request,
+    x_signature_ed25519: Annotated[str, Header()],
+    x_signature_timestamp: Annotated[str, Header()],
+) -> bool:
+    try:
+        request_body = (await request.body()).decode()
+    except Exception:
+        raise HTTPException(400, 'Invalid request body')
+
+    verify_key = VerifyKey(bytes.fromhex(project.gateway_key))
+
+    try:
+        verify_key.verify(
+            f'{x_signature_timestamp}{request_body}'.encode(),
+            bytes.fromhex(x_signature_ed25519)
+        )
+    except BadSignatureError:
+        raise HTTPException(401, 'Invalid request signature')
+
+    return True
