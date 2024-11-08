@@ -1,4 +1,4 @@
-from beanie import Document, PydanticObjectId
+from beanie import Document
 from pydantic import Field
 
 
@@ -15,5 +15,5 @@ class ApiKey(Document):
         use_state_management = True
         indexes = ['token']
 
-    id: int = Field(description='user id')
+    id: int = Field(description='user id')  # type: ignore #? mypy stupid
     token: str = Field(description='hashed api key')

@@ -1,6 +1,10 @@
 bot_token = ''
 mongo_uri = ''
-base_url = ''
-api_url = ''
+base_url = 'https://example.com'
+api_url = 'https://api.example.com'
+# discord channel id, used when importing avatars; make sure only the bot has access to this channel
 import_proxy_channel_id = 0
+# webhook to text channel, error tracebacks are sent here
 error_webhook = ''
+# nacl key for messages sent from the gateway proxy
+gateway_key = ''

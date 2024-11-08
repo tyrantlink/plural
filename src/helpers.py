@@ -16,7 +16,7 @@ from io import BytesIO
 from re import match
 
 
-# ? this is a very unorganized file of anything that might be needed
+# ? completely unsorted and unformatted helper functions because i'm bad at programming
 TOKEN_EPOCH = 1727988244890
 BASE66CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789=-_~'
 USERPROXY_COMMANDS = [

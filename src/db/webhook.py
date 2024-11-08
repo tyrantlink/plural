@@ -17,7 +17,7 @@ class Webhook(Document):
         use_state_management = True
         cache_expiration_time = timedelta(minutes=1)
 
-    id: int = Field(
+    id: int = Field(  # type: ignore #? mypy stupid
         description='channel id of the webhook'
     )
     guild: int | None = Field(
