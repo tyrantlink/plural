@@ -427,7 +427,8 @@ def create_multipart(
 
 async def multi_request(
     token: str,
-    requests: list[tuple[str, str, dict[Any, Any]]]
+    requests: list[tuple[str, str, dict[Any, Any]]],
+    raise_errors: bool = True
 ) -> list[tuple[ClientResponse, str]]:
     """requests is a list of tuples of method, endpoint, json"""
     responses: list[tuple[ClientResponse, str]] = []
@@ -442,7 +443,7 @@ async def multi_request(
                 json=json
             )
 
-            if resp.status not in {200, 201}:
+            if resp.status not in {200, 201} and raise_errors:
                 raise HTTPException(resp, await resp.text())
 
             responses.append((resp, await resp.text()))
@@ -524,7 +525,8 @@ async def sync_userproxy_with_member(
 
     responses = await multi_request(
         bot_token,
-        requests
+        requests,
+        raise_errors=False
     )
 
     errors = [
@@ -547,7 +549,8 @@ async def sync_userproxy_with_member(
         bot_token,
         [
             ('patch', f'applications/@me', app_patch)
-        ]
+        ],
+        raise_errors=False
     )
 
     errors = [
