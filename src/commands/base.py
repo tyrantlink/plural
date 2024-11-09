@@ -1,5 +1,5 @@
 from __future__ import annotations
-from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING, File
+from discord import slash_command, ApplicationContext, Option, message_command, InteractionContextType, Message, InputTextStyle, Embed, Forbidden, MISSING, File, TextChannel, VoiceChannel, StageChannel, ForumChannel
 from src.db import Group, Member, Message as DBMessage,  UserProxy, ApiKey, Latch, Reply, DatalessImage, Image
 from src.export_models import UserDataExport, ExportMember, ExportGroup, ExportProxyTag, CompleteRawExport
 from src.converters import MemberConverter, GroupConverter, include_all_options
@@ -8,7 +8,6 @@ from src.views import DeleteConfirmation, ApiKeyView, HelpView
 from src.helpers import CustomModal, send_error, send_success
 import src.commands.autocomplete as autocomplete
 from src.models import project, DebugMessage
-from discord.abc import MessageableChannel
 from beanie import PydanticObjectId
 from discord.ui import InputText
 from typing import TYPE_CHECKING
@@ -17,6 +16,8 @@ from io import StringIO
 
 if TYPE_CHECKING:
     from src.client import Client
+
+GuildChannel = TextChannel | VoiceChannel | StageChannel | ForumChannel
 
 
 class BaseCommands(Cog):
@@ -245,7 +246,7 @@ class BaseCommands(Cog):
                 required=False,
                 autocomplete=autocomplete.groups)])
     async def slash_reproxy(self, ctx: ApplicationContext, member: Member, group: Group):
-        if not isinstance(ctx.channel, MessageableChannel):
+        if not isinstance(ctx.channel, GuildChannel):
             await send_error(ctx, 'channel is not a messageable object')
             return  # ? mypy is stupid, this will never happen
 
