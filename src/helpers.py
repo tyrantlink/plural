@@ -536,8 +536,17 @@ async def sync_userproxy_with_member(
     ]
 
     if errors:
-        await _send_embed(ctx, prettify_discord_errors(errors))
-        return
+        embed = prettify_discord_errors(errors)
+        just_username_ratelimit = [
+            field.name for field in embed.fields] != ['USERNAME_RATE_LIMIT']
+
+        if not just_username_ratelimit:
+            await _send_embed(ctx, embed)
+            return
+
+        embed.set_footer(
+            'userproxy will still be created, but setting username is rate-limited, please wait some time and use /userproxy sync to try again')
+        await _send_embed(ctx, embed)
 
     public_key = (loads(responses[-1][1]))['verify_key']
 
