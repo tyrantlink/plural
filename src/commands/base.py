@@ -8,6 +8,7 @@ from src.views import DeleteConfirmation, ApiKeyView, HelpView
 from src.helpers import CustomModal, send_error, send_success
 import src.commands.autocomplete as autocomplete
 from src.models import project, DebugMessage
+from discord.abc import MessageableChannel
 from beanie import PydanticObjectId
 from discord.ui import InputText
 from typing import TYPE_CHECKING
@@ -15,7 +16,6 @@ from asyncio import gather
 from io import StringIO
 
 if TYPE_CHECKING:
-    from discord.abc import MessageableChannel
     from src.client import Client
 
 
@@ -400,7 +400,7 @@ class BaseCommands(Cog):
 
         embed.set_footer(
             text=(
-                f'original message id: {db_message.original_id or 'sent through /plu/ral api'}'),
+                f'original message id: {db_message.original_id or 'sent through / plu/ral api'}'),
         )
 
         embed.set_thumbnail(
