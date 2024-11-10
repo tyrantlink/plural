@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .enums import Permission, VerificationLevel, DefaultMessageNotificationLevel, ExplicitContentFilterLevel, GuildFeature, MFALevel, SystemChannelFlags, PremiumTier, NSFWLevel
+from .enums import Permission, VerificationLevel, DefaultMessageNotificationLevel, ExplicitContentFilterLevel, GuildFeature, MFALevel, SystemChannelFlag, PremiumTier, NSFWLevel
 from src.discord.http import Route, request
 from src.discord.types import Snowflake
 from .base import RawBaseModel
@@ -45,7 +45,7 @@ class Guild(RawBaseModel):
     mfa_level: MFALevel
     application_id: Snowflake | None = None
     system_channel_id: Snowflake | None = None
-    system_channel_flags: SystemChannelFlags
+    system_channel_flags: SystemChannelFlag
     rules_channel_id: Snowflake | None = None
     max_presences: int | None = None
     max_members: int | None = None
@@ -65,6 +65,10 @@ class Guild(RawBaseModel):
     stickers: list[Sticker] | None = None
     premium_progress_bar_enabled: bool
     safety_alerts_channel_id: Snowflake | None = None
+
+    @property
+    def filesize_limit(self) -> int:
+        return self.premium_tier.filesize_limit
 
     @classmethod
     async def fetch(cls, guild_id: Snowflake) -> Guild:

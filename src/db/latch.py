@@ -16,7 +16,8 @@ class Latch(Document):
         use_state_management = True
         indexes = [('user', 'guild')]  # ? compound index
 
-    id: PydanticObjectId = Field(default_factory=PydanticObjectId)
+    id: PydanticObjectId = Field(  # type: ignore
+        default_factory=PydanticObjectId)
     user: int = Field(description='user id')
     guild: int = Field(description='guild id')
     enabled: bool = Field(False, description='whether the latch is enabled')

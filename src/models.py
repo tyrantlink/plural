@@ -1,5 +1,6 @@
 from enum import StrEnum, Enum
 from pydantic import BaseModel
+from base64 import b64decode
 from tomllib import loads
 
 
@@ -15,7 +16,16 @@ class Project(BaseModel):
     import_proxy_channel_id: int
     error_webhook: str
     gateway_key: str
+    logfire_token: str
     dev_environment: bool = True
+
+    @property
+    def application_id(self) -> int:
+        return int(
+            b64decode(
+                project.bot_token.split('.')[0].encode()
+            ).decode()
+        )
 
 
 class ReplyAttachment(BaseModel):

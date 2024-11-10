@@ -15,14 +15,15 @@ class HTTPCache(Document):
         name = 'httpcache'
         use_cache = True
         validate_on_save = True
-        cache_expiration_time = timedelta(minutes=1)
+        cache_expiration_time = timedelta(minutes=5)
         indexes = [
             'path',
             IndexModel('ts', expireAfterSeconds=60*60*4)
         ]
 
     url: str = Field(description='the path of the request')
-    data: dict = Field(description='the json response of the request')
+    data: dict | list | str | int | bool | float = Field(
+        description='the json response of the request')
     ts: datetime = Field(
         default_factory=datetime.utcnow,
         description='the timestamp of the request')

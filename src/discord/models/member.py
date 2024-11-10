@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .avatar_decoration import AvatarDecorationData
-from .enums import GuildMemberFlags, Permission
+from .enums import GuildMemberFlag, Permission
 from src.discord.http import Route, request
 from src.discord.types import Snowflake
 from datetime import datetime, timezone
@@ -22,7 +22,7 @@ class Member(RawBaseModel):
     premium_since: datetime | None = None
     deaf: bool | None = None
     mute: bool | None = None
-    flags: GuildMemberFlags
+    flags: GuildMemberFlag
     pending: bool | None = None
     permissions: Permission | None = None
     communication_disabled_until: datetime | None = None

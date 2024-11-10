@@ -1,6 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from .userproxy_message import UserProxyMessage
 from .httpcache import HTTPCache
+from src.models import project
 from beanie import init_beanie
 from .webhook import Webhook
 from .message import Message
@@ -18,20 +19,27 @@ class MongoDatabase:
         self._client: AsyncIOMotorDatabase = AsyncIOMotorClient(
             mongo_uri, serverSelectionTimeoutMS=5000)['plural2']
 
+    async def _init_beanie(self) -> None:
+        await init_beanie(
+            self._client,
+            document_models=[
+                UserProxyMessage,
+                HTTPCache,
+                Webhook,
+                Message,
+                ApiKey,
+                Member,
+                Group,
+                Image,
+                Latch,
+                Reply,
+            ]
+        )
+
     async def connect(self) -> None:
-        with span('MongoDB init'):
-            await init_beanie(
-                self._client,
-                document_models=[
-                    UserProxyMessage,
-                    HTTPCache,
-                    Webhook,
-                    Message,
-                    ApiKey,
-                    Member,
-                    Group,
-                    Image,
-                    Latch,
-                    Reply,
-                ]
-            )
+        if project.logfire_token:
+            with span('MongoDB init'):
+                await self._init_beanie()
+            return
+
+        await self._init_beanie()

@@ -1,7 +1,7 @@
 from PIL.Image import Image, Resampling, open as pil_open
 from warnings import catch_warnings, simplefilter
 from .enums import StickerType, StickerFormatType
-from src.discord.http import get_from_cdn
+from src.discord.http import get_from_cdn, File
 from src.discord.types import Snowflake
 from .base import RawBaseModel
 from asyncio import to_thread
@@ -16,21 +16,9 @@ __all__ = (
 
 
 class StickerItem(RawBaseModel):
-    ...
-
-
-class Sticker(RawBaseModel):
     id: Snowflake
-    pack_id: Snowflake | None = None
     name: str
-    description: str | None = None
-    tags: str | None = None
-    type: StickerType
     format_type: StickerFormatType
-    available: bool | None = None
-    guild_id: Snowflake | None = None
-    user: User | None = None
-    sort_value: int | None = None
 
     @property  # ! reconsider this
     def filename(self) -> str:
@@ -74,3 +62,25 @@ class Sticker(RawBaseModel):
             return data
 
         return await to_thread(self._apng_to_gif, data)
+
+    async def as_file(self) -> File:
+        return File(
+            BytesIO(await self.read()),
+            filename=self.filename,
+            description=getattr(self, 'description', None),
+            spoiler=False
+        )
+
+
+class Sticker(StickerItem):
+    id: Snowflake
+    pack_id: Snowflake | None = None
+    name: str
+    description: str | None = None
+    tags: str | None = None
+    type: StickerType
+    format_type: StickerFormatType
+    available: bool | None = None
+    guild_id: Snowflake | None = None
+    user: User | None = None
+    sort_value: int | None = None

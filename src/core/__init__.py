@@ -73,22 +73,24 @@ def live_discord_redaction(request: Request | WebSocket, attributes: dict[str, A
     return attributes
 
 
-logfire.configure(
-    service_name='/plu/ral',
-    environment='development' if project.dev_environment else 'production',
-    console=False
-)
-logfire.instrument_pymongo(
-    capture_statement=True
-)
-logfire.instrument_aiohttp_client()
-logfire.instrument_system_metrics()
-logfire.instrument_fastapi(
-    app,
-    capture_headers=app.debug,
-    request_attributes_mapper=live_discord_redaction,
-    excluded_urls=['/healthcheck']
-)
+if project.logfire_token:
+    logfire.configure(
+        service_name='/plu/ral',
+        token=project.logfire_token,
+        environment='development' if project.dev_environment else 'production',
+        console=False
+    )
+    logfire.instrument_pymongo(
+        capture_statement=True
+    )
+    logfire.instrument_aiohttp_client()
+    logfire.instrument_system_metrics()
+    logfire.instrument_fastapi(
+        app,
+        capture_headers=app.debug,
+        request_attributes_mapper=live_discord_redaction,
+        excluded_urls=['/healthcheck']
+    )
 
 
 @app.middleware("http")

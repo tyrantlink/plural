@@ -1,47 +1,79 @@
-from src.discord import MessageCreateEvent, MessageUpdateEvent
+from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, ChannelType
 from src.discord.listeners import listen, ListenerType
-# from .webhook_proxy import process_proxy  # , handle_ping_reply
+from .proxy import process_proxy, get_proxy_webhook  # , handle_ping_reply
+from src.db import Message as DBMessage
+from src.models import project
 from asyncio import gather
 
 
 @listen(ListenerType.MESSAGE_CREATE)
 async def on_message(message: MessageCreateEvent):
-    if not message.author or message.author.bot:
+    if (
+        not message.author or
+        message.author.bot or
+        message.channel is None or
+        message.type == MessageType.THREAD_CREATED
+    ):
         return
 
-    if message.guild:
-        print(message.guild.name)
-    # proxied, app_emojis = await process_proxy(message)
+    proxied, app_emojis = await process_proxy(message)
 
-    # if app_emojis:
-    #     await gather(
-    #         *[
-    #             emoji.delete()
-    #             for emoji in
-    #             app_emojis
-    #         ]
-    #     )
+    if app_emojis:
+        gather(*[emoji.delete() for emoji in app_emojis])
 
-    # if proxied:
-    #     return
-
-    # if await handle_ping_reply(message):
-    #     return
-
-    # if (  # ? stealing the pk easter egg because it's funny
-    #     message.author is not None and
-    #     not message.author.bot and
-    #     message.content.startswith('pk;') and
-    #     message.content.lstrip('pk;').strip() == 'fire'  # and
-    #     # message.channel.can_send()
-    # ):
-    #     await message.channel.send('*A giant lightning bolt promptly erupts into a pillar of fire as it hits your opponent.*')
+    if proxied:
+        return
 
 
 @listen(ListenerType.MESSAGE_UPDATE)
 async def on_message_edit(message: MessageUpdateEvent):
-    ...
-    # proxied, app_emojis = await process_proxy(message)
+    if message.channel is None:
+        return
 
-    # for emoji in app_emojis or set():
-    #     await emoji.delete()
+    # if await message.channel.history(limit=1).flatten() != [message]:
+    #     return None
+
+    # await on_message(message)
+
+
+@listen(ListenerType.MESSAGE_REACTION_ADD)
+async def on_reaction_add(reaction: MessageReactionAddEvent):
+    if (
+        reaction.user_id == project.application_id or
+        reaction.guild_id is None or
+        reaction.member is None or
+        reaction.member.user is None or
+        reaction.member.user.bot or
+        reaction.emoji.name not in {'❌'}
+    ):
+        return
+
+    match reaction.emoji.name:  # ? i might add more later
+        case '❌':
+            message = await DBMessage.find_one(
+                {'proxy_id': reaction.message_id}
+            )
+
+            if message is None:
+                return
+
+            if reaction.user_id != message.author_id:
+                return
+
+            channel = await Channel.fetch(reaction.channel_id)
+
+            if channel is None:
+                return
+
+            webhook = await get_proxy_webhook(
+                channel
+            )
+
+            await webhook.delete_message(
+                reaction.message_id,
+                thread_id=(
+                    channel.id
+                    if channel.type in {ChannelType.PUBLIC_THREAD, ChannelType.PRIVATE_THREAD} else
+                    None
+                )
+            )

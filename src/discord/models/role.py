@@ -1,4 +1,4 @@
-from .enums import Permission, RoleFlags
+from .enums import Permission, RoleFlag
 from src.discord.types import Snowflake
 from .base import RawBaseModel
 
@@ -31,4 +31,4 @@ class Role(RawBaseModel):
     managed: bool
     mentionable: bool
     tags: RoleTags | None = None
-    flags: RoleFlags
+    flags: RoleFlag

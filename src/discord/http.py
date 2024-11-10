@@ -27,12 +27,13 @@ from asyncio import sleep, Lock, Event, get_event_loop, create_task
 from typing import Any, Iterable, Sequence
 from datetime import datetime, timezone
 from weakref import WeakValueDictionary
-from base64 import b64encode, b64decode
 from src.core.session import session
 from orjson import dumps, loads
 from types import TracebackType
 from urllib.parse import quote
 from src.models import project
+from io import BufferedIOBase
+from base64 import b64encode
 from src.db import HTTPCache
 from sys import version_info
 
@@ -40,8 +41,6 @@ from sys import version_info
 BASE_URL = 'https://discord.com/api/v10'
 USER_AGENT = (
     f'DiscordBot (https://plural.gg, 2.0.0) Python/{'.'.join([str(i) for i in version_info])} aiohttp/{aiohttp_version}')
-APPLICATION_ID = int(
-    b64decode(project.bot_token.split('.')[0].encode()).decode())
 
 global_limit = Event()
 global_limit.set()
@@ -62,7 +61,7 @@ class Route:
         url = (BASE_URL if discord else '') + path
 
         if '{application_id}' in url and 'application_id' not in params:
-            params['application_id'] = APPLICATION_ID
+            params['application_id'] = project.application_id
 
         self.url = url.format(**{
             k: quote(v) if isinstance(v, str) else v
@@ -127,12 +126,39 @@ class ServerError(HTTPException):
     ...
 
 
-# ? temp
 class File:
-    ...
+    def __init__(
+        self,
+        data: BufferedIOBase,
+        filename: str | None = None,
+        description: str | None = None,
+        spoiler: bool = False,
+    ):
+        self.data = data
+        self._original_pos = data.tell()
+        self.filename = filename
 
-    def reset(self, *, seek: int) -> None:
-        ...
+        self._closer = self.data.close
+        self.data.close = lambda: None
+
+        if (
+            spoiler
+            and self.filename is not None
+            and not self.filename.startswith("SPOILER_")
+        ):
+            self.filename = f"SPOILER_{self.filename}"
+
+        self.spoiler = spoiler or (
+            self.filename is not None and self.filename.startswith("SPOILER_")
+        )
+        self.description = description
+
+    def reset(self, *, seek: int | bool = True) -> None:
+        if seek:
+            self.data.seek(self._original_pos)
+
+    def close(self) -> None:
+        self.data.close = self._closer
 
 
 def _get_mime_type_for_image(data: bytes):
@@ -238,7 +264,8 @@ async def request(
                         response.status != 429
                     ):
                         reset = datetime.fromtimestamp(
-                            float(request.headers['X-Ratelimit-Reset']),
+                            float(response.headers.get(
+                                'X-Ratelimit-Reset') or 0),
                             timezone.utc
                         )
 

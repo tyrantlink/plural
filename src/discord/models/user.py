@@ -2,7 +2,7 @@ from __future__ import annotations
 from .avatar_decoration import AvatarDecorationData
 from src.discord.http import request, Route
 from typing import TYPE_CHECKING, Literal
-from .enums import UserFlags, PremiumType
+from .enums import UserFlag, PremiumType
 from src.discord.types import Snowflake
 from .base import RawBaseModel
 
@@ -27,12 +27,20 @@ class User(RawBaseModel):
     locale: str | None = None
     verified: bool | None = None
     email: str | None = None
-    flags: UserFlags | None = None
+    flags: UserFlag | None = None
     premium_type: PremiumType | None = None
-    public_flags: UserFlags | None = None
+    public_flags: UserFlag | None = None
     avatar_decoration_data: AvatarDecorationData | None = None
     # ? sent with message create event
     member: Member | None = None
+
+    @property
+    def mention(self) -> str:
+        return f'<@{self.id}>'
+
+    @property
+    def display_name(self) -> str:
+        return self.global_name or self.username
 
     @classmethod
     async def fetch(cls, user_id: Snowflake | Literal['@me']) -> User:

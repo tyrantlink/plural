@@ -49,7 +49,8 @@ class Group(Document):
         use_state_management = True
         indexes = ['accounts', 'members', 'name']
 
-    id: PydanticObjectId = Field(default_factory=PydanticObjectId)
+    id: PydanticObjectId = Field(  # type: ignore
+        default_factory=PydanticObjectId)
     name: str = Field(
         description='the name of the system',
         min_length=1, max_length=32)

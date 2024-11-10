@@ -1,7 +1,8 @@
 from __future__ import annotations
-from .enums import MessageType, MessageReferenceType, MessageFlags
+from .enums import MessageType, MessageReferenceType, MessageFlag, AllowedMentionType
+from src.discord.http import Route, request, File
+from asyncio import get_event_loop, create_task
 from .channel import ChannelMention, Channel
-from src.discord.http import Route, request
 from .sticker import Sticker, StickerItem
 from src.discord.types import Snowflake
 from .role import RoleSubscriptionData
@@ -12,6 +13,7 @@ from .reaction import Reaction
 from .resolved import Resolved
 from .base import RawBaseModel
 from datetime import datetime
+from pydantic import Field
 from .guild import Guild
 from .embed import Embed
 from .user import User
@@ -25,6 +27,7 @@ __all__ = (
     'MessageInteraction',
     'MessageCall',
     'Message',
+    'AllowedMentions',
 )
 
 
@@ -53,6 +56,13 @@ class MessageCall(RawBaseModel):
     ended_timestamp: datetime | None = None
 
 
+class AllowedMentions(RawBaseModel):
+    parse: list[AllowedMentionType] = Field(default_factory=list)
+    roles: list[Snowflake] | None = None
+    users: list[Snowflake] | None = None
+    replied_user: bool | None = None
+
+
 class Message(RawBaseModel):
     id: Snowflake
     channel_id: Snowflake
@@ -75,7 +85,7 @@ class Message(RawBaseModel):
     activity: MessageActivity | None = None
     application: Application | None = None
     application_id: Snowflake | None = None
-    flags: MessageFlags
+    flags: MessageFlag
     message_reference: MessageReference | None = None
     message_snapshots: list[Message] | None = None
     referenced_message: Message | None = None
@@ -94,6 +104,13 @@ class Message(RawBaseModel):
     channel: Channel | None = None
     guild: Guild | None = None
 
+    @property
+    def jump_url(self) -> str:
+        if self.guild is None:
+            return f'https://discord.com/channels/@me/{self.channel_id}/{self.id}'
+
+        return f'https://discord.com/channels/{self.guild.id}/{self.channel_id}/{self.id}'
+
     async def populate(self) -> None:
         await super().populate()
         if self.channel_id is None:
@@ -106,13 +123,34 @@ class Message(RawBaseModel):
 
         self.guild = await Guild.fetch(self.channel.guild_id)
 
-    async def delete(self) -> tuple[int, dict] | None:
+    async def delete(
+        self,
+        reason: str | None = None
+    ) -> tuple[int, dict] | None:
         return await request(
             Route(
                 'DELETE',
                 '/channels/{channel_id}/messages/{message_id}',
                 channel_id=self.channel_id,
                 message_id=self.id
+            ),
+            reason=reason
+        )
+
+    @classmethod
+    async def fetch(
+        cls,
+        channel_id: Snowflake,
+        message_id: Snowflake
+    ) -> Message:
+        return cls(
+            **await request(
+                Route(
+                    'GET',
+                    '/channels/{channel_id}/messages/{message_id}',
+                    channel_id=channel_id,
+                    message_id=message_id
+                )
             )
         )
 
@@ -123,29 +161,62 @@ class Message(RawBaseModel):
         content: str | None = None,
         *,
         tts: bool = False,
-        embed: Embed | None = None,
+        embeds: list[Embed] | None = None,
+        attachments: list[File] | None = None,
         components: list[Component] | None = None,
         sticker_ids: list[Snowflake] | None = None,
-        message_reference: MessageReference | None = None,
-        allowed_mentions: dict | None = None,
+        reference: Message | MessageReference | None = None,
+        allowed_mentions: AllowedMentions | None = None,
+        delete_after: float | None = None,
     ) -> Message:
-        json = {
-            'content': content,
-            # 'tts': tts,
-            # 'embed': embed.dict() if embed else None,
-            # 'components': [c.dict() for c in components] if components else None,
-            # 'sticker_ids': sticker_ids,
-            # 'message_reference': message_reference.dict() if message_reference else None,
-            # 'allowed_mentions': allowed_mentions,
-        }
+        json = {}
 
-        return cls(
+        if content is not None:
+            json['content'] = content
+
+        if tts:
+            json['tts'] = tts
+
+        if embeds:
+            json['embed'] = [embed.model_dump(mode='json') for embed in embeds]
+
+        if components:
+            json['components'] = [component.model_dump(
+                mode='json') for component in components]
+
+        if sticker_ids:
+            json['sticker_ids'] = sticker_ids
+
+        if reference:
+            if isinstance(reference, Message):
+                json['message_reference'] = MessageReference(
+                    type=MessageReferenceType.DEFAULT,
+                    message_id=reference.id,
+                    channel_id=reference.channel_id
+                ).model_dump(mode='json')
+            else:
+                json['message_reference'] = reference.model_dump(mode='json')
+
+        if allowed_mentions:
+            json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')
+
+        self = cls(
             **await request(
                 Route(
                     'POST',
                     '/channels/{channel_id}/messages',
                     channel_id=channel_id
                 ),
+                files=attachments,
                 json=json
             )
         )
+
+        if delete_after:
+            get_event_loop().call_later(
+                delete_after,
+                create_task,
+                self.delete()
+            )
+
+        return self

@@ -9,13 +9,13 @@ __all__ = (
     'GatewayOpCode',
     'GatewayEventName',
     'ReactionType',
-    'GuildMemberFlags',
+    'GuildMemberFlag',
     'PremiumType',
-    'UserFlags',
+    'UserFlag',
     'ChannelType',
     'MessageType',
     'MessageReferenceType',
-    'MessageFlags',
+    'MessageFlag',
     'ApplicationCommandType',
     'ApplicationCommandOptionType',
     'ApplicationIntegrationType',
@@ -24,7 +24,7 @@ __all__ = (
     'WebhookType',
     'OverwriteType',
     'VideoQualityMode',
-    'ChannelFlags',
+    'ChannelFlag',
     'StickerType',
     'StickerFormatType',
     'Permission',
@@ -139,7 +139,7 @@ class ReactionType(Enum):
     BURST = 1
 
 
-class GuildMemberFlags(IntFlag):
+class GuildMemberFlag(IntFlag):
     DID_REJOIN = 1 << 0
     COMPLETED_ONBOARDING = 1 << 1
     BYPASSES_VERIFICATION = 1 << 2
@@ -158,7 +158,7 @@ class PremiumType(Enum):
     NITRO_BASIC = 3
 
 
-class UserFlags(IntFlag):
+class UserFlag(IntFlag):
     STAFF = 1 << 0
     PARTNER = 1 << 1
     HYPESQUAD = 1 << 2
@@ -237,7 +237,7 @@ class MessageReferenceType(Enum):
     FORWARD = 1
 
 
-class MessageFlags(IntFlag):
+class MessageFlag(IntFlag):
     CROSSPOSTED = 1 << 0
     IS_CROSSPOST = 1 << 1
     SUPPRESS_EMBEDS = 1 << 2
@@ -304,7 +304,7 @@ class VideoQualityMode(Enum):
     FULL = 2
 
 
-class ChannelFlags(IntFlag):
+class ChannelFlag(IntFlag):
     PINNED = 1 << 1
     REQUIRE_TAG = 1 << 4
     HIDE_MEDIA_DOWNLOAD_OPTIONS = 1 << 15
@@ -324,10 +324,8 @@ class StickerFormatType(Enum):
     @property
     def file_extension(self) -> str:
         match self:
-            case StickerFormatType.PNG:
+            case StickerFormatType.PNG | StickerFormatType.APNG:
                 return 'png'
-            case StickerFormatType.APNG:
-                return 'apng'
             case StickerFormatType.LOTTIE:
                 return 'json'
             case StickerFormatType.GIF:
@@ -471,7 +469,7 @@ class MFALevel(Enum):
     ELEVATED = 1
 
 
-class SystemChannelFlags(IntFlag):
+class SystemChannelFlag(IntFlag):
     SUPPRESS_JOIN_NOTIFICATIONS = 1 << 0
     SUPPRESS_PREMIUM_SUBSCRIPTIONS = 1 << 1
     SUPPRESS_GUILD_REMINDER_NOTIFICATIONS = 1 << 2
@@ -486,6 +484,62 @@ class PremiumTier(Enum):
     TIER_2 = 2
     TIER_3 = 3
 
+    @property
+    def emoji_limit(self) -> int:
+        match self:
+            case PremiumTier.NONE:
+                return 50
+            case PremiumTier.TIER_1:
+                return 100
+            case PremiumTier.TIER_2:
+                return 150
+            case PremiumTier.TIER_3:
+                return 250
+            case _:
+                raise ValueError('Invalid premium tier')
+
+    @property
+    def sticker_limit(self) -> int:
+        match self:
+            case PremiumTier.NONE:
+                return 5
+            case PremiumTier.TIER_1:
+                return 15
+            case PremiumTier.TIER_2:
+                return 30
+            case PremiumTier.TIER_3:
+                return 60
+            case _:
+                raise ValueError('Invalid premium tier')
+
+    @property
+    def bitrate_limit(self) -> int:
+        match self:
+            case PremiumTier.NONE:
+                return 96_000
+            case PremiumTier.TIER_1:
+                return 128_000
+            case PremiumTier.TIER_2:
+                return 256_000
+            case PremiumTier.TIER_3:
+                return 384_000
+            case _:
+                raise ValueError('Invalid premium tier')
+
+    @property
+    def filesize_limit(self) -> int:
+        match self:
+            case PremiumTier.NONE:
+                return 26_214_400
+            case PremiumTier.TIER_1:
+                return 26_214_400
+            case PremiumTier.TIER_2:
+                return 52_428_800
+            case PremiumTier.TIER_3:
+                return 104_857_600
+            case _:
+                raise ValueError('Invalid premium tier')
+
 
 class NSFWLevel(Enum):
     DEFAULT = 0
@@ -494,5 +548,19 @@ class NSFWLevel(Enum):
     AGE_RESTRICTED = 3
 
 
-class RoleFlags(IntFlag):
+class RoleFlag(IntFlag):
     IN_PROMPT = 1 << 0
+
+
+class AllowedMentionType(Enum):
+    ROLES = 'roles'
+    USERS = 'users'
+    EVERYONE = 'everyone'
+
+
+class AttachmentFlag(IntFlag):
+    IS_REMIX = 1 << 2
+
+
+class PollLayoutType(Enum):
+    DEFAULT = 1

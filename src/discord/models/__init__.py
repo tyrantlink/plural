@@ -18,3 +18,4 @@ from .resolved import *
 from .role import *
 from .sticker import *
 from .user import *
+from .webhook import *

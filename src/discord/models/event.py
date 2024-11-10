@@ -45,7 +45,7 @@ class MessageCreateEvent(Message, RawBaseModel):
     async def populate(self) -> None:
         await super().populate()
 
-        if self.guild_id is not None and self.author is not None:
+        if self.guild_id is not None and self.author is not None and self.webhook_id is None:
             self.member = await Member.fetch(
                 self.guild_id,
                 self.author.id

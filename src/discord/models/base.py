@@ -13,7 +13,7 @@ class RawBaseModel(BaseModel):
     def _raw(self) -> dict:
         return self.__raw_data
 
-    async def populate(self) -> Self:
+    async def populate(self) -> None:
         ...
 
     @classmethod

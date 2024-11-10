@@ -1,12 +1,14 @@
+from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent
 from src.core.auth import discord_key_validator, gateway_key_validator
 from fastapi import APIRouter, HTTPException, Depends
-# from src.core.models.discord import Interaction, InteractionType
-from fastapi.responses import Response, JSONResponse
-from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent
-# from .commands import on_command, on_modal_submit
-from asyncio import create_task
 from src.discord.types import ListenerType
 from src.discord.listeners import emit
+from fastapi.responses import Response
+from src.discord.http import BASE_URL
+from asyncio import create_task
+from src.models import project
+from src.db import HTTPCache
+import logfire
 
 router = APIRouter(prefix='/discord', tags=['UserProxy'])
 
@@ -15,7 +17,8 @@ ACCEPTED_EVENTS = {
     GatewayEventName.MESSAGE_UPDATE,
     GatewayEventName.MESSAGE_REACTION_ADD,
     GatewayEventName.GUILD_UPDATE,
-    GatewayEventName.CHANNEL_UPDATE
+    GatewayEventName.CHANNEL_UPDATE,
+    GatewayEventName.GUILD_ROLE_UPDATE,
 }
 
 
@@ -42,6 +45,13 @@ async def post__interaction(
     return Response(status_code=202)
 
 
+async def _invalidate_cache(url: str) -> None:
+    cache = await HTTPCache.find({'url': f'{BASE_URL}{url}'}).delete()
+
+    if cache and cache.deleted_count:
+        logfire.info(f'invalidated cache for {url}')
+
+
 @router.post(
     '/event',
     include_in_schema=False,
@@ -54,27 +64,33 @@ async def post__event(
 
     match event.name:
         case GatewayEventName.MESSAGE_CREATE:
-            listener = emit(
+            task = emit(
                 ListenerType.MESSAGE_CREATE,
                 await MessageCreateEvent.validate_and_populate(event.data))
         case GatewayEventName.MESSAGE_UPDATE:
-            listener = emit(
+            task = emit(
                 ListenerType.MESSAGE_UPDATE,
                 MessageUpdateEvent(**event.data))
         case GatewayEventName.MESSAGE_REACTION_ADD:
-            listener = emit(
+            task = emit(
                 ListenerType.MESSAGE_REACTION_ADD,
                 MessageReactionAddEvent(**event.data)
             )
         case GatewayEventName.GUILD_UPDATE:
-            ...
+            task = _invalidate_cache(
+                f'/guilds/{event.data['id']}'
+            )
         case GatewayEventName.CHANNEL_UPDATE:
-            ...
+            task = _invalidate_cache(
+                f'/channels/{event.data['id']}'
+            )
+        case GatewayEventName.GUILD_ROLE_UPDATE:
+            task = _invalidate_cache(
+                f'/guilds/{event.data['guild_id']}'
+            )
         case _:
-            print(event.data)
-            return Response(event.name, status_code=200)
             raise HTTPException(500, 'event accepted but not handled')
 
-    create_task(listener)
+    create_task(task)
 
     return Response(event.name, status_code=200)
