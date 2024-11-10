@@ -15,7 +15,7 @@ class Project(BaseModel):
     import_proxy_channel_id: int
     error_webhook: str
     gateway_key: str
-    dev_environment: bool = False
+    dev_environment: bool = True
 
 
 class ReplyAttachment(BaseModel):
