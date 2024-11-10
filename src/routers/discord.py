@@ -5,14 +5,17 @@ from fastapi.responses import Response, JSONResponse
 from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent
 # from .commands import on_command, on_modal_submit
 from asyncio import create_task
-from src.listeners import on_reaction_add, on_message_create, on_message_update
+from src.discord.types import ListenerType
+from src.discord.listeners import emit
 
 router = APIRouter(prefix='/discord', tags=['UserProxy'])
 
 ACCEPTED_EVENTS = {
     GatewayEventName.MESSAGE_CREATE,
     GatewayEventName.MESSAGE_UPDATE,
-    GatewayEventName.MESSAGE_REACTION_ADD
+    GatewayEventName.MESSAGE_REACTION_ADD,
+    GatewayEventName.GUILD_UPDATE,
+    GatewayEventName.CHANNEL_UPDATE
 }
 
 
@@ -46,15 +49,32 @@ async def post__interaction(
 async def post__event(
     event: GatewayEvent
 ) -> Response:
-    from json import dumps
-    print(dumps(event._raw, indent=1))
+    if event.name not in ACCEPTED_EVENTS:
+        return Response(event.name, status_code=200)
 
     match event.name:
         case GatewayEventName.MESSAGE_CREATE:
-            create_task(on_message_create(MessageCreateEvent(**event.data)))
+            listener = emit(
+                ListenerType.MESSAGE_CREATE,
+                await MessageCreateEvent.validate_and_populate(event.data))
         case GatewayEventName.MESSAGE_UPDATE:
-            create_task(on_message_update(MessageUpdateEvent(**event.data)))
+            listener = emit(
+                ListenerType.MESSAGE_UPDATE,
+                MessageUpdateEvent(**event.data))
         case GatewayEventName.MESSAGE_REACTION_ADD:
-            create_task(on_reaction_add(MessageReactionAddEvent(**event.data)))
+            listener = emit(
+                ListenerType.MESSAGE_REACTION_ADD,
+                MessageReactionAddEvent(**event.data)
+            )
+        case GatewayEventName.GUILD_UPDATE:
+            ...
+        case GatewayEventName.CHANNEL_UPDATE:
+            ...
+        case _:
+            print(event.data)
+            return Response(event.name, status_code=200)
+            raise HTTPException(500, 'event accepted but not handled')
+
+    create_task(listener)
 
     return Response(event.name, status_code=200)

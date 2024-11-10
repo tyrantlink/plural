@@ -1,9 +1,10 @@
 from __future__ import annotations
 from .avatar_decoration import AvatarDecorationData
+from src.discord.http import request, Route
+from typing import TYPE_CHECKING, Literal
 from .enums import UserFlags, PremiumType
-from typing import TYPE_CHECKING
+from src.discord.types import Snowflake
 from .base import RawBaseModel
-from .types import Snowflake
 
 if TYPE_CHECKING:
     from .member import Member
@@ -32,3 +33,15 @@ class User(RawBaseModel):
     avatar_decoration_data: AvatarDecorationData | None = None
     # ? sent with message create event
     member: Member | None = None
+
+    @classmethod
+    async def fetch(cls, user_id: Snowflake | Literal['@me']) -> User:
+        return cls(
+            **await request(
+                Route(
+                    'GET',
+                    '/users/{user_id}',
+                    user_id=user_id
+                )
+            )
+        )

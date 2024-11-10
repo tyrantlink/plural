@@ -1,4 +1,9 @@
+from __future__ import annotations
+from pydantic import GetJsonSchemaHandler, GetCoreSchemaHandler
+from pydantic_core.core_schema import CoreSchema, int_schema
+from pydantic.json_schema import JsonSchemaValue
 from enum import Enum, StrEnum, IntFlag
+from typing import Any
 
 __all__ = (
     'GatewayOpCode',
@@ -10,7 +15,19 @@ __all__ = (
     'ChannelType',
     'MessageType',
     'MessageReferenceType',
-    'MessageFlags'
+    'MessageFlags',
+    'ApplicationCommandType',
+    'ApplicationCommandOptionType',
+    'ApplicationIntegrationType',
+    'InteractionContextType',
+    'EntryPointCommandHandlerType',
+    'WebhookType',
+    'OverwriteType',
+    'VideoQualityMode',
+    'ChannelFlags',
+    'StickerType',
+    'StickerFormatType',
+    'Permission',
 )
 
 
@@ -232,3 +249,250 @@ class MessageFlags(IntFlag):
     FAILED_TO_MENTION_SOME_ROLES_IN_THREAD = 1 << 8
     SUPPRESS_NOTIFICATIONS = 1 << 12
     IS_VOICE_MESSAGE = 1 << 13
+
+
+class ApplicationCommandType(Enum):
+    CHAT_INPUT = 0
+    USER = 1
+    MESSAGE = 2
+    PRIMARY_ENTRY_POINT = 4
+
+
+class ApplicationCommandOptionType(Enum):
+    SUB_COMMAND = 1
+    SUB_COMMAND_GROUP = 2
+    STRING = 3
+    INTEGER = 4
+    BOOLEAN = 5
+    USER = 6
+    CHANNEL = 7
+    ROLE = 8
+    MENTIONABLE = 9
+    NUMBER = 10
+    ATTACHMENT = 11
+
+
+class ApplicationIntegrationType(Enum):
+    GUILD_INSTALL = 0
+    USER_INSTALL = 1
+
+
+class InteractionContextType(Enum):
+    GUILD = 0
+    BOT_DM = 1
+    PRIVATE_CHANNEL = 2
+
+
+class EntryPointCommandHandlerType(Enum):
+    APP_HANDLER = 1
+    DISCORD_LAUNCH_ACTIVITY = 2
+
+
+class WebhookType(Enum):
+    INCOMING = 1
+    CHANNEL_FOLLOWER = 2
+    APPLICATION = 3
+
+
+class OverwriteType(Enum):
+    ROLE = 0
+    MEMBER = 1
+
+
+class VideoQualityMode(Enum):
+    AUTO = 1
+    FULL = 2
+
+
+class ChannelFlags(IntFlag):
+    PINNED = 1 << 1
+    REQUIRE_TAG = 1 << 4
+    HIDE_MEDIA_DOWNLOAD_OPTIONS = 1 << 15
+
+
+class StickerType(Enum):
+    STANDARD = 1
+    GUILD = 2
+
+
+class StickerFormatType(Enum):
+    PNG = 1
+    APNG = 2
+    LOTTIE = 3
+    GIF = 4
+
+    @property
+    def file_extension(self) -> str:
+        match self:
+            case StickerFormatType.PNG:
+                return 'png'
+            case StickerFormatType.APNG:
+                return 'apng'
+            case StickerFormatType.LOTTIE:
+                return 'json'
+            case StickerFormatType.GIF:
+                return 'gif'
+            case _:
+                raise ValueError('Invalid sticker format type')
+
+
+class Permission(IntFlag):
+    NONE = 0
+    CREATE_INSTANT_INVITE = 1 << 0
+    KICK_MEMBERS = 1 << 1
+    BAN_MEMBERS = 1 << 2
+    ADMINISTRATOR = 1 << 3
+    MANAGE_CHANNELS = 1 << 4
+    MANAGE_GUILD = 1 << 5
+    ADD_REACTIONS = 1 << 6
+    VIEW_AUDIT_LOG = 1 << 7
+    PRIORITY_SPEAKER = 1 << 8
+    STREAM = 1 << 9
+    VIEW_CHANNEL = 1 << 10
+    SEND_MESSAGES = 1 << 11
+    SEND_TTS_MESSAGES = 1 << 12
+    MANAGE_MESSAGES = 1 << 13
+    EMBED_LINKS = 1 << 14
+    ATTACH_FILES = 1 << 15
+    READ_MESSAGE_HISTORY = 1 << 16
+    MENTION_EVERYONE = 1 << 17
+    USE_EXTERNAL_EMOJIS = 1 << 18
+    VIEW_GUILD_INSIGHTS = 1 << 19
+    CONNECT = 1 << 20
+    SPEAK = 1 << 21
+    MUTE_MEMBERS = 1 << 22
+    DEAFEN_MEMBERS = 1 << 23
+    MOVE_MEMBERS = 1 << 24
+    USE_VAD = 1 << 25
+    CHANGE_NICKNAME = 1 << 26
+    MANAGE_NICKNAMES = 1 << 27
+    MANAGE_ROLES = 1 << 28
+    MANAGE_WEBHOOKS = 1 << 29
+    MANAGE_GUILD_EXPRESSIONS = 1 << 30
+    USE_APPLICATION_COMMANDS = 1 << 31
+    REQUEST_TO_SPEAK = 1 << 32
+    MANAGE_EVENTS = 1 << 33
+    MANAGE_THREADS = 1 << 34
+    CREATE_PUBLIC_THREADS = 1 << 35
+    CREATE_PRIVATE_THREADS = 1 << 36
+    USE_EXTERNAL_STICKERS = 1 << 37
+    SEND_MESSAGES_IN_THREADS = 1 << 38
+    USE_EMBEDDED_ACTIVITIES = 1 << 39
+    MODERATE_MEMBERS = 1 << 40
+    VIEW_CREATOR_MONETIZATION_ANALYTICS = 1 << 41
+    USE_SOUNDBOARD = 1 << 42
+    CREATE_GUILD_EXPRESSIONS = 1 << 43
+    CREATE_EVENTS = 1 << 44
+    USE_EXTERNAL_SOUNDS = 1 << 45
+    SEND_VOICE_MESSAGES = 1 << 46
+    SEND_POLLS = 1 << 49
+    USE_EXTERNAL_APPS = 1 << 50
+
+    def with_overwrite(self, allow: int, deny: int) -> Permission:
+        return (self & ~deny) | allow
+
+    @classmethod
+    def all(cls) -> Permission:
+        result = cls(0)
+        for perm in cls:
+            result |= perm
+        return result
+
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        _source_type: type[Any] | None,
+        _handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
+        return int_schema()
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls,
+        _core_schema: CoreSchema,
+        _handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        return {"type": "integer"}
+
+
+class VerificationLevel(Enum):
+    NONE = 0
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    VERY_HIGH = 4
+
+
+class DefaultMessageNotificationLevel(Enum):
+    ALL_MESSAGES = 0
+    ONLY_MENTIONS = 1
+
+
+class ExplicitContentFilterLevel(Enum):
+    DISABLED = 0
+    MEMBERS_WITHOUT_ROLES = 1
+    ALL_MEMBERS = 2
+
+
+class GuildFeature(StrEnum):
+    ANIMATED_BANNER = 'ANIMATED_BANNER'
+    ANIMATED_ICON = 'ANIMATED_ICON'
+    APPLICATION_COMMAND_PERMISSIONS_V2 = 'APPLICATION_COMMAND_PERMISSIONS_V2'
+    AUTO_MODERATION = 'AUTO_MODERATION'
+    BANNER = 'BANNER'
+    COMMUNITY = 'COMMUNITY'
+    CREATOR_MONETIZABLE_PROVISIONAL = 'CREATOR_MONETIZABLE_PROVISIONAL'
+    CREATOR_STORE_PAGE = 'CREATOR_STORE_PAGE'
+    DEVELOPER_SUPPORT_SERVER = 'DEVELOPER_SUPPORT_SERVER'
+    DISCOVERABLE = 'DISCOVERABLE'
+    FEATURABLE = 'FEATURABLE'
+    INVITES_DISABLED = 'INVITES_DISABLED'
+    INVITE_SPLASH = 'INVITE_SPLASH'
+    MEMBER_VERIFICATION_GATE_ENABLED = 'MEMBER_VERIFICATION_GATE_ENABLED'
+    MORE_SOUNDBOARD = 'MORE_SOUNDBOARD'
+    MORE_STICKERS = 'MORE_STICKERS'
+    NEWS = 'NEWS'
+    PARTNERED = 'PARTNERED'
+    PREVIEW_ENABLED = 'PREVIEW_ENABLED'
+    RAID_ALERTS_DISABLED = 'RAID_ALERTS_DISABLED'
+    ROLE_ICONS = 'ROLE_ICONS'
+    ROLE_SUBSCRIPTIONS_AVAILABLE_FOR_PURCHASE = 'ROLE_SUBSCRIPTIONS_AVAILABLE_FOR_PURCHASE'
+    ROLE_SUBSCRIPTIONS_ENABLED = 'ROLE_SUBSCRIPTIONS_ENABLED'
+    SOUNDBOARD = 'SOUNDBOARD'
+    TICKETED_EVENTS_ENABLED = 'TICKETED_EVENTS_ENABLED'
+    VANITY_URL = 'VANITY_URL'
+    VERIFIED = 'VERIFIED'
+    VIP_REGIONS = 'VIP_REGIONS'
+    WELCOME_SCREEN_ENABLED = 'WELCOME_SCREEN_ENABLED'
+
+
+class MFALevel(Enum):
+    NONE = 0
+    ELEVATED = 1
+
+
+class SystemChannelFlags(IntFlag):
+    SUPPRESS_JOIN_NOTIFICATIONS = 1 << 0
+    SUPPRESS_PREMIUM_SUBSCRIPTIONS = 1 << 1
+    SUPPRESS_GUILD_REMINDER_NOTIFICATIONS = 1 << 2
+    SUPPRESS_JOIN_NOTIFICATION_REPLIES = 1 << 3
+    SUPPRESS_ROLE_SUBSCRIPTION_PURCHASE_NOTIFICATIONS = 1 << 4
+    SUPPRESS_ROLE_SUBSCRIPTION_PURCHASE_NOTIFICATION_REPLIES = 1 << 5
+
+
+class PremiumTier(Enum):
+    NONE = 0
+    TIER_1 = 1
+    TIER_2 = 2
+    TIER_3 = 3
+
+
+class NSFWLevel(Enum):
+    DEFAULT = 0
+    EXPLICIT = 1
+    SAFE = 2
+    AGE_RESTRICTED = 3
+
+
+class RoleFlags(IntFlag):
+    IN_PROMPT = 1 << 0

@@ -106,7 +106,8 @@ class Group(Document):
             name=name,
             description=None,
             avatar=None,
-            proxy_tags=[]
+            proxy_tags=[],
+            userproxy=None
         )
 
         self.members.add(member.id)

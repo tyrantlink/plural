@@ -4,9 +4,9 @@ from fastapi.security.api_key import APIKeyHeader
 from concurrent.futures import ThreadPoolExecutor
 from nacl.exceptions import BadSignatureError
 from typing import NamedTuple, Annotated
-from src.db import ApiKey, UserProxy
 from nacl.signing import VerifyKey
 from asyncio import get_event_loop
+from src.db import ApiKey, Member
 from src.models import project
 from re import match, escape
 from bcrypt import checkpw
@@ -78,12 +78,12 @@ async def discord_key_validator(
     except Exception:
         raise HTTPException(400, 'Invalid request body')
 
-    user_proxy = await UserProxy.find_one({'bot_id': application_id})
+    member = await Member.find_one({'userproxy.bot_id': application_id})
 
-    if user_proxy is None:
+    if member is None or member.userproxy is None:
         raise HTTPException(400, 'Invalid application id')
 
-    verify_key = VerifyKey(bytes.fromhex(user_proxy.public_key))
+    verify_key = VerifyKey(bytes.fromhex(member.userproxy.public_key))
 
     try:
         verify_key.verify(
@@ -98,12 +98,8 @@ async def discord_key_validator(
 
     user_id = int(json_body['authorizing_integration_owners']['1'])
 
-    if user_proxy.user_id != user_id:
-        member = await user_proxy.get_member()
-        group = await member.get_group()
-
-        if user_id not in group.accounts:
-            raise HTTPException(401, 'Invalid user id')
+    if user_id not in (await member.get_group()).accounts:
+        raise HTTPException(401, 'Invalid user id')
 
     return True
 

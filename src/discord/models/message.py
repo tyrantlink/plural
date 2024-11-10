@@ -1,7 +1,9 @@
 from __future__ import annotations
 from .enums import MessageType, MessageReferenceType, MessageFlags
 from .channel import ChannelMention, Channel
+from src.discord.http import Route, request
 from .sticker import Sticker, StickerItem
+from src.discord.types import Snowflake
 from .role import RoleSubscriptionData
 from .application import Application
 from .attachment import Attachment
@@ -10,8 +12,7 @@ from .reaction import Reaction
 from .resolved import Resolved
 from .base import RawBaseModel
 from datetime import datetime
-from .types import Snowflake
-from .member import Member
+from .guild import Guild
 from .embed import Embed
 from .user import User
 from .poll import Poll
@@ -89,3 +90,62 @@ class Message(RawBaseModel):
     resolved: Resolved | None = None
     poll: Poll | None = None
     call: MessageCall | None = None
+    # ? library only, not sent by discord
+    channel: Channel | None = None
+    guild: Guild | None = None
+
+    async def populate(self) -> None:
+        await super().populate()
+        if self.channel_id is None:
+            return
+
+        self.channel = await Channel.fetch(self.channel_id)
+
+        if self.channel.guild_id is None:
+            return
+
+        self.guild = await Guild.fetch(self.channel.guild_id)
+
+    async def delete(self) -> tuple[int, dict] | None:
+        return await request(
+            Route(
+                'DELETE',
+                '/channels/{channel_id}/messages/{message_id}',
+                channel_id=self.channel_id,
+                message_id=self.id
+            )
+        )
+
+    @classmethod
+    async def send(
+        cls,
+        channel_id: Snowflake,
+        content: str | None = None,
+        *,
+        tts: bool = False,
+        embed: Embed | None = None,
+        components: list[Component] | None = None,
+        sticker_ids: list[Snowflake] | None = None,
+        message_reference: MessageReference | None = None,
+        allowed_mentions: dict | None = None,
+    ) -> Message:
+        json = {
+            'content': content,
+            # 'tts': tts,
+            # 'embed': embed.dict() if embed else None,
+            # 'components': [c.dict() for c in components] if components else None,
+            # 'sticker_ids': sticker_ids,
+            # 'message_reference': message_reference.dict() if message_reference else None,
+            # 'allowed_mentions': allowed_mentions,
+        }
+
+        return cls(
+            **await request(
+                Route(
+                    'POST',
+                    '/channels/{channel_id}/messages',
+                    channel_id=channel_id
+                ),
+                json=json
+            )
+        )

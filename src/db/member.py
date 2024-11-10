@@ -1,8 +1,8 @@
 from __future__ import annotations
+from pydantic import Field, model_validator, BaseModel
 from typing import Annotated, TYPE_CHECKING, Any
 from src.models import USERPROXY_FOOTER_LIMIT
 from beanie import Document, PydanticObjectId
-from pydantic import Field, model_validator
 from re import sub, IGNORECASE
 from .models import ProxyTag
 
@@ -37,6 +37,20 @@ class Member(Document):
         name = 'members'
         validate_on_save = True
         use_state_management = True
+        indexes = ['userproxy.bot_id']
+
+    class UserProxy(BaseModel):
+        bot_id: int = Field(description='bot id')
+        public_key: str = Field(description='the userproxy public key')
+        token: str | None = Field(
+            None,
+            description='the bot token, only stored when autosyncing is enabled')
+        command: str | None = Field(
+            'proxy', description='name of the proxy command')
+
+        @property
+        def autosync(self) -> bool:
+            return self.token is not None
 
     id: PydanticObjectId = Field(default_factory=PydanticObjectId)
     name: str = Field(
@@ -55,6 +69,10 @@ class Member(Document):
     proxy_tags: Annotated[list[ProxyTag], Field(max_length=15)] = Field(
         [],
         description='proxy tags for the member'
+    )
+    userproxy: Member.UserProxy | None = Field(
+        None,
+        description='the userproxy information'
     )
 
     async def get_group(self) -> Group:

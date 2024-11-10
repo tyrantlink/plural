@@ -1,19 +1,20 @@
-from discord import Interaction, ApplicationContext, Embed, Colour, Message, HTTPException, Forbidden
+# from discord import Interaction, ApplicationContext, Embed, Colour, Message, HTTPException, Forbidden
 from discord.ui import Modal as _Modal, InputText, View as _View, Item
-from discord.utils import _bytes_to_base64_data, escape_markdown
+# from discord.utils import _bytes_to_base64_data, escape_markdown
 from aiohttp import ClientSession, ClientResponse
 from src.models import project, USERPROXY_FOOTER
 from asyncio import sleep, create_task, Task
 from hikari import Message as HikariMessage
 from collections.abc import Mapping
-from src.db import Image, UserProxy
 from typing import Iterable, Any
 from functools import partial
 from json import dumps, loads
 from copy import deepcopy
+from src.db import Image
 from uuid import uuid4
 from io import BytesIO
 from re import match
+from fastapi import HTTPException
 
 
 # ? completely unsorted and unformatted helper functions because i'm bad at programming
@@ -64,114 +65,6 @@ USERPROXY_COMMANDS = [
 ]
 
 
-class CustomModal(_Modal):
-    def __init__(self, title: str, children: list[InputText]) -> None:
-        super().__init__(*children, title=title)
-
-    async def callback(self, interaction: Interaction):
-        self.interaction = interaction
-        self.stop()
-
-
-class View(_View):
-    def __init__(
-        self,
-        *items: Item,
-        timeout: float | None = None,
-        disable_on_timeout: bool = False
-    ) -> None:
-        # ? black magic to stop the view from adding all items on creation and breaking when there's too many
-        # ? but still register the attributes as items, mypy is not happy
-        tmp, self.__view_children_items__ = self.__view_children_items__, []  # type: ignore
-        super().__init__(*items, timeout=timeout, disable_on_timeout=disable_on_timeout)
-        self.__view_children_items__ = tmp  # type: ignore
-
-        for func in self.__view_children_items__:
-            item: Item = func.__discord_ui_model_type__(  # type: ignore
-                **func.__discord_ui_model_kwargs__)  # type: ignore
-            item.callback = partial(func, self, item)  # type: ignore
-            item._view = self
-            setattr(self, func.__name__, item)
-
-    def add_items(self, *items: Item) -> None:
-        for item in items:
-            if item not in self.children:
-                self.add_item(item)
-
-
-class ErrorEmbed(Embed):
-    def __init__(self, message: str | None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title = 'error'
-        self.description = message
-        self.colour = Colour(0xff6969)
-
-
-class SuccessEmbed(Embed):
-    def __init__(self, message: str | None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.title = 'success'
-        self.description = message
-        self.colour = Colour(0x69ff69)
-
-
-class ReplyEmbed(Embed):
-    # ? this is only here as a fallback if a message is too long for inline reply
-    def __init__(self, message: Message | HikariMessage, jump_url: str) -> None:
-        super().__init__()
-
-        avatar_url = (
-            message.author.display_avatar.url
-            if isinstance(message, Message) else
-            message.author.display_avatar_url
-        )
-
-        self.set_author(
-            name=f'{message.author.display_name} ↩️',
-            icon_url=avatar_url
-        )
-
-        content = (message.content or '').replace('\n', ' ')
-
-        formatted_content = (
-            content
-            if len(content) <= 75 else
-            f'{content[:75].strip()}…'
-        )
-
-        self.description = (
-            (  # ? i hate this autoformatter sometimes
-                f'**[Reply to:]({jump_url})** {formatted_content}')
-            if message.content else
-            (
-                f'*[(click to see attachment{"" if len(message.attachments)-1 else "s"})]({jump_url})*')
-            if message.attachments else
-            f'*[click to see message]({jump_url})*'
-        )
-
-
-async def _send_embed(ctx: ApplicationContext | Interaction, embed: Embed) -> None:
-    if ctx.response.is_done():
-        await ctx.followup.send(
-            embed=embed,
-            ephemeral=True
-        )
-        return
-
-    await ctx.response.send_message(
-        embed=embed,
-        ephemeral=True
-    )
-
-
-async def send_error(ctx: ApplicationContext | Interaction, message: str) -> None:
-    await _send_embed(ctx, ErrorEmbed(message))
-
-
-async def send_success(ctx: ApplicationContext | Interaction, message: str) -> None:
-    await _send_embed(ctx, SuccessEmbed(message))
-
-
 def chunk_string(string: str, chunk_size: int) -> list[str]:
     lines = string.split('\n')
 
@@ -195,79 +88,55 @@ def chunk_string(string: str, chunk_size: int) -> list[str]:
     return chunks
 
 
-async def __notify(
-    message: Message,
-    reaction: str = '❌',
-    delay: int | float = 1
-) -> None:
-    if message._state.user is None:
-        return  # ? should never be none but mypy is stupid
+# def format_reply(
+#     content: str,
+#     reference: Message | HikariMessage,
+#     guild_id: int | None = None
+# ) -> str | ReplyEmbed:
+#     refcontent = reference.content or ''
+#     refattachments = reference.attachments
+#     mention = (
+#         reference.author.mention
+#         if reference.webhook_id is None else
+#         f'`@{reference.author.display_name}`'
+#     )
+#     jump_url = (
+#         reference.jump_url
+#         if isinstance(reference, Message) else
+#         reference.make_link(guild_id)
+#     )
 
-    try:
-        await message.add_reaction(reaction)
-        await sleep(delay)
-        await message.remove_reaction(reaction, message._state.user)
-    except (HTTPException, Forbidden):
-        pass
+#     base_reply = f'-# [↪](<{jump_url}>) {mention}'
 
+#     if (
+#         match(
+#             r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\)',
+#             refcontent
+#         )
+#     ):
+#         refcontent = '\n'.join(refcontent.split('\n')[1:])
 
-def notify(
-    message: Message,
-    reaction: str = '❌',
-    delay: int | float = 1
-) -> None:
-    create_task(__notify(message, reaction, delay))
+#     refcontent = escape_markdown(refcontent.replace('\n', ' '))
 
+#     formatted_refcontent = (
+#         refcontent
+#         if len(refcontent) <= 75 else
+#         f'{refcontent[:75].strip()}…'
+#     ).replace('://', ':/​/')  # ? add zero-width space to prevent link previews
 
-def format_reply(
-    content: str,
-    reference: Message | HikariMessage,
-    guild_id: int | None = None
-) -> str | ReplyEmbed:
-    refcontent = reference.content or ''
-    refattachments = reference.attachments
-    mention = (
-        reference.author.mention
-        if reference.webhook_id is None else
-        f'`@{reference.author.display_name}`'
-    )
-    jump_url = (
-        reference.jump_url
-        if isinstance(reference, Message) else
-        reference.make_link(guild_id)
-    )
+#     reply_content = (
+#         formatted_refcontent
+#         if formatted_refcontent else
+#         f'[*Click to see attachment*](<{jump_url}>)'
+#         if refattachments else
+#         f'[*Click to see message*](<{jump_url}>)'
+#     )
 
-    base_reply = f'-# [↪](<{jump_url}>) {mention}'
+#     total_content = f'{base_reply} {reply_content}\n{content}'
+#     if len(total_content) <= 2000:
+#         return total_content
 
-    if (
-        match(
-            r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\)',
-            refcontent
-        )
-    ):
-        refcontent = '\n'.join(refcontent.split('\n')[1:])
-
-    refcontent = escape_markdown(refcontent.replace('\n', ' '))
-
-    formatted_refcontent = (
-        refcontent
-        if len(refcontent) <= 75 else
-        f'{refcontent[:75].strip()}…'
-    ).replace('://', ':/​/')  # ? add zero-width space to prevent link previews
-
-    reply_content = (
-        formatted_refcontent
-        if formatted_refcontent else
-        f'[*Click to see attachment*](<{jump_url}>)'
-        if refattachments else
-        f'[*Click to see message*](<{jump_url}>)'
-    )
-
-    total_content = f'{base_reply} {reply_content}\n{content}'
-    if len(total_content) <= 2000:
-        return total_content
-
-    return ReplyEmbed(reference, jump_url)
+#     return ReplyEmbed(reference, jump_url)
 
 
 class TTLSet[_T](set):
@@ -425,137 +294,137 @@ def create_multipart(
     return boundary, body.getvalue()
 
 
-async def multi_request(
-    token: str,
-    requests: list[tuple[str, str, dict[Any, Any]]]
-) -> list[tuple[ClientResponse, str]]:
-    """requests is a list of tuples of method, endpoint, json"""
-    responses: list[tuple[ClientResponse, str]] = []
-    async with ClientSession() as session:
-        for method, endpoint, json in requests:
-            resp = await session.request(
-                method,
-                f'https://discord.com/api/v10/{endpoint}',
-                headers={
-                    'Authorization': f'Bot {token}'
-                },
-                json=json
-            )
+# async def multi_request(
+#     token: str,
+#     requests: list[tuple[str, str, dict[Any, Any]]]
+# ) -> list[tuple[ClientResponse, str]]:
+#     """requests is a list of tuples of method, endpoint, json"""
+#     responses: list[tuple[ClientResponse, str]] = []
+#     async with ClientSession() as session:
+#         for method, endpoint, json in requests:
+#             resp = await session.request(
+#                 method,
+#                 f'https://discord.com/api/v10/{endpoint}',
+#                 headers={
+#                     'Authorization': f'Bot {token}'
+#                 },
+#                 json=json
+#             )
 
-            if resp.status not in {200, 201}:
-                raise HTTPException(resp, await resp.text())
+#             if resp.status not in {200, 201}:
+#                 raise HTTPException(resp, await resp.text())
 
-            responses.append((resp, await resp.text()))
+#             responses.append((resp, await resp.text()))
 
-    return responses
-
-
-def prettify_discord_errors(errors: list[str]) -> ErrorEmbed:
-    embed = ErrorEmbed(None)
-    for raw_error in errors:
-        try:  # ? this is really gross
-            json_error: dict[
-                str, dict[str, dict[str, list[dict[str, str]]]]] = loads(raw_error)
-
-            error_detail = list(
-                list(
-                    json_error['errors'].values()
-                )[0].values())[0][0]
-
-            code, error = error_detail['code'], error_detail['message']
-
-            embed.add_field(name=code, value=error)
-        except Exception:
-            embed.add_field(name='unknown error', value=raw_error)
-
-    return embed
+#     return responses
 
 
-async def sync_userproxy_with_member(
-    ctx: ApplicationContext,
-    userproxy: UserProxy,
-    bot_token: str,
-    sync_commands: bool = False
-) -> None:
-    assert ctx.interaction.user is not None
-    member = await userproxy.get_member()
+# def prettify_discord_errors(errors: list[str]) -> ErrorEmbed:
+#     embed = ErrorEmbed(None)
+#     for raw_error in errors:
+#         try:  # ? this is really gross
+#             json_error: dict[
+#                 str, dict[str, dict[str, list[dict[str, str]]]]] = loads(raw_error)
 
-    image_data = None
+#             error_detail = list(
+#                 list(
+#                     json_error['errors'].values()
+#                 )[0].values())[0][0]
 
-    if member.avatar:
-        image = await Image.get(member.avatar)
-        if image is not None:
-            image_data = _bytes_to_base64_data(image.data)
+#             code, error = error_detail['code'], error_detail['message']
 
-    # ? remember to add user descriptions to userproxy
-    bot_patch = {
-        'username': member.name
-    }
+#             embed.add_field(name=code, value=error)
+#         except Exception:
+#             embed.add_field(name='unknown error', value=raw_error)
 
-    app_patch = {
-        'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction',
-        'description': f'{member.description or ''}\n\n{USERPROXY_FOOTER.format(username=ctx.interaction.user.name)}'.strip()
-    }
+#     return embed
 
-    if image_data:
-        bot_patch['avatar'] = image_data
-        app_patch['icon'] = image_data
 
-    requests: list[tuple[str, str, dict]] = [
-        ('patch', 'users/@me', bot_patch),
-        # ? effectively a get, to get public key
-        ('patch', 'applications/@me', {})
-    ]
+# async def sync_userproxy_with_member(
+#     ctx: ApplicationContext,
+#     userproxy: UserProxy,
+#     bot_token: str,
+#     sync_commands: bool = False
+# ) -> None:
+#     assert ctx.interaction.user is not None
+#     member = await userproxy.get_member()
 
-    if sync_commands:
-        commands = USERPROXY_COMMANDS
-        if userproxy.command is not None:
-            commands = deepcopy(USERPROXY_COMMANDS)
-            commands[0]['name'] = userproxy.command
+#     image_data = None
 
-        requests.insert(
-            0,
-            (
-                'put',
-                f'applications/{userproxy.bot_id}/commands',
-                commands  # type: ignore # ? i don't wanna deal with mypy
-            )
-        )
+#     if member.avatar:
+#         image = await Image.get(member.avatar)
+#         if image is not None:
+#             image_data = _bytes_to_base64_data(image.data)
 
-    responses = await multi_request(
-        bot_token,
-        requests
-    )
+#     # ? remember to add user descriptions to userproxy
+#     bot_patch = {
+#         'username': member.name
+#     }
 
-    errors = [
-        text
-        for resp, text in responses
-        if resp.status != 200
-    ]
+#     app_patch = {
+#         'interactions_endpoint_url': f'{project.api_url}/userproxy/interaction',
+#         'description': f'{member.description or ''}\n\n{USERPROXY_FOOTER.format(username=ctx.interaction.user.name)}'.strip()
+#     }
 
-    if errors:
-        await _send_embed(ctx, prettify_discord_errors(errors))
-        return
+#     if image_data:
+#         bot_patch['avatar'] = image_data
+#         app_patch['icon'] = image_data
 
-    public_key = (loads(responses[-1][1]))['verify_key']
+#     requests: list[tuple[str, str, dict]] = [
+#         ('patch', 'users/@me', bot_patch),
+#         # ? effectively a get, to get public key
+#         ('patch', 'applications/@me', {})
+#     ]
 
-    userproxy.public_key = public_key
+#     if sync_commands:
+#         commands = USERPROXY_COMMANDS
+#         if userproxy.command is not None:
+#             commands = deepcopy(USERPROXY_COMMANDS)
+#             commands[0]['name'] = userproxy.command
 
-    await userproxy.save()
+#         requests.insert(
+#             0,
+#             (
+#                 'put',
+#                 f'applications/{userproxy.bot_id}/commands',
+#                 commands  # type: ignore # ? i don't wanna deal with mypy
+#             )
+#         )
 
-    app_request = await multi_request(
-        bot_token,
-        [
-            ('patch', f'applications/@me', app_patch)
-        ]
-    )
+#     responses = await multi_request(
+#         bot_token,
+#         requests
+#     )
 
-    errors = [
-        text
-        for resp, text in app_request
-        if resp.status != 200
-    ]
+#     errors = [
+#         text
+#         for resp, text in responses
+#         if resp.status != 200
+#     ]
 
-    if errors:
-        await _send_embed(ctx, prettify_discord_errors(errors))
-        return
+#     if errors:
+#         await _send_embed(ctx, prettify_discord_errors(errors))
+#         return
+
+#     public_key = (loads(responses[-1][1]))['verify_key']
+
+#     userproxy.public_key = public_key
+
+#     await userproxy.save()
+
+#     app_request = await multi_request(
+#         bot_token,
+#         [
+#             ('patch', f'applications/@me', app_patch)
+#         ]
+#     )
+
+#     errors = [
+#         text
+#         for resp, text in app_request
+#         if resp.status != 200
+#     ]
+
+#     if errors:
+#         await _send_embed(ctx, prettify_discord_errors(errors))
+#         return

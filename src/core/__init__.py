@@ -1,7 +1,10 @@
+from fastapi import FastAPI, Response, Request, WebSocket
 from logging import getLogger, Filter, LogRecord
-from fastapi import FastAPI, Response, Request
 from contextlib import asynccontextmanager
 from src.docs import root as docs
+from src.models import project
+from typing import Any
+import logfire
 
 
 class LocalHealthcheckFilter(Filter):
@@ -31,6 +34,9 @@ async def lifespan(app: FastAPI):
 
     await DB.connect()
 
+    # ? start running bot code
+    import src.logic
+
     from src.routers import image, latch, member, group, discord
     app.include_router(discord.router)
     # app.include_router(message.router) #! on hold until discord library is implemented
@@ -50,7 +56,38 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url='/swdocs',
     redoc_url='/docs',
-    version="1.0.0"
+    version='1.0.0',
+    debug=project.dev_environment
+)
+
+
+def live_discord_redaction(request: Request | WebSocket, attributes: dict[str, Any]) -> dict[str, Any] | None:
+    if project.dev_environment:
+        return attributes
+
+    match request.url.path:
+        # ? might do more later
+        case '/discord/event' | '/discord/interaction':
+            return None
+
+    return attributes
+
+
+logfire.configure(
+    service_name='/plu/ral',
+    environment='development' if project.dev_environment else 'production',
+    console=False
+)
+logfire.instrument_pymongo(
+    capture_statement=True
+)
+logfire.instrument_aiohttp_client()
+logfire.instrument_system_metrics()
+logfire.instrument_fastapi(
+    app,
+    capture_headers=app.debug,
+    request_attributes_mapper=live_discord_redaction,
+    excluded_urls=['/healthcheck']
 )
 
 

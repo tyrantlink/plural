@@ -1,6 +1,7 @@
-from pydantic import GetJsonSchemaHandler
-from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import CoreSchema, core_schema
+from pydantic.json_schema import JsonSchemaValue
+from pydantic import GetJsonSchemaHandler
+from enum import StrEnum
 
 __all__ = ('Snowflake',)
 
@@ -28,4 +29,10 @@ class Snowflake(int):
         _core_schema: CoreSchema,
         _handler: GetJsonSchemaHandler,
     ) -> JsonSchemaValue:
-        return {"type": "string", "format": "snowflake"}
+        return {'type': 'string', 'format': 'snowflake'}
+
+
+class ListenerType(StrEnum):
+    MESSAGE_CREATE = 'MESSAGE_CREATE'
+    MESSAGE_UPDATE = 'MESSAGE_UPDATE'
+    MESSAGE_REACTION_ADD = 'MESSAGE_REACTION_ADD'

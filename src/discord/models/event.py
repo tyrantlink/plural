@@ -1,10 +1,13 @@
+from __future__ import annotations
 from .enums import GatewayOpCode, GatewayEventName, ReactionType
+from src.discord.types import Snowflake
 from .base import RawBaseModel
 from .message import Message
-from .types import Snowflake
+from .channel import Channel
 from pydantic import Field
 from .member import Member
 from .emoji import Emoji
+from .guild import Guild
 
 
 __all__ = (
@@ -35,9 +38,18 @@ class MessageReactionAddEvent(RawBaseModel):
     type: ReactionType
 
 
-class MessageCreateEvent(Message):
+class MessageCreateEvent(Message, RawBaseModel):
     guild_id: Snowflake | None = None
     member: Member | None = None
+
+    async def populate(self) -> None:
+        await super().populate()
+
+        if self.guild_id is not None and self.author is not None:
+            self.member = await Member.fetch(
+                self.guild_id,
+                self.author.id
+            )
 
 
 class MessageUpdateEvent(MessageCreateEvent):
