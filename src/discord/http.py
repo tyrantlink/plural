@@ -144,12 +144,12 @@ class File:
         if (
             spoiler
             and self.filename is not None
-            and not self.filename.startswith("SPOILER_")
+            and not self.filename.startswith('SPOILER_')
         ):
-            self.filename = f"SPOILER_{self.filename}"
+            self.filename = f'SPOILER_{self.filename}'
 
         self.spoiler = spoiler or (
-            self.filename is not None and self.filename.startswith("SPOILER_")
+            self.filename is not None and self.filename.startswith('SPOILER_')
         )
         self.description = description
 
@@ -159,6 +159,21 @@ class File:
 
     def close(self) -> None:
         self.data.close = self._closer
+
+    def as_payload_dict(self, index: int) -> dict[str, Any]:
+        return {
+            'id': index,
+            'filename': self.filename,
+            'description': self.description,
+        }
+
+    def as_form_dict(self, index: int) -> dict[str, Any]:
+        return {
+            'name': f'files[{index}]',
+            'value': self.data,
+            'filename': self.filename,
+            'content_type': 'application/octet-stream',
+        }
 
 
 def _get_mime_type_for_image(data: bytes):

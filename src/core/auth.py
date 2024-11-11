@@ -78,12 +78,17 @@ async def discord_key_validator(
     except Exception:
         raise HTTPException(400, 'Invalid request body')
 
-    member = await Member.find_one({'userproxy.bot_id': application_id})
+    member = None
+    match application_id:
+        case project.application_id:
+            verify_key = VerifyKey(bytes.fromhex(project.bot_public_key))
+        case _:
+            member = await Member.find_one({'userproxy.bot_id': application_id})
 
-    if member is None or member.userproxy is None:
-        raise HTTPException(400, 'Invalid application id')
+            if member is None or member.userproxy is None:
+                raise HTTPException(400, 'Invalid application id')
 
-    verify_key = VerifyKey(bytes.fromhex(member.userproxy.public_key))
+            verify_key = VerifyKey(bytes.fromhex(member.userproxy.public_key))
 
     try:
         verify_key.verify(
@@ -93,8 +98,13 @@ async def discord_key_validator(
     except BadSignatureError:
         raise HTTPException(401, 'Invalid request signature')
 
-    if json_body['type'] == 1:  # InteractionType.PING.value:
+    if (  # ? always accept pings and interactions directed at the main bot
+        json_body['type'] == 1 or
+        application_id == project.application_id
+    ):
         return True
+
+    assert member is not None
 
     user_id = int(json_body['authorizing_integration_owners']['1'])
 

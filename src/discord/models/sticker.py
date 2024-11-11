@@ -3,8 +3,10 @@ from warnings import catch_warnings, simplefilter
 from .enums import StickerType, StickerFormatType
 from src.discord.http import get_from_cdn, File
 from src.discord.types import Snowflake
+from src.models import project
 from .base import RawBaseModel
 from asyncio import to_thread
+from logfire import span
 from io import BytesIO
 from .user import User
 
@@ -46,7 +48,8 @@ class StickerItem(RawBaseModel):
                     fp=output,
                     format='gif',
                     save_all=True,
-                    append_images=resized_frames[1:]
+                    append_images=resized_frames[1:],
+                    disposal=2
                 )
 
         return output.getvalue()
@@ -60,6 +63,10 @@ class StickerItem(RawBaseModel):
 
         if self.format_type != StickerFormatType.APNG:
             return data
+
+        if project.logfire_token:
+            with span('Converting apng to gif', token=project.logfire_token):
+                return await to_thread(self._apng_to_gif, data)
 
         return await to_thread(self._apng_to_gif, data)
 

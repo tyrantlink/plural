@@ -2,6 +2,7 @@ from __future__ import annotations
 from .enums import Permission, VerificationLevel, DefaultMessageNotificationLevel, ExplicitContentFilterLevel, GuildFeature, MFALevel, SystemChannelFlag, PremiumTier, NSFWLevel
 from src.discord.http import Route, request
 from src.discord.types import Snowflake
+from pydantic import model_validator
 from .base import RawBaseModel
 from .sticker import Sticker
 from typing import Annotated
@@ -23,29 +24,29 @@ class WelcomeScreen(RawBaseModel):
 
 class Guild(RawBaseModel):
     id: Snowflake
-    name: str
+    name: str | None = None
     icon: str | None = None
     icon_hash: str | None = None
     splash: str | None = None
     discovery_splash: str | None = None
     owner: bool | None = None
-    owner_id: Snowflake
+    owner_id: Snowflake | None = None
     permissions: Permission | None = None
     region: str | None = None  # deprecated
     afk_channel_id: Snowflake | None = None
-    afk_timeout: int
+    afk_timeout: int | None = None
     widget_enabled: bool | None = None
     widget_channel_id: Snowflake | None = None
-    verification_level: VerificationLevel
-    default_message_notifications: DefaultMessageNotificationLevel
-    explicit_content_filter: ExplicitContentFilterLevel
-    roles: list[Role]
-    emojis: list[Emoji]
+    verification_level: VerificationLevel | None = None
+    default_message_notifications: DefaultMessageNotificationLevel | None = None
+    explicit_content_filter: ExplicitContentFilterLevel | None = None
+    roles: list[Role] | None = None
+    emojis: list[Emoji] | None = None
     features: list[GuildFeature]
-    mfa_level: MFALevel
+    mfa_level: MFALevel | None = None
     application_id: Snowflake | None = None
     system_channel_id: Snowflake | None = None
-    system_channel_flags: SystemChannelFlag
+    system_channel_flags: SystemChannelFlag | None = None
     rules_channel_id: Snowflake | None = None
     max_presences: int | None = None
     max_members: int | None = None
@@ -54,17 +55,37 @@ class Guild(RawBaseModel):
     banner: str | None = None
     premium_tier: PremiumTier
     premium_subscription_count: int | None = None
-    preferred_locale: str
+    preferred_locale: str | None = None
     public_updates_channel_id: Snowflake | None = None
     max_video_channel_users: int | None = None
     max_stage_video_channel_users: int | None = None
     approximate_member_count: int | None = None
     approximate_presence_count: int | None = None
     welcome_screen: WelcomeScreen | None = None
-    nsfw_level: NSFWLevel
+    nsfw_level: NSFWLevel | None = None
     stickers: list[Sticker] | None = None
-    premium_progress_bar_enabled: bool
+    premium_progress_bar_enabled: bool | None = None
     safety_alerts_channel_id: Snowflake | None = None
+
+    @model_validator(mode='before')
+    def _ensure_premium_tier(cls, data: dict) -> dict:
+        if (
+            data.get('premium_tier') is not None or
+            (features := data.get('features')) is None
+        ):
+            return data
+
+        data['premium_tier'] = (
+            PremiumTier.TIER_3
+            if 'ANIMATED_BANNER' in features else
+            PremiumTier.TIER_2
+            if 'BANNER' in features else
+            PremiumTier.TIER_1
+            if 'ANIMATED_ICON' in features else
+            PremiumTier.NONE
+        )
+
+        return data
 
     @property
     def filesize_limit(self) -> int:

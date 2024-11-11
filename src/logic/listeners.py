@@ -1,4 +1,4 @@
-from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, ChannelType
+from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, ChannelType, Interaction
 from src.discord.listeners import listen, ListenerType
 from .proxy import process_proxy, get_proxy_webhook  # , handle_ping_reply
 from src.db import Message as DBMessage
@@ -77,3 +77,10 @@ async def on_reaction_add(reaction: MessageReactionAddEvent):
                     None
                 )
             )
+
+
+@listen(ListenerType.INTERACTION)
+async def on_interaction(interaction: Interaction):
+    await interaction.response.send_message(
+        'test'
+    )

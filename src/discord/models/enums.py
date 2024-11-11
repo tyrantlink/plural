@@ -276,6 +276,22 @@ class ApplicationIntegrationType(Enum):
     GUILD_INSTALL = 0
     USER_INSTALL = 1
 
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        _source_type: type[Any] | None,
+        _handler: GetCoreSchemaHandler,
+    ) -> CoreSchema:
+        return int_schema()
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls,
+        _core_schema: CoreSchema,
+        _handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        return {"type": "integer"}
+
 
 class InteractionContextType(Enum):
     GUILD = 0
@@ -569,3 +585,34 @@ class AttachmentFlag(IntFlag):
 
 class PollLayoutType(Enum):
     DEFAULT = 1
+
+
+class InteractionType(Enum):
+    PING = 1
+    APPLICATION_COMMAND = 2
+    MESSAGE_COMPONENT = 3
+    APPLICATION_COMMAND_AUTOCOMPLETE = 4
+    MODAL_SUBMIT = 5
+
+
+class EntitlementType(Enum):
+    PURCHASE = 1
+    PREMIUM_SUBSCRIPTION = 2
+    DEVELOPER_GIFT = 3
+    TEST_MODE_PURCHASE = 4
+    FREE_PURCHASE = 5
+    USER_GIFT = 6
+    PREMIUM_PURCHASE = 7
+    APPLICATION_SUBSCRIPTION = 8
+
+
+class InteractionCallbackType(Enum):
+    PONG = 1
+    CHANNEL_MESSAGE_WITH_SOURCE = 4
+    DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE = 5
+    DEFERRED_UPDATE_MESSAGE = 6
+    UPDATE_MESSAGE = 7
+    APPLICATION_COMMAND_AUTOCOMPLETE_RESULT = 8
+    MODAL = 9
+    PREMIUM_REQUIRED = 10  # deprecated
+    LAUNCH_ACTIVITY = 12

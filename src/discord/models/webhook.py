@@ -6,6 +6,7 @@ from .enums import WebhookType
 from .base import RawBaseModel
 from .channel import Channel
 from .guild import Guild
+from orjson import dumps
 from regex import search
 from .user import User
 
@@ -161,19 +162,44 @@ class Webhook(RawBaseModel):
         if poll:
             json['poll'] = poll.as_create_request()
 
-        return Message(
-            **await request(
-                Route(
-                    'POST',
-                    '/webhooks/{webhook_id}/{webhook_token}',
-                    webhook_id=self.id,
-                    webhook_token=self.token
-                ),
-                files=attachments,
+        route = Route(
+            'POST',
+            '/webhooks/{webhook_id}/{webhook_token}',
+            webhook_id=self.id,
+            webhook_token=self.token
+        )
+
+        form = None  # ? mypy is stupid
+        if attachments:
+            form, json_attachments = [], []
+            for index, attachment in enumerate(attachments):
+                json_attachments.append(attachment.as_payload_dict(index))
+                form.append(attachment.as_form_dict(index))
+
+            json['attachments'] = json_attachments
+            form.insert(0, {
+                'name': 'payload_json',
+                'value': dumps(json).decode()
+            })
+
+        resp = (
+            await request(
+                route,
+                form=form,
+                files=attachments
+            )
+            if attachments else
+            await request(
+                route,
                 json=json,
                 params=params
             )
         )
+
+        if wait:
+            return Message(**resp)
+
+        return None
 
     async def delete_message(
         self,

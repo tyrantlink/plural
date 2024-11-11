@@ -6,7 +6,6 @@ from src.models import DebugMessage
 from dataclasses import dataclass
 from asyncio import gather
 from random import randint
-from io import BytesIO
 
 
 _emoji_index = randint(0, 999)

@@ -78,6 +78,7 @@ if project.logfire_token:
         service_name='/plu/ral',
         token=project.logfire_token,
         environment='development' if project.dev_environment else 'production',
+        scrubbing=False if project.dev_environment else None,
         console=False
     )
     logfire.instrument_pymongo(

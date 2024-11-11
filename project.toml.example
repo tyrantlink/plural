@@ -1,4 +1,5 @@
 bot_token = ''
+bot_public_key = ''
 mongo_uri = ''
 base_url = 'https://example.com'
 api_url = 'https://api.example.com'

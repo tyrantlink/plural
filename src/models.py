@@ -10,6 +10,7 @@ USERPROXY_FOOTER_LIMIT = 400 - len(USERPROXY_FOOTER.format(username='*' * 32))
 
 class Project(BaseModel):
     bot_token: str
+    bot_public_key: str
     mongo_uri: str
     base_url: str
     api_url: str

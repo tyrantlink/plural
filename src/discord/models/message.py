@@ -16,6 +16,7 @@ from datetime import datetime
 from pydantic import Field
 from .guild import Guild
 from .embed import Embed
+from orjson import dumps
 from .user import User
 from .poll import Poll
 
@@ -200,15 +201,39 @@ class Message(RawBaseModel):
         if allowed_mentions:
             json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')
 
-        self = cls(
-            **await request(
-                Route(
-                    'POST',
-                    '/channels/{channel_id}/messages',
-                    channel_id=channel_id
-                ),
-                files=attachments,
-                json=json
+        form = None  # ? mypy is stupid
+        if attachments:
+            form, json_attachments = [], []
+            for index, attachment in enumerate(attachments):
+                json_attachments.append(attachment.as_payload_dict(index))
+                form.append(attachment.as_form_dict(index))
+
+            json['attachments'] = json_attachments
+            form.insert(0, {
+                'name': 'payload_json',
+                'value': dumps(json).decode()
+            })
+
+        route = Route(
+            'POST',
+            '/channels/{channel_id}/messages',
+            channel_id=channel_id
+        )
+
+        self = (
+            cls(
+                **await request(
+                    route,
+                    form=form,
+                    files=attachments
+                )
+            )
+            if attachments else
+            cls(
+                **await request(
+                    route,
+                    json=json
+                )
             )
         )
 

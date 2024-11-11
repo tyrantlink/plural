@@ -1,16 +1,16 @@
-from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent
+from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent, Interaction, InteractionType
 from src.core.auth import discord_key_validator, gateway_key_validator
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import Response, JSONResponse
 from src.discord.types import ListenerType
 from src.discord.listeners import emit
-from fastapi.responses import Response
 from src.discord.http import BASE_URL
 from asyncio import create_task
-from src.models import project
 from src.db import HTTPCache
 import logfire
 
 router = APIRouter(prefix='/discord', tags=['UserProxy'])
+PONG = JSONResponse({'type': 1})
 
 ACCEPTED_EVENTS = {
     GatewayEventName.MESSAGE_CREATE,
@@ -19,6 +19,7 @@ ACCEPTED_EVENTS = {
     GatewayEventName.GUILD_UPDATE,
     GatewayEventName.CHANNEL_UPDATE,
     GatewayEventName.GUILD_ROLE_UPDATE,
+    GatewayEventName.INTERACTION_CREATE,
 }
 
 
@@ -27,20 +28,18 @@ ACCEPTED_EVENTS = {
     include_in_schema=False,
     dependencies=[Depends(discord_key_validator)])
 async def post__interaction(
-    interaction: dict
+    interaction: Interaction
 ) -> Response:
-    print(interaction)
-    # match interaction.type:
-    #     case InteractionType.PING:
-    #         return JSONResponse({'type': 1})
-    #     case InteractionType.APPLICATION_COMMAND:
-    #         ...
-    #         # await on_command(interaction)
-    #     case InteractionType.MODAL_SUBMIT:
-    #         ...
-    #         # await on_modal_submit(interaction)
-    #     case _:
-    #         raise HTTPException(400, 'Unsupported interaction type')
+    # ? immediately pong for pings
+    if interaction.type == InteractionType.PING:
+        return PONG
+
+    await interaction.populate()
+
+    await emit(
+        ListenerType.INTERACTION,
+        interaction
+    )
 
     return Response(status_code=202)
 
@@ -63,6 +62,11 @@ async def post__event(
         return Response(event.name, status_code=200)
 
     match event.name:
+        case GatewayEventName.INTERACTION_CREATE:
+            task = emit(
+                ListenerType.INTERACTION,
+                Interaction.validate_and_populate(event.data)
+            )
         case GatewayEventName.MESSAGE_CREATE:
             task = emit(
                 ListenerType.MESSAGE_CREATE,
