@@ -1,6 +1,6 @@
 from __future__ import annotations
-from .enums import InteractionType, ApplicationCommandType, ApplicationCommandOptionType, Permission, EntitlementType, ApplicationIntegrationType, InteractionContextType, ComponentType
-from .component import Component, SelectOption
+from .enums import InteractionType, ApplicationCommandType, ApplicationCommandOptionType, Permission, EntitlementType, ApplicationIntegrationType, InteractionContextType  # , ComponentType
+from .component import Component  # , SelectOption
 from .response import InteractionResponse
 from src.discord.types import Snowflake
 from pydantic import model_validator
@@ -34,8 +34,8 @@ class ApplicationCommandInteractionData(RawBaseModel):
 
 class MessageComponentInteractionData(RawBaseModel):
     custom_id: str
-    component_type: ComponentType
-    values: list[SelectOption] | None = None
+    # component_type: ComponentType
+    # values: list[SelectOption] | None = None
     resolved: Resolved | None = None
 
 

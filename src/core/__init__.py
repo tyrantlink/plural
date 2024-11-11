@@ -7,21 +7,21 @@ from typing import Any
 import logfire
 
 
-class LocalHealthcheckFilter(Filter):
-    def filter(self, record: LogRecord) -> bool:
-        return not bool(
-            isinstance(record.args, tuple) and
-            len(record.args) == 5 and
-            all((
-                str(record.args[0]).startswith('172'),
-                record.args[1] == 'GET',
-                record.args[2] == '/healthcheck',
-                record.args[4] == 204
-            ))
-        )
+# class LocalHealthcheckFilter(Filter):
+#     def filter(self, record: LogRecord) -> bool:
+#         return not bool(
+#             isinstance(record.args, tuple) and
+#             len(record.args) == 5 and
+#             all((
+#                 str(record.args[0]).startswith('172'),
+#                 record.args[1] == 'GET',
+#                 record.args[2] == '/healthcheck',
+#                 record.args[4] == 204
+#             ))
+#         )
 
 
-getLogger("uvicorn.access").addFilter(LocalHealthcheckFilter())
+# getLogger("uvicorn.access").addFilter(LocalHealthcheckFilter())
 
 
 @asynccontextmanager
@@ -36,6 +36,9 @@ async def lifespan(app: FastAPI):
 
     # ? start running bot code
     import src.logic
+    from src.discord.commands import register_commands
+
+    await register_commands()
 
     from src.routers import image, latch, member, group, discord
     app.include_router(discord.router)

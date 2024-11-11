@@ -140,6 +140,7 @@ class ReactionType(Enum):
 
 
 class GuildMemberFlag(IntFlag):
+    NONE = 0
     DID_REJOIN = 1 << 0
     COMPLETED_ONBOARDING = 1 << 1
     BYPASSES_VERIFICATION = 1 << 2
@@ -159,6 +160,7 @@ class PremiumType(Enum):
 
 
 class UserFlag(IntFlag):
+    NONE = 0
     STAFF = 1 << 0
     PARTNER = 1 << 1
     HYPESQUAD = 1 << 2
@@ -238,6 +240,7 @@ class MessageReferenceType(Enum):
 
 
 class MessageFlag(IntFlag):
+    NONE = 0
     CROSSPOSTED = 1 << 0
     IS_CROSSPOST = 1 << 1
     SUPPRESS_EMBEDS = 1 << 2
@@ -252,9 +255,9 @@ class MessageFlag(IntFlag):
 
 
 class ApplicationCommandType(Enum):
-    CHAT_INPUT = 0
-    USER = 1
-    MESSAGE = 2
+    CHAT_INPUT = 1
+    USER = 2
+    MESSAGE = 3
     PRIMARY_ENTRY_POINT = 4
 
 
@@ -321,6 +324,7 @@ class VideoQualityMode(Enum):
 
 
 class ChannelFlag(IntFlag):
+    NONE = 0
     PINNED = 1 << 1
     REQUIRE_TAG = 1 << 4
     HIDE_MEDIA_DOWNLOAD_OPTIONS = 1 << 15
@@ -491,6 +495,7 @@ class MFALevel(Enum):
 
 
 class SystemChannelFlag(IntFlag):
+    NONE = 0
     SUPPRESS_JOIN_NOTIFICATIONS = 1 << 0
     SUPPRESS_PREMIUM_SUBSCRIPTIONS = 1 << 1
     SUPPRESS_GUILD_REMINDER_NOTIFICATIONS = 1 << 2
@@ -570,6 +575,7 @@ class NSFWLevel(Enum):
 
 
 class RoleFlag(IntFlag):
+    NONE = 0
     IN_PROMPT = 1 << 0
 
 
@@ -580,6 +586,7 @@ class AllowedMentionType(Enum):
 
 
 class AttachmentFlag(IntFlag):
+    NONE = 0
     IS_REMIX = 1 << 2
 
 

@@ -39,8 +39,12 @@ from sys import version_info
 
 
 BASE_URL = 'https://discord.com/api/v10'
-USER_AGENT = (
-    f'DiscordBot (https://plural.gg, 2.0.0) Python/{'.'.join([str(i) for i in version_info])} aiohttp/{aiohttp_version}')
+USER_AGENT = ' '.join([
+    # ? probably implement real versioning here
+    f'DiscordBot (https://plural.gg, 2.0.0)',
+    f'Python/{'.'.join([str(i) for i in version_info])}',
+    f'aiohttp/{aiohttp_version}'
+])
 
 global_limit = Event()
 global_limit.set()
@@ -70,11 +74,20 @@ class Route:
 
         self.channel_id: int | None = params.get('channel_id')
         self.guild_id: int | None = params.get('guild_id')
-        self.webhook_id: int | None = params.get('webhook_id')
-        self.webhook_token: str | None = params.get('webhook_token')
+        self.webhook_id: int | None = (
+            params.get('webhook_id') or
+            params.get('interaction_id')
+        )
+        self.webhook_token: str | None = (
+            params.get('webhook_token') or
+            params.get('interaction_token')
+        )
 
     @property
     def bucket(self) -> str:
+        if self.webhook_id and self.webhook_token:
+            return f'{self.webhook_id}:{self.webhook_token}:{self.path}'
+
         return f'{self.channel_id}:{self.guild_id}:{self.path}'
 
 
@@ -211,13 +224,15 @@ async def request(
     *,
     files: Sequence[File] | None = None,
     form: Iterable[dict[str, Any]] | None = None,
-    json: dict[str, Any] | None = None,
+    json: dict[str, Any] | list[Any] | None = None,
     data: Any | None = None,
     reason: str | None = None,
     locale: str | None = None,
+    token: str | None = project.bot_token,
+    ignore_cache: bool = False,
     **kwargs,
 ) -> Any:
-    if route.method == 'GET':
+    if not ignore_cache and route.method == 'GET':
         cached = await HTTPCache.find_one({'url': route.url})
         if cached is not None:
             return cached.data
@@ -229,9 +244,11 @@ async def request(
         __locks[route.bucket] = lock
 
     headers: dict[str, str] = {
-        'User-Agent': USER_AGENT,
-        'Authorization': f'Bot {project.bot_token}',
+        'User-Agent': USER_AGENT
     }
+
+    if token:
+        headers['Authorization'] = f'Bot {token}'
 
     if json is not None and data is not None:
         raise TypeError('You can only pass either json or data')

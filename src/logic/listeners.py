@@ -1,6 +1,7 @@
-from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, ChannelType, Interaction
+from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, ChannelType, Interaction, ApplicationCommandInteractionData, MessageComponentInteractionData, ModalSubmitInteractionData
 from src.discord.listeners import listen, ListenerType
 from .proxy import process_proxy, get_proxy_webhook  # , handle_ping_reply
+from src.discord.commands import commands
 from src.db import Message as DBMessage
 from src.models import project
 from asyncio import gather
@@ -79,8 +80,34 @@ async def on_reaction_add(reaction: MessageReactionAddEvent):
             )
 
 
+async def _on_application_command(interaction: Interaction) -> None:
+    assert isinstance(interaction.data, ApplicationCommandInteractionData)
+    command = commands.get(interaction.data.name)
+    if command is None or command.callback is None:
+        return
+
+    args = [  # ? figure out resolved args
+        option.value
+        for option in interaction.data.options or []
+    ]
+
+    await command.callback(interaction, *args)
+
+
+async def _on_message_component(interaction: Interaction) -> None:
+    assert isinstance(interaction.data, MessageComponentInteractionData)
+
+
+async def _on_modal_submit(interaction: Interaction) -> None:
+    assert isinstance(interaction.data, ModalSubmitInteractionData)
+
+
 @listen(ListenerType.INTERACTION)
-async def on_interaction(interaction: Interaction):
-    await interaction.response.send_message(
-        'test'
-    )
+async def on_interaction(interaction: Interaction) -> None:
+    match interaction.data:
+        case ApplicationCommandInteractionData():
+            await _on_application_command(interaction)
+        case MessageComponentInteractionData():
+            await _on_message_component(interaction)
+        case ModalSubmitInteractionData():
+            await _on_modal_submit(interaction)
