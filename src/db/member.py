@@ -9,7 +9,6 @@ from .models import ProxyTag
 
 if TYPE_CHECKING:
     from src.db.group import Group
-    from src.db.userproxy import UserProxy
 
 
 class Member(Document):
@@ -52,7 +51,8 @@ class Member(Document):
         def autosync(self) -> bool:
             return self.token is not None
 
-    id: PydanticObjectId = Field(default_factory=PydanticObjectId)
+    id: PydanticObjectId = Field(  # type: ignore
+        default_factory=PydanticObjectId)
     name: str = Field(
         description='the name of the member',
         min_length=1, max_length=50
@@ -84,11 +84,6 @@ class Member(Document):
             raise ValueError(f'member {self.id} is not in any group')
 
         return group
-
-    async def get_userproxy(self) -> UserProxy | None:
-        from src.db.userproxy import UserProxy
-
-        return await UserProxy.find_one({'member': self.id})
 
     async def get_avatar_url(self) -> str | None:
         from src.models import project

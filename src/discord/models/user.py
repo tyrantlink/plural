@@ -10,9 +10,6 @@ if TYPE_CHECKING:
     from .member import Member
 
 
-__all__ = ('User',)
-
-
 class User(RawBaseModel):
     id: Snowflake
     username: str

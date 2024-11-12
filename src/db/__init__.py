@@ -1,5 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from .userproxy_message import UserProxyMessage
+from .uinteraction import UserProxyInteraction
 from .httpcache import HTTPCache
 from src.models import project
 from beanie import init_beanie
@@ -23,7 +23,7 @@ class MongoDatabase:
         await init_beanie(
             self._client,
             document_models=[
-                UserProxyMessage,
+                UserProxyInteraction,
                 HTTPCache,
                 Webhook,
                 Message,

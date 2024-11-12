@@ -3,6 +3,7 @@ from .enums import MessageType, MessageReferenceType, MessageFlag, AllowedMentio
 from src.discord.http import Route, request, File
 from asyncio import get_event_loop, create_task
 from .channel import ChannelMention, Channel
+from typing import ForwardRef, TYPE_CHECKING
 from .sticker import Sticker, StickerItem
 from src.discord.types import Snowflake
 from .role import RoleSubscriptionData
@@ -10,7 +11,6 @@ from .application import Application
 from .attachment import Attachment
 from .component import Component
 from .reaction import Reaction
-from .resolved import Resolved
 from .base import RawBaseModel
 from datetime import datetime
 from pydantic import Field
@@ -21,15 +21,7 @@ from .user import User
 from .poll import Poll
 
 
-__all__ = (
-    'MessageActivity',
-    'MessageReference',
-    'MessageInteractionMetadata',
-    'MessageInteraction',
-    'MessageCall',
-    'Message',
-    'AllowedMentions',
-)
+ResolvedRef = ForwardRef('Resolved')
 
 
 class MessageActivity(RawBaseModel):
@@ -98,7 +90,11 @@ class Message(RawBaseModel):
     stickers: list[Sticker] | None = None  # deprecated
     position: int | None = None
     role_subscription_data: list[RoleSubscriptionData] | None = None
-    resolved: Resolved | None = None
+    if TYPE_CHECKING:
+        from .resolved import Resolved
+        resolved: Resolved
+    else:
+        resolved: ResolvedRef | None = None
     poll: Poll | None = None
     call: MessageCall | None = None
     # ? library only, not sent by discord
@@ -245,3 +241,67 @@ class Message(RawBaseModel):
             )
 
         return self
+
+    async def edit(
+        self,
+        content: str | None = None,
+        *,
+        embeds: list[Embed] | None = None,
+        components: list[Component] | None = None,
+        attachments: list[File] | None = None,
+        allowed_mentions: AllowedMentions | None = None,
+    ) -> Message:
+        json = {}
+
+        if content is not None:
+            json['content'] = content
+
+        if embeds:
+            json['embed'] = [embed.model_dump(mode='json') for embed in embeds]
+
+        if components:
+            json['components'] = [component.model_dump(
+                mode='json') for component in components]
+
+        if allowed_mentions:
+            json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')
+
+        form = None
+        if attachments:
+            form, json_attachments = [], []
+            for index, attachment in enumerate(attachments):
+                json_attachments.append(attachment.as_payload_dict(index))
+                form.append(attachment.as_form_dict(index))
+
+            json['attachments'] = json_attachments
+            form.insert(0, {
+                'name': 'payload_json',
+                'value': dumps(json).decode()
+            })
+
+        return (
+            self.__class__(
+                **await request(
+                    Route(
+                        'PATCH',
+                        '/channels/{channel_id}/messages/{message_id}',
+                        channel_id=self.channel_id,
+                        message_id=self.id
+                    ),
+                    form=form,
+                    files=attachments
+                )
+            )
+            if attachments else
+            self.__class__(
+                **await request(
+                    Route(
+                        'PATCH',
+                        '/channels/{channel_id}/messages/{message_id}',
+                        channel_id=self.channel_id,
+                        message_id=self.id
+                    ),
+                    json=json
+                )
+            )
+        )

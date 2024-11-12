@@ -11,12 +11,6 @@ from io import BytesIO
 from .user import User
 
 
-__all__ = (
-    'StickerItem',
-    'Sticker',
-)
-
-
 class StickerItem(RawBaseModel):
     id: Snowflake
     name: str

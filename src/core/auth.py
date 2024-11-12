@@ -1,3 +1,4 @@
+from src.discord.models import Interaction, ApplicationIntegrationType
 from fastapi import Security, HTTPException, Request, Header
 from src.helpers import decode_b66, BASE66CHARS, TTLSet
 from fastapi.security.api_key import APIKeyHeader
@@ -72,18 +73,16 @@ async def discord_key_validator(
 ) -> bool:
     try:
         request_body = (await request.body()).decode()
-        # ! make this load pydantic Interaction model
-        json_body: dict = loads(request_body)
-        application_id = int(json_body['application_id'])
+        interaction = Interaction.model_validate_json(request_body)
     except Exception:
         raise HTTPException(400, 'Invalid request body')
 
     member = None
-    match application_id:
+    match interaction.application_id:
         case project.application_id:
             verify_key = VerifyKey(bytes.fromhex(project.bot_public_key))
         case _:
-            member = await Member.find_one({'userproxy.bot_id': application_id})
+            member = await Member.find_one({'userproxy.bot_id': interaction.application_id})
 
             if member is None or member.userproxy is None:
                 raise HTTPException(400, 'Invalid application id')
@@ -99,16 +98,22 @@ async def discord_key_validator(
         raise HTTPException(401, 'Invalid request signature')
 
     if (  # ? always accept pings and interactions directed at the main bot
-        json_body['type'] == 1 or
-        application_id == project.application_id
+        interaction.type.value == 1 or
+        interaction.application_id == project.application_id
     ):
         return True
 
     assert member is not None
 
-    user_id = int(json_body['authorizing_integration_owners']['1'])
+    user_id = (
+        int(
+            interaction.authorizing_integration_owners.get(
+                ApplicationIntegrationType.USER_INSTALL, 0)
+        ) if interaction.authorizing_integration_owners is not None else
+        None
+    )
 
-    if user_id not in (await member.get_group()).accounts:
+    if user_id is None or user_id not in (await member.get_group()).accounts:
         raise HTTPException(401, 'Invalid user id')
 
     return True

@@ -16,6 +16,7 @@ class Image(Document):
         validate_on_save = True
         cache_expiration_time = timedelta(minutes=30)
 
-    id: PydanticObjectId = Field(default_factory=PydanticObjectId)
+    id: PydanticObjectId = Field(  # type: ignore
+        default_factory=PydanticObjectId)
     data: bytes = Field(description='the binary data of the image')
     extension: str = Field(description='the file extension of the image')

@@ -4,8 +4,6 @@ from src.discord.types import Snowflake
 from .base import RawBaseModel
 from .user import User
 
-__all__ = ('Emoji',)
-
 
 class Emoji(RawBaseModel):
     id: Snowflake | None

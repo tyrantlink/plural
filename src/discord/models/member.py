@@ -9,8 +9,6 @@ from .channel import Channel
 from .guild import Guild
 from .user import User
 
-__all__ = ('Member',)
-
 
 class Member(RawBaseModel):
     user: User | None = None
@@ -66,7 +64,7 @@ class Member(RawBaseModel):
 
         for role in [
             role
-            for role in guild.roles
+            for role in guild.roles or []
             if role.id in
             (self.roles or [])
         ]:

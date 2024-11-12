@@ -36,9 +36,9 @@ async def lifespan(app: FastAPI):
 
     # ? start running bot code
     import src.logic
-    from src.discord.commands import register_commands
+    from src.discord.commands import sync_commands
 
-    await register_commands()
+    await sync_commands()
 
     from src.routers import image, latch, member, group, discord
     app.include_router(discord.router)

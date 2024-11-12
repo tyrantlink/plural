@@ -4,8 +4,6 @@ from .enums import AttachmentFlag
 from .base import RawBaseModel
 from io import BytesIO
 
-__all__ = ('Attachment',)
-
 
 class Attachment(RawBaseModel):
     id: Snowflake

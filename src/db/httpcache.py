@@ -2,6 +2,7 @@ from datetime import timedelta, datetime
 from pymongo import IndexModel
 from beanie import Document
 from pydantic import Field
+import logfire
 
 
 class HTTPCache(Document):
@@ -27,3 +28,11 @@ class HTTPCache(Document):
     ts: datetime = Field(
         default_factory=datetime.utcnow,
         description='the timestamp of the request')
+
+    @classmethod
+    async def invalidate(cls, path: str) -> None:
+        from src.discord.http import BASE_URL
+        cache = await cls.find({'url': f'{BASE_URL}{path}'}).delete()
+
+        if cache and cache.deleted_count:
+            logfire.debug(f'invalidated cache for {path}')

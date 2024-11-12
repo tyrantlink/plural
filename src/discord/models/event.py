@@ -3,19 +3,9 @@ from .enums import GatewayOpCode, GatewayEventName, ReactionType
 from src.discord.types import Snowflake
 from .base import RawBaseModel
 from .message import Message
-from .channel import Channel
 from pydantic import Field
 from .member import Member
 from .emoji import Emoji
-from .guild import Guild
-
-
-__all__ = (
-    'GatewayEvent',
-    'MessageReactionAddEvent',
-    'MessageCreateEvent',
-    'MessageUpdateEvent',
-)
 
 
 class GatewayEvent(RawBaseModel):

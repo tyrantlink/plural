@@ -5,7 +5,6 @@ from src.discord.types import Snowflake
 from pydantic import model_validator
 from .base import RawBaseModel
 from .sticker import Sticker
-from typing import Annotated
 from .emoji import Emoji
 from .role import Role
 

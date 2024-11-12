@@ -1,23 +1,10 @@
 from __future__ import annotations
 from .enums import ApplicationCommandType, ApplicationCommandOptionType, ChannelType, ApplicationIntegrationType, InteractionContextType, EntryPointCommandHandlerType, Permission
 from .base import RawBaseModel, PydanticArbitraryType
+from .interaction import InteractionCallback
 from src.discord.types import Snowflake
-from typing import Protocol, Annotated
-from .interaction import Interaction
+from typing import Annotated
 from pydantic import Field
-
-
-__all__ = (
-    'ApplicationCommandOptionChoice',
-    'ApplicationCommandOption',
-    'ApplicationCommand',
-    'ApplicationCommandCallbackType',
-)
-
-
-class ApplicationCommandCallbackType(Protocol):
-    async def __call__(self, interaction: Interaction, *args, **kwargs) -> None:
-        ...
 
 
 COMMAND_NAME_PATTERN = r'^[-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$'
@@ -63,7 +50,7 @@ class ApplicationCommand(RawBaseModel):
     version: Snowflake | None = None
     handler: EntryPointCommandHandlerType | None = None
     # ? library stuff
-    callback: Annotated[ApplicationCommandCallbackType,
+    callback: Annotated[InteractionCallback,
                         PydanticArbitraryType] | None = None
 
     def __eq__(self, value: object) -> bool:

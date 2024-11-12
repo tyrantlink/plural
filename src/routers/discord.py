@@ -4,10 +4,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import Response, JSONResponse
 from src.discord.types import ListenerType
 from src.discord.listeners import emit
-from src.discord.http import BASE_URL
 from asyncio import create_task
 from src.db import HTTPCache
-import logfire
 
 router = APIRouter(prefix='/discord', tags=['UserProxy'])
 PONG = JSONResponse({'type': 1})
@@ -44,13 +42,6 @@ async def post__interaction(
     return Response(status_code=202)
 
 
-async def _invalidate_cache(url: str) -> None:
-    cache = await HTTPCache.find({'url': f'{BASE_URL}{url}'}).delete()
-
-    if cache and cache.deleted_count:
-        logfire.info(f'invalidated cache for {url}')
-
-
 @router.post(
     '/event',
     include_in_schema=False,
@@ -81,17 +72,11 @@ async def post__event(
                 MessageReactionAddEvent(**event.data)
             )
         case GatewayEventName.GUILD_UPDATE:
-            task = _invalidate_cache(
-                f'/guilds/{event.data['id']}'
-            )
+            task = HTTPCache.invalidate(f'/guilds/{event.data['id']}')
         case GatewayEventName.CHANNEL_UPDATE:
-            task = _invalidate_cache(
-                f'/channels/{event.data['id']}'
-            )
+            task = HTTPCache.invalidate(f'/channels/{event.data['id']}')
         case GatewayEventName.GUILD_ROLE_UPDATE:
-            task = _invalidate_cache(
-                f'/guilds/{event.data['guild_id']}'
-            )
+            task = HTTPCache.invalidate(f'/guilds/{event.data['guild_id']}')
         case _:
             raise HTTPException(500, 'event accepted but not handled')
 

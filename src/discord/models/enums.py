@@ -1,34 +1,9 @@
 from __future__ import annotations
+from pydantic_core.core_schema import CoreSchema, int_schema, enum_schema
 from pydantic import GetJsonSchemaHandler, GetCoreSchemaHandler
-from pydantic_core.core_schema import CoreSchema, int_schema
 from pydantic.json_schema import JsonSchemaValue
 from enum import Enum, StrEnum, IntFlag
 from typing import Any
-
-__all__ = (
-    'GatewayOpCode',
-    'GatewayEventName',
-    'ReactionType',
-    'GuildMemberFlag',
-    'PremiumType',
-    'UserFlag',
-    'ChannelType',
-    'MessageType',
-    'MessageReferenceType',
-    'MessageFlag',
-    'ApplicationCommandType',
-    'ApplicationCommandOptionType',
-    'ApplicationIntegrationType',
-    'InteractionContextType',
-    'EntryPointCommandHandlerType',
-    'WebhookType',
-    'OverwriteType',
-    'VideoQualityMode',
-    'ChannelFlag',
-    'StickerType',
-    'StickerFormatType',
-    'Permission',
-)
 
 
 class GatewayOpCode(Enum):
@@ -285,7 +260,7 @@ class ApplicationIntegrationType(Enum):
         _source_type: type[Any] | None,
         _handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
-        return int_schema()
+        return enum_schema(cls, list(cls.__members__.values()), sub_type='int')
 
     @classmethod
     def __get_pydantic_json_schema__(
@@ -623,3 +598,21 @@ class InteractionCallbackType(Enum):
     MODAL = 9
     PREMIUM_REQUIRED = 10  # deprecated
     LAUNCH_ACTIVITY = 12
+
+
+class ComponentType(Enum):
+    ACTION_ROW = 1
+    BUTTON = 2
+    STRING_SELECT = 3
+    TEXT_INPUT = 4
+    USER_SELECT = 5
+    ROLE_SELECT = 6
+    MENTIONABLE_SELECT = 7
+    CHANNEL_SELECT = 8
+
+
+class TextInputStyle(Enum):
+    SHORT = 1
+    PARAGRAPH = 2
+
+    LONG = PARAGRAPH

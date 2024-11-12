@@ -1,17 +1,25 @@
 from __future__ import annotations
 from .enums import InteractionType, ApplicationCommandType, ApplicationCommandOptionType, Permission, EntitlementType, ApplicationIntegrationType, InteractionContextType  # , ComponentType
-from .component import Component  # , SelectOption
-from .response import InteractionResponse
+from .response import InteractionResponse, InteractionFollowup
+from .component import Component, ActionRow  # , SelectOption
+from src.db import Member as ProxyMember
 from src.discord.types import Snowflake
 from pydantic import model_validator
 from .resolved import Resolved
+from src.models import project
 from .base import RawBaseModel
 from datetime import datetime
 from .message import Message
 from .channel import Channel
+from typing import Protocol
 from .member import Member
 from .guild import Guild
 from .user import User
+
+
+class InteractionCallback(Protocol):
+    async def __call__(self, interaction: Interaction, *args, **kwargs) -> None:
+        ...
 
 
 class ApplicationCommandInteractionDataOption(RawBaseModel):
@@ -34,14 +42,15 @@ class ApplicationCommandInteractionData(RawBaseModel):
 
 class MessageComponentInteractionData(RawBaseModel):
     custom_id: str
-    # component_type: ComponentType
-    # values: list[SelectOption] | None = None
+    component_type: int  # ComponentType
+    values: dict | None = None  # list[SelectOption] | None = None
     resolved: Resolved | None = None
 
 
 class ModalSubmitInteractionData(RawBaseModel):
     custom_id: str
-    components: list[Component] | None = None
+    # ! i think this is always a list of ActionRow
+    components: list[ActionRow] | None = None
 
 
 class Entitlement(RawBaseModel):
@@ -61,7 +70,7 @@ class Interaction(RawBaseModel):
     id: Snowflake
     application_id: Snowflake
     type: InteractionType
-    data: ApplicationCommandInteractionData | MessageComponentInteractionData | ModalSubmitInteractionData | None = None
+    data: ApplicationCommandInteractionData | ModalSubmitInteractionData | MessageComponentInteractionData | None = None
     guild: Guild | None = None
     guild_id: Snowflake | None = None
     channel: Channel | None = None
@@ -80,12 +89,16 @@ class Interaction(RawBaseModel):
         ApplicationIntegrationType, Snowflake] | None = None
     context: InteractionContextType | None = None
     response: InteractionResponse
+    followup: InteractionFollowup
+    # ? library stuff
+    proxy_member: ProxyMember | None = None
 
     @model_validator(mode='before')
     @classmethod
     def ensure_response(cls, data: dict) -> dict:
         # ? set in .populate()
         data['response'] = None
+        data['followup'] = None
         return data
 
     @property
@@ -107,6 +120,7 @@ class Interaction(RawBaseModel):
         # ? interactions return partials, make sure to get the full objects
         await super().populate()
         self.response = InteractionResponse(self)
+        self.followup = InteractionFollowup(self)
 
         if self.channel_id is not None:
             self.channel = await Channel.fetch(self.channel_id)
@@ -119,3 +133,7 @@ class Interaction(RawBaseModel):
 
         if self.user is not None:
             self.user = await User.fetch(self.author_id)
+
+        if self.application_id != project.application_id:
+            self.proxy_member = await ProxyMember.find_one(
+                {'userproxy.bot_id': self.application_id})

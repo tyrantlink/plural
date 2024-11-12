@@ -1,8 +1,9 @@
+from src.discord.http import File, get_from_cdn
 from beanie import Document, PydanticObjectId
-from src.models import ReplyAttachment
+from pydantic import Field, BaseModel
 from pymongo import IndexModel
 from datetime import datetime
-from pydantic import Field
+from io import BytesIO
 
 
 class Reply(Document):
@@ -21,11 +22,26 @@ class Reply(Document):
             IndexModel('ts', expireAfterSeconds=300)
         ]
 
-    id: PydanticObjectId = Field(default_factory=PydanticObjectId)
+    class Attachment(BaseModel):
+        url: str = Field(description='the url of the attachment')
+        filename: str = Field(description='the filename of the attachment')
+        description: str | None = Field(
+            None, description='the description of the attachment')
+
+        async def as_file(self) -> File:
+            return File(
+                BytesIO(await get_from_cdn(self.url)),
+                filename=self.filename,
+                description=self.description,
+                spoiler=self.filename.startswith('SPOILER_')
+            )
+
+    id: PydanticObjectId = Field(  # type: ignore
+        default_factory=PydanticObjectId)
     bot_id: int = Field(description='bot id')
     channel: int = Field(description='the channel id of the reply')
     content: str | None = Field(description='the userproxy content')
-    attachment: ReplyAttachment | None = Field(
+    attachment: Attachment | None = Field(
         description='the message attachment')
     ts: datetime = Field(
         default_factory=datetime.utcnow,

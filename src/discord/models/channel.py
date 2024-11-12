@@ -14,12 +14,6 @@ if TYPE_CHECKING:
     from .webhook import Webhook
 
 
-__all__ = (
-    'ChannelMention',
-    'Channel',
-)
-
-
 class ChannelMention(RawBaseModel):
     id: Snowflake
     guild_id: Snowflake

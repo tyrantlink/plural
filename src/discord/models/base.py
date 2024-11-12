@@ -3,8 +3,6 @@ from pydantic.json_schema import JsonSchemaValue
 from pydantic import BaseModel
 from typing import Self
 
-__all__ = ('RawBaseModel',)
-
 
 class RawBaseModel(BaseModel):
     def __init__(self, **data):

@@ -5,9 +5,6 @@ from .base import RawBaseModel
 from .emoji import Emoji
 
 
-__all__ = ('Poll',)
-
-
 class PollMedia(RawBaseModel):
     text: str | None = None
     emoji: Emoji | None = None
