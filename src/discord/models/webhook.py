@@ -226,7 +226,7 @@ class Webhook(RawBaseModel):
 
     async def edit_message(
         self,
-        message_id: Snowflake | int,
+        message_id: Snowflake | int | Literal['@original'],
         content: str | None = None,
         *,
         thread_id: Snowflake | None = None,

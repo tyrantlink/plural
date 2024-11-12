@@ -1,5 +1,5 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
-from .uinteraction import UserProxyInteraction
+from .userproxy_interaction import UserProxyInteraction
 from .httpcache import HTTPCache
 from src.models import project
 from beanie import init_beanie

@@ -34,6 +34,7 @@ __all__ = (
     'ApplicationCommandOption',
     'ApplicationCommandOptionChoice',
     'ApplicationCommandOptionType',
+    'ApplicationCommandScope',
     'ApplicationCommandType',
     'EntryPointCommandHandlerType',
     # application.py
@@ -124,6 +125,7 @@ __all__ = (
     'MessageType',
     # modal.py
     'Modal',
+    'ModalExtraType',
     # poll.py
     'Poll',
     'PollAnswer',

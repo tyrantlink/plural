@@ -1,10 +1,17 @@
 from __future__ import annotations
 from .base import RawBaseModel, PydanticArbitraryType
-from typing import TYPE_CHECKING, Annotated, Any
+from src.db import Member as ProxyMember, Group
 from .component import ActionRow, TextInput
+from typing import TYPE_CHECKING, Annotated
+from .enums import ModalExtraType
+from .channel import Channel
+from .user import User
 
 if TYPE_CHECKING:
     from .interaction import InteractionCallback
+
+# ? i'm so good at names
+ModalExtraTypeType = None | str | int | bool | User | Channel | ProxyMember | Group
 
 
 class Modal(RawBaseModel, PydanticArbitraryType):
@@ -67,7 +74,40 @@ class Modal(RawBaseModel, PydanticArbitraryType):
 
         return modal
 
-    def with_extra(self, extra: list[str]) -> Modal:
+    def with_extra(
+        self,
+        *extra: ModalExtraTypeType
+    ) -> Modal:
         modal = self.__get_self()
-        modal.extra = extra
+        modal.extra = modal.extra or []
+
+        for value in extra:
+            parsed = ''
+            match value:
+                case None:
+                    parsed = str(ModalExtraType.NONE)
+                case str():
+                    parsed = f'{ModalExtraType.STRING}{value}'
+                case bool():
+                    parsed = f'{ModalExtraType.BOOLEAN}{int(value)}'
+                case int():
+                    parsed = f'{ModalExtraType.INTEGER}{value}'
+                case User():
+                    parsed = f'{ModalExtraType.USER}{value.id}'
+                case Channel():
+                    parsed = f'{ModalExtraType.CHANNEL}{value.id}'
+                case ProxyMember():
+                    parsed = f'{ModalExtraType.MEMBER}{value.id}'
+                case Group():
+                    parsed = f'{ModalExtraType.GROUP}{value.id}'
+                case _:
+                    raise ValueError(f'invalid extra type `{type(value)}`')
+
+            modal.extra.append(parsed)
+
+        if len('.'.join([modal.custom_id] + (modal.extra))) > 100:
+            raise ValueError(
+                'custom_id (with extra) must be less than 100 characters'
+            )
+
         return modal

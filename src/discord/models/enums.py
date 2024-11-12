@@ -1,9 +1,11 @@
 from __future__ import annotations
 from pydantic_core.core_schema import CoreSchema, int_schema, enum_schema
 from pydantic import GetJsonSchemaHandler, GetCoreSchemaHandler
+from enum import Enum, StrEnum, IntFlag, EnumMeta
 from pydantic.json_schema import JsonSchemaValue
-from enum import Enum, StrEnum, IntFlag
 from typing import Any
+
+CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 
 class GatewayOpCode(Enum):
@@ -616,3 +618,32 @@ class TextInputStyle(Enum):
     PARAGRAPH = 2
 
     LONG = PARAGRAPH
+
+
+class CharEnumMeta(EnumMeta):
+    CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+    def __call__(cls, value: int | str, *args, **kwargs) -> CharEnumMeta:
+        if isinstance(value, int):
+            return super().__call__(value, *args, **kwargs)
+
+        return super().__call__(cls.CHARS.index(value), *args, **kwargs)
+
+
+class ModalExtraType(Enum, metaclass=CharEnumMeta):
+    NONE = 0
+    STRING = 1
+    INTEGER = 2
+    BOOLEAN = 37
+    USER = 4
+    CHANNEL = 5
+    MEMBER = 6
+    GROUP = 7
+
+    def __str__(self) -> str:
+        return CharEnumMeta.CHARS[self.value]
+
+
+class ApplicationCommandScope(Enum):
+    PRIMARY = 0
+    USERPROXY = 1

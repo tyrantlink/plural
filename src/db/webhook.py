@@ -20,8 +20,7 @@ class Webhook(Document):
     id: int = Field(  # type: ignore #? mypy stupid
         description='channel id of the webhook'
     )
-    guild: int | None = Field(
-        None,  # ? only setting to none during migration from not having guild
+    guild: int = Field(
         description='guild id of the webhook'
     )
     url: str = Field(description='the url of the webhook')

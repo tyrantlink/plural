@@ -1,9 +1,11 @@
-from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, ChannelType, Interaction, ApplicationCommandInteractionData, MessageComponentInteractionData, ModalSubmitInteractionData, ApplicationCommandOptionType, Snowflake, ApplicationCommandType, ActionRow, TextInput
+from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, ChannelType, Interaction, ApplicationCommandInteractionData, MessageComponentInteractionData, ModalSubmitInteractionData, ApplicationCommandOptionType, Snowflake, ApplicationCommandType, ActionRow, TextInput, ModalExtraType, User
+from src.db import Message as DBMessage, Member as ProxyMember, Group
 from src.discord.commands import commands, ApplicationCommandScope
-from src.db import Message as DBMessage, Member as ProxyMember
+from src.discord.models.modal import ModalExtraTypeType
 from src.discord.listeners import listen, ListenerType
 from .proxy import process_proxy, get_proxy_webhook  # , handle_ping_reply
 from src.discord.components import components
+from beanie import PydanticObjectId
 from src.models import project
 from asyncio import gather
 from typing import Any
@@ -84,6 +86,7 @@ async def on_reaction_add(reaction: MessageReactionAddEvent):
 
 async def _on_application_command(interaction: Interaction) -> None:
     assert isinstance(interaction.data, ApplicationCommandInteractionData)
+
     scope = (
         ApplicationCommandScope.PRIMARY
         if interaction.application_id == project.application_id else
@@ -103,11 +106,33 @@ async def _on_application_command(interaction: Interaction) -> None:
     ):
         command = commands[ApplicationCommandScope.USERPROXY].get('proxy')
 
-    if command is None or command.callback is None:
+    if command is None:
         raise ValueError(
-            f'no command/callback found for {interaction.data.name}')
+            f'no command found for {interaction.data.name}')
 
+    callback = command.callback
+    command_options = command.options or []
     options = interaction.data.options or []
+
+    while callback is None:
+        subcommand = options[0]
+        for option in command_options:
+
+            if subcommand.name == option.name:
+
+                if option.type == ApplicationCommandOptionType.SUB_COMMAND_GROUP:
+                    command_options = option.options or []
+                    options = subcommand.options or []
+                    break
+
+                if option.type == ApplicationCommandOptionType.SUB_COMMAND:
+                    options = subcommand.options or []
+                    callback = option.callback
+                    break
+        else:
+            raise ValueError(
+                f'no callback found for {interaction.data.name}')
+
     kwargs: dict[str, Any] = {}
 
     match command.type:
@@ -134,7 +159,36 @@ async def _on_application_command(interaction: Interaction) -> None:
             case _:
                 kwargs[option.name] = option.value
 
-    await command.callback(interaction, **kwargs)
+    await callback(interaction, **kwargs)
+
+
+async def parse_custom_id(
+    custom_id: str
+) -> tuple[str, list[ModalExtraTypeType]]:
+    base, *extras = custom_id.split('.')
+    args = []
+    for arg in extras:
+        match ModalExtraType(arg[0]):
+            case ModalExtraType.NONE:
+                args.append(None)
+            case ModalExtraType.STRING:
+                args.append(arg[1:])
+            case ModalExtraType.INTEGER:
+                args.append(int(arg[1:]))
+            case ModalExtraType.BOOLEAN:
+                args.append(bool(int(arg[1:])))
+            case ModalExtraType.USER:
+                args.append(await User.fetch(Snowflake(arg[1:])))
+            case ModalExtraType.CHANNEL:
+                args.append(await Channel.fetch(Snowflake(arg[1:])))
+            case ModalExtraType.MEMBER:
+                args.append(await ProxyMember.get(PydanticObjectId(arg[1:])))
+            case ModalExtraType.GROUP:
+                args.append(await Group.get(PydanticObjectId(arg[1:])))
+            case _:
+                raise ValueError(f'invalid extra type `{arg}`')
+
+    return base, args
 
 
 async def _on_message_component(interaction: Interaction) -> None:
@@ -142,11 +196,17 @@ async def _on_message_component(interaction: Interaction) -> None:
     print('message component')
     print(interaction.data._raw)
 
+    component_name, args = await parse_custom_id(
+        interaction.data.custom_id
+    )
+
 
 async def _on_modal_submit(interaction: Interaction) -> None:
     assert isinstance(interaction.data, ModalSubmitInteractionData)
 
-    modal_name, *args = interaction.data.custom_id.split('.')
+    modal_name, args = await parse_custom_id(
+        interaction.data.custom_id
+    )
 
     modal = components.get(modal_name)
 

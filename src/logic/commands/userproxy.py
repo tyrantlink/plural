@@ -1,6 +1,6 @@
-from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message
+from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed
 from src.logic.modals.userproxy import umodal_send, umodal_edit
-from src.db import Reply
+from src.db import Reply, UserProxyInteraction
 
 
 @slash_command(
@@ -36,7 +36,11 @@ async def uslash_proxy(
         await interaction.response.send_modal(
             modal=umodal_send.with_title(
                 'proxy a message'
-            ).with_text_placeholder(0, 'you should only use this if you need to send a message with newlines')
+            ).with_text_placeholder(
+                0, 'you should only use this if you need to send a message with newlines'
+            ).with_extra(
+                queue_for_reply
+            )
         )
         return
 
@@ -50,11 +54,16 @@ async def uslash_proxy(
         await interaction.response.defer(MessageFlag.NONE)
 
     if not queue_for_reply:
-        await sender(
+        sent_message = await sender(
             content=message,
             attachments=[await attachment.as_file()] if attachment else None,
             flags=MessageFlag.NONE
         )
+
+        await UserProxyInteraction(
+            message_id=sent_message.id,
+            token=interaction.token
+        ).save()
         return
 
     await Reply(
@@ -71,8 +80,13 @@ async def uslash_proxy(
         )
     ).save()
 
-    await interaction.response.send_message(  # ! make this a success embed
-        content='Message queued for reply | use the reply command within the next 5 minutes to send your message',
+    await interaction.response.send_message(
+        embeds=[
+            Embed.success(
+                title='message queued for reply',
+                message='use the reply command within the next 5 minutes to send your message'
+            )
+        ],
     )
 
 
@@ -111,13 +125,18 @@ async def umessage_reply(
     if attachment:
         await interaction.response.defer(MessageFlag.NONE)
 
-    await sender(
+    sent_message = await sender(
         content=reply.content,
         attachments=[attachment] if attachment else None,
         flags=MessageFlag.NONE
     )
 
     await reply.delete()
+
+    await UserProxyInteraction(
+        message_id=sent_message.id,
+        token=interaction.token
+    ).save()
 
 
 @message_command(
@@ -132,5 +151,7 @@ async def umessage_edit(
             'edit message'
         ).with_text_value(
             0, message.content
-        ).with_extra([str(message.id)])
+        ).with_extra(
+            message.id
+        )
     )

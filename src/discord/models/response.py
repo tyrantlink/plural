@@ -194,7 +194,7 @@ class InteractionResponse(PydanticArbitraryType):
             }
         )
 
-        message = Message(
+        return Message(
             **(
                 await request(
                     self.callback_route,
@@ -202,14 +202,6 @@ class InteractionResponse(PydanticArbitraryType):
                 )
             )['resource']['message']
         )
-
-        if self.userproxy:
-            await UserProxyInteraction(
-                message_id=message.id,
-                token=self.interaction.token
-            ).save()
-
-        return message
 
     async def send_modal(
         self,
@@ -227,7 +219,6 @@ class InteractionResponse(PydanticArbitraryType):
 
     async def edit_message(
         self,
-        message_id: int,
         content: str | None = None,
         *,
         embeds: list[Embed] | None = None,
@@ -235,33 +226,13 @@ class InteractionResponse(PydanticArbitraryType):
         attachments: list[File] | None = None,
         allowed_mentions: AllowedMentions | None = None,
     ) -> Message | None:
-        interaction = await UserProxyInteraction.find_one({
-            'message_id': message_id
-        })
-
-        if interaction is None:
-            await self.send_message(
-                'message not found\ndue to discord limitations, you can\'t edit messages that are older than 15 minutes',
-            )
-            return None
-
-        webhook = Webhook.from_proxy_interaction(
-            interaction,
-            self.interaction.application_id
+        await Webhook.from_interaction(self.interaction).edit_message(
+            '@original',
+            content=content,
+            embeds=embeds,
+            components=components,
+            attachments=attachments,
+            allowed_mentions=allowed_mentions
         )
-
-        message, *_ = await gather(
-            webhook.edit_message(
-                message_id,
-                content=content,
-                embeds=embeds,
-                components=components,
-                attachments=attachments,
-                allowed_mentions=allowed_mentions
-            ),
-            self.ack()
-        )
-
-        return message
 
     #! make update_message for message components

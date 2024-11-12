@@ -1,3 +1,4 @@
+from __future__ import annotations
 from .base import RawBaseModel
 from datetime import datetime
 
@@ -61,3 +62,19 @@ class Embed(RawBaseModel):
     provider: EmbedProvider | None = None
     author: EmbedAuthor | None = None
     fields: list[EmbedField] | None = None
+
+    @classmethod
+    def success(cls, message: str, title: str = 'success!') -> Embed:
+        return cls(
+            title=title,
+            description=message,
+            color=0x69ff69
+        )
+
+    @classmethod
+    def error(cls, message: str, title: str = 'error!') -> Embed:
+        return cls(
+            title=title,
+            description=message,
+            color=0xff6969
+        )

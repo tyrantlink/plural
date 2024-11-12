@@ -1,4 +1,5 @@
-from .models import ApplicationCommand, ApplicationCommandType, ApplicationCommandOption, ApplicationIntegrationType, InteractionContextType, Permission, InteractionCallback
+from __future__ import annotations
+from .models import ApplicationCommand, ApplicationCommandType, ApplicationCommandOption, ApplicationIntegrationType, InteractionContextType, Permission, InteractionCallback, ApplicationCommandScope, ApplicationCommandOptionType
 from src.db import Member as ProxyMember, HTTPCache
 from src.discord.http import Route, request
 from collections.abc import Callable
@@ -9,12 +10,10 @@ from enum import Enum
 import logfire
 
 
-class ApplicationCommandScope(Enum):
-    PRIMARY = 0
-    USERPROXY = 1
-
-
-commands: dict[ApplicationCommandScope, dict[str, ApplicationCommand]] = {
+commands: dict[
+    ApplicationCommandScope,
+    dict[str, ApplicationCommand]
+] = {
     ApplicationCommandScope.PRIMARY: {},
     ApplicationCommandScope.USERPROXY: {}
 }
@@ -22,19 +21,51 @@ commands: dict[ApplicationCommandScope, dict[str, ApplicationCommand]] = {
 
 
 async def _put_all_commands(
+    application_id: int,
     token: str
 ) -> None:
     await request(
         Route(
             'PUT',
             '/applications/{application_id}/commands',
-            application_id=project.application_id
+            application_id=application_id
         ),
+        token=token,
         json=[
             command._as_registration_dict()
-            for command in commands[ApplicationCommandScope.PRIMARY].values()
+            for command in commands[(
+                ApplicationCommandScope.PRIMARY
+                if application_id == project.application_id else
+                ApplicationCommandScope.USERPROXY
+            )].values()
         ]
     )
+
+
+def _patch_reason(local_command: ApplicationCommand, live_command: ApplicationCommand) -> list[str]:
+    reasons = []
+
+    if local_command.type != live_command.type:
+        reasons.append(f'type ({local_command.type=} != {live_command.type=})')
+
+    if local_command.options != live_command.options:
+        for local_option, live_option in zip(local_command.options or [], live_command.options or []):
+            if local_option != live_option:
+                reasons.append(f'options ({local_option=} != {live_option=})')
+
+    if local_command.default_member_permissions != live_command.default_member_permissions:
+        reasons.append(
+            f'default_member_permissions ({local_command.default_member_permissions=} != {
+                live_command.default_member_permissions=})')
+
+    if local_command.nsfw != live_command.nsfw:
+        reasons.append(f'nsfw ({local_command.nsfw=} != {live_command.nsfw=})')
+
+    if local_command.contexts != live_command.contexts:
+        reasons.append(f'contexts ({local_command.contexts=} != {
+                       live_command.contexts=})')
+
+    return reasons
 
 
 async def _sync_commands(
@@ -42,6 +73,7 @@ async def _sync_commands(
     token: str | None = None
 ) -> None:
     global commands
+
     scope = (
         ApplicationCommandScope.PRIMARY
         if application_id == project.application_id else
@@ -93,37 +125,50 @@ async def _sync_commands(
 
     if working_commands and not live_commands:
         logfire.debug('no commands found on discord, registering all')
-        await _put_all_commands(token)
+        await _put_all_commands(
+            application_id,
+            token
+        )
         return
 
     updates: list[
         tuple[
             Literal['POST', 'PATCH', 'DELETE'],
-            ApplicationCommand
+            ApplicationCommand,
+            list[str] | None
         ]
     ] = []
 
     for command in working_commands.values():
         if command.name not in live_commands:
-            updates.append(('POST', command))
+            updates.append(('POST', command, None))
             continue
 
         if live_commands[command.name] != command:
             command.id = live_commands[command.name].id
-            updates.append(('PATCH', command))
+            updates.append((
+                'PATCH',
+                command,
+                _patch_reason(command, live_commands[command.name])
+            ))
 
     for command in live_commands.values():
         if command.name not in working_commands:
-            updates.append(('DELETE', command))
+            updates.append(('DELETE', command, None))
 
     if len(updates) > 4:
         logfire.debug('too many updates, registering all')
-        await _put_all_commands(token)
+        await _put_all_commands(
+            application_id,
+            token
+        )
         return
 
-    for method, command in updates:
+    for method, command, reason in updates:
         match method:
             case 'POST':
+                logfire.debug(
+                    'registering {command_name}', command_name=command.name)
                 await request(
                     Route(
                         'POST',
@@ -134,6 +179,11 @@ async def _sync_commands(
                     token=token
                 )
             case 'PATCH':
+                logfire.debug(
+                    'updating {command_name} ({reason})',
+                    command_name=command.name,
+                    reason=', '.join(reason or [])
+                )
                 await request(
                     Route(
                         'PATCH',
@@ -145,6 +195,8 @@ async def _sync_commands(
                     token=token
                 )
             case 'DELETE':
+                logfire.debug(
+                    'deleting {command_name}', command_name=command.name)
                 await request(
                     Route(
                         'DELETE',
@@ -172,9 +224,23 @@ def _base_command(
     type: ApplicationCommandType,
     name: str,
     scope: ApplicationCommandScope = ApplicationCommandScope.PRIMARY,
+    parent: ApplicationCommand | ApplicationCommandOption | None = None,
     **kwargs
-) -> Callable[[InteractionCallback], ApplicationCommand]:
-    def decorator(func: InteractionCallback) -> ApplicationCommand:
+) -> Callable[[InteractionCallback], ApplicationCommand | ApplicationCommandOption]:
+    def decorator(func: InteractionCallback) -> ApplicationCommand | ApplicationCommandOption:
+        if parent:
+            parent.options = parent.options or []
+            parent.options.append(
+                ApplicationCommandOption(
+                    type=ApplicationCommandOptionType.SUB_COMMAND,
+                    name=name,
+                    callback=func,
+                    **kwargs
+                )
+            )
+
+            return parent
+
         command = ApplicationCommand(
             type=type,
             name=name,
@@ -182,7 +248,7 @@ def _base_command(
             **kwargs
         )
 
-        commands[scope].update({name: command})
+        commands[scope][name] = command
 
         return command
 
@@ -197,8 +263,9 @@ def slash_command(
     nsfw: bool = False,
     integration_types: list[ApplicationIntegrationType] | None = None,
     contexts: list[InteractionContextType] | None = None,
-    scope: ApplicationCommandScope = ApplicationCommandScope.PRIMARY
-) -> Callable[[InteractionCallback], ApplicationCommand]:
+    scope: ApplicationCommandScope = ApplicationCommandScope.PRIMARY,
+    parent: ApplicationCommand | None = None
+) -> Callable[[InteractionCallback], ApplicationCommand | ApplicationCommandOption]:
     return _base_command(
         ApplicationCommandType.CHAT_INPUT,
         name=name,
@@ -208,8 +275,34 @@ def slash_command(
         default_member_permissions=default_member_permissions,
         nsfw=nsfw,
         integration_types=integration_types,
-        contexts=contexts
+        contexts=contexts,
+        parent=parent
     )
+
+
+def SlashCommandGroup(
+    name: str,
+    description: str,
+    default_member_permissions: Permission | None = None,
+    nsfw: bool = False,
+    integration_types: list[ApplicationIntegrationType] | None = None,
+    contexts: list[InteractionContextType] | None = None,
+    scope: ApplicationCommandScope = ApplicationCommandScope.PRIMARY,
+) -> ApplicationCommand:
+    command = ApplicationCommand(
+        type=ApplicationCommandType.CHAT_INPUT,
+        name=name,
+        description=description,
+        default_member_permissions=default_member_permissions,
+        nsfw=nsfw,
+        integration_types=integration_types,
+        contexts=contexts,
+        callback=None
+    )
+
+    commands[scope][name] = command
+
+    return command
 
 
 def message_command(
@@ -219,7 +312,7 @@ def message_command(
     integration_types: list[ApplicationIntegrationType] | None = None,
     contexts: list[InteractionContextType] | None = None,
     scope: ApplicationCommandScope = ApplicationCommandScope.PRIMARY
-) -> Callable[[InteractionCallback], ApplicationCommand]:
+) -> Callable[[InteractionCallback], ApplicationCommand | ApplicationCommandOption]:
     return _base_command(
         ApplicationCommandType.MESSAGE,
         name=name,

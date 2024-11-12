@@ -1,9 +1,9 @@
 from __future__ import annotations
-from .enums import ApplicationCommandType, ApplicationCommandOptionType, ChannelType, ApplicationIntegrationType, InteractionContextType, EntryPointCommandHandlerType, Permission
+from .enums import ApplicationCommandType, ApplicationCommandOptionType, ChannelType, ApplicationIntegrationType, InteractionContextType, EntryPointCommandHandlerType, Permission, ApplicationCommandScope
+from typing import Annotated, Callable, TYPE_CHECKING
 from .base import RawBaseModel, PydanticArbitraryType
 from .interaction import InteractionCallback
 from src.discord.types import Snowflake
-from typing import Annotated
 from pydantic import Field
 
 
@@ -29,11 +29,60 @@ class ApplicationCommandOption(RawBaseModel):
     min_length: int | None = None
     max_length: int | None = None
     autocomplete: bool = False
+    # ? library stuff
+    if TYPE_CHECKING:
+        callback: Annotated[InteractionCallback,
+                            PydanticArbitraryType] | None = None
+    else:
+        callback: Annotated[InteractionCallback,
+                            PydanticArbitraryType] | None = Field(None, exclude=True)
+
+    def __eq__(self, value: object) -> bool:
+        return (
+            isinstance(value, ApplicationCommandOption) and
+            value.type == self.type and
+            value.name == self.name and
+            value.description == self.description and
+            value.required == self.required and
+            value.choices == self.choices and
+            value.options == self.options and
+            value.channel_types == self.channel_types and
+            value.min_value == self.min_value and
+            value.max_value == self.max_value and
+            value.min_length == self.min_length and
+            value.max_length == self.max_length and
+            value.autocomplete == self.autocomplete
+        )
+
+    def command(
+        self,
+        name: str,
+        description: str,
+        options: list[ApplicationCommandOption] | None = None,
+        default_member_permissions: Permission | None = None,
+        nsfw: bool = False,
+        integration_types: list[ApplicationIntegrationType] | None = None,
+        contexts: list[InteractionContextType] | None = None,
+        scope: ApplicationCommandScope = ApplicationCommandScope.PRIMARY
+    ) -> Callable[[InteractionCallback], ApplicationCommand | ApplicationCommandOption]:
+        from src.discord.commands import _base_command
+        return _base_command(
+            ApplicationCommandType.CHAT_INPUT,
+            name=name,
+            scope=scope,
+            description=description,
+            options=options,
+            default_member_permissions=default_member_permissions,
+            nsfw=nsfw,
+            integration_types=integration_types,
+            contexts=contexts,
+            parent=self
+        )
 
 
 class ApplicationCommand(RawBaseModel):
     id: Snowflake | None = None
-    type: ApplicationCommandType
+    type: ApplicationCommandType | ApplicationCommandOptionType
     application_id: Snowflake | None = None
     guild_id: Snowflake | None = None
     name: str
@@ -51,7 +100,7 @@ class ApplicationCommand(RawBaseModel):
     handler: EntryPointCommandHandlerType | None = None
     # ? library stuff
     callback: Annotated[InteractionCallback,
-                        PydanticArbitraryType] | None = None
+                        PydanticArbitraryType] | None = Field(None, exclude=True)
 
     def __eq__(self, value: object) -> bool:
         return (
@@ -112,3 +161,44 @@ class ApplicationCommand(RawBaseModel):
             ]
 
         return json
+
+    def command(
+        self,
+        name: str,
+        description: str,
+        options: list[ApplicationCommandOption] | None = None,
+        default_member_permissions: Permission | None = None,
+        nsfw: bool = False,
+        integration_types: list[ApplicationIntegrationType] | None = None,
+        contexts: list[InteractionContextType] | None = None,
+        scope: ApplicationCommandScope = ApplicationCommandScope.PRIMARY
+    ) -> Callable[[InteractionCallback], ApplicationCommand | ApplicationCommandOption]:
+        from src.discord.commands import _base_command
+        return _base_command(
+            ApplicationCommandType.CHAT_INPUT,
+            name=name,
+            scope=scope,
+            description=description,
+            options=options,
+            default_member_permissions=default_member_permissions,
+            nsfw=nsfw,
+            integration_types=integration_types,
+            contexts=contexts,
+            parent=self
+        )
+
+    def create_subgroup(
+        self,
+        name: str,
+        description: str,
+    ) -> ApplicationCommandOption:
+        subgroup = ApplicationCommandOption(
+            type=ApplicationCommandOptionType.SUB_COMMAND_GROUP,
+            name=name,
+            description=description
+        )
+
+        self.options = self.options or []
+        self.options.append(subgroup)
+
+        return subgroup
