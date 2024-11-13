@@ -2,7 +2,7 @@ from src.core.models.member import MemberModel, MemberUpdateModel
 from src.core.auth import api_key_validator, TokenData
 from fastapi import HTTPException, Security, APIRouter
 from fastapi.responses import JSONResponse
-from src.db import Member, Group, Image
+from src.db import ProxyMember, Group, Image
 from src.docs import member as docs
 from beanie import PydanticObjectId
 from asyncio import gather
@@ -18,7 +18,7 @@ async def get__member(
     member_id: PydanticObjectId,
     token: TokenData = Security(api_key_validator)
 ) -> JSONResponse:
-    member = await Member.find_one({'_id': member_id})
+    member = await ProxyMember.find_one({'_id': member_id})
 
     if member is None or token.user_id not in (await member.get_group()).accounts:
         raise HTTPException(404, 'member not found')
@@ -37,7 +37,7 @@ async def patch__member(
     patch: MemberUpdateModel,
     token: TokenData = Security(api_key_validator)
 ) -> JSONResponse:
-    member = await Member.find_one({'_id': member_id})
+    member = await ProxyMember.find_one({'_id': member_id})
     tasks = []
 
     if member is None or token.user_id not in (await member.get_group()).accounts:
@@ -97,7 +97,7 @@ async def delete__member(
     member_id: PydanticObjectId,
     token: TokenData = Security(api_key_validator)
 ) -> JSONResponse:
-    member = await Member.find_one({'_id': member_id})
+    member = await ProxyMember.find_one({'_id': member_id})
 
     if member is None or token.user_id not in (group := await member.get_group()).accounts:
         raise HTTPException(404, 'member not found')

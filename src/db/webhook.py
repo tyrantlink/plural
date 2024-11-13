@@ -15,7 +15,7 @@ class Webhook(Document):
         use_cache = True
         validate_on_save = True
         use_state_management = True
-        cache_expiration_time = timedelta(minutes=1)
+        cache_expiration_time = timedelta(minutes=5)
 
     id: int = Field(  # type: ignore #? mypy stupid
         description='channel id of the webhook'

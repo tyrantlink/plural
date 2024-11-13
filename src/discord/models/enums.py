@@ -257,6 +257,10 @@ class ApplicationIntegrationType(Enum):
     USER_INSTALL = 1
 
     @classmethod
+    def ALL(cls) -> list[ApplicationIntegrationType]:
+        return [member for member in cls]
+
+    @classmethod
     def __get_pydantic_core_schema__(
         cls,
         _source_type: type[Any] | None,
@@ -277,6 +281,10 @@ class InteractionContextType(Enum):
     GUILD = 0
     BOT_DM = 1
     PRIVATE_CHANNEL = 2
+
+    @classmethod
+    def ALL(cls) -> list[InteractionContextType]:
+        return [member for member in cls]
 
 
 class EntryPointCommandHandlerType(Enum):
@@ -630,7 +638,7 @@ class CharEnumMeta(EnumMeta):
         return super().__call__(cls.CHARS.index(value), *args, **kwargs)
 
 
-class ModalExtraType(Enum, metaclass=CharEnumMeta):
+class CustomIdExtraType(Enum, metaclass=CharEnumMeta):
     NONE = 0
     STRING = 1
     INTEGER = 2
@@ -639,6 +647,7 @@ class ModalExtraType(Enum, metaclass=CharEnumMeta):
     CHANNEL = 5
     MEMBER = 6
     GROUP = 7
+    MESSAGE = 8
 
     def __str__(self) -> str:
         return CharEnumMeta.CHARS[self.value]

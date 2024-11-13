@@ -1,3 +1,4 @@
+from src.errors import on_interaction_error
 from typing import Callable, Awaitable
 from .types import ListenerType
 from asyncio import gather
@@ -17,7 +18,17 @@ def listen(event_name: ListenerType):
 
 async def emit(event_name: ListenerType, *args, **kwargs):
     if event_name in __listeners:
-        await gather(*[
+        for exception in await gather(*[
             listener(*args, **kwargs)
-            for listener in __listeners[event_name]
-        ])
+            for listener in __listeners[event_name]],
+            return_exceptions=True
+        ):
+            if exception is None:
+                continue
+
+            match event_name:
+                case ListenerType.INTERACTION:
+                    interaction = args[0]
+                    await on_interaction_error(interaction, exception)
+                case _:
+                    raise exception

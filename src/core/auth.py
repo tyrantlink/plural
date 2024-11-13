@@ -1,19 +1,19 @@
 from src.discord.models import Interaction, ApplicationIntegrationType
 from fastapi import Security, HTTPException, Request, Header
-from src.helpers import decode_b66, BASE66CHARS, TTLSet
 from fastapi.security.api_key import APIKeyHeader
 from concurrent.futures import ThreadPoolExecutor
 from nacl.exceptions import BadSignatureError
+from src.db import ApiKey, ProxyMember, ApiToken
 from typing import NamedTuple, Annotated
 from nacl.signing import VerifyKey
 from asyncio import get_event_loop
-from src.db import ApiKey, Member
 from src.models import project
 from re import match, escape
 from bcrypt import checkpw
-from json import loads
 
 
+TOKEN_EPOCH = 1727988244890
+BASE66CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789=-_~'
 TOKEN_MATCH_PATTERN = ''.join([
     f'^([{escape(BASE66CHARS)}]', r'{1,16})\.',
     f'([{escape(BASE66CHARS)}]', r'{5,8})\.',
@@ -22,13 +22,25 @@ TOKEN_MATCH_PATTERN = ''.join([
 API_KEY = APIKeyHeader(name='token')
 
 
+def encode_b66(b10: int) -> str:
+    b66 = ''
+    while b10:
+        b66 = BASE66CHARS[b10 % 66]+b66
+        b10 //= 66
+    return b66
+
+
+def decode_b66(b66: str) -> int:
+    b10 = 0
+    for i in range(len(b66)):
+        b10 += BASE66CHARS.index(b66[i])*(66**(len(b66)-i-1))
+    return b10
+
+
 class TokenData(NamedTuple):
     user_id: int
     timestamp: int
     key: int
-
-
-VALID_TOKENS = TTLSet[str]()
 
 
 async def acheckpw(password: str, hashed: str) -> bool:
@@ -50,18 +62,24 @@ async def api_key_validator(api_key: str = Security(API_KEY)) -> TokenData:
     token = TokenData(
         user_id=decode_b66(regex.group(1)),
         timestamp=decode_b66(regex.group(2)),
-        key=decode_b66(regex.group(3)))
+        key=decode_b66(regex.group(3))
+    )
+
+    if await ApiToken.find_one({'_id': token.user_id}) is not None:
+        # ? token in validation cache
+        return token
 
     key_doc = await ApiKey.find_one({'_id': token.user_id})
 
     if key_doc is None or key_doc.token is None:
         raise HTTPException(400, 'api key not found!')
 
-    if not key_doc.token in VALID_TOKENS:
-        if not await acheckpw(api_key, key_doc.token):
-            raise HTTPException(400, 'api key invalid!')
+    if not await acheckpw(api_key, key_doc.token):
+        raise HTTPException(400, 'api key invalid!')
 
-        VALID_TOKENS.add(key_doc.token)
+    await ApiToken(
+        id=token.user_id
+    ).save()
 
     return token
 
@@ -82,7 +100,7 @@ async def discord_key_validator(
         case project.application_id:
             verify_key = VerifyKey(bytes.fromhex(project.bot_public_key))
         case _:
-            member = await Member.find_one({'userproxy.bot_id': interaction.application_id})
+            member = await ProxyMember.find_one({'userproxy.bot_id': interaction.application_id})
 
             if member is None or member.userproxy is None:
                 raise HTTPException(400, 'Invalid application id')

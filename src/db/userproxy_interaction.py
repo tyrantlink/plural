@@ -23,6 +23,8 @@ class UserProxyInteraction(Document):
 
     id: PydanticObjectId = Field(  # type: ignore
         default_factory=PydanticObjectId)
+    application_id: int = Field(
+        description='the id of the application')
     message_id: int = Field(
         description='the original id of the message')
     token: str = Field(description='the token of the interaction')

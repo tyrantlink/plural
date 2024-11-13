@@ -3,12 +3,10 @@ from src.discord.models.base import PydanticArbitraryType
 from .enums import MessageFlag, InteractionCallbackType
 from src.discord.http import File, Route, request
 from .message import Message, AllowedMentions
-from src.db import UserProxyInteraction
 from .component import Component
 from typing import TYPE_CHECKING
 from src.models import project
 from .webhook import Webhook
-from asyncio import gather
 from .modal import Modal
 from .embed import Embed
 from orjson import dumps
@@ -16,6 +14,7 @@ from .poll import Poll
 
 
 if TYPE_CHECKING:
+    from .application_command import ApplicationCommandOptionChoice
     from .interaction import Interaction
 
 
@@ -82,6 +81,7 @@ class InteractionResponse(PydanticArbitraryType):
     def __init__(self, interaction: Interaction) -> None:
         # ? created empty in model_validator, created properly in Interaction.populate()
         self.interaction = interaction
+        self.responded = False
         self.userproxy = interaction.application_id != project.application_id
         self.bot_token = (
             None  # ! implement userproxy tokens here
@@ -91,6 +91,7 @@ class InteractionResponse(PydanticArbitraryType):
 
     @property
     def callback_route(self) -> Route:
+        self.responded = True
         return Route(
             'POST',
             '/interactions/{interaction_id}/{interaction_token}/callback',
@@ -226,6 +227,7 @@ class InteractionResponse(PydanticArbitraryType):
         attachments: list[File] | None = None,
         allowed_mentions: AllowedMentions | None = None,
     ) -> Message | None:
+        self.responded = True
         await Webhook.from_interaction(self.interaction).edit_message(
             '@original',
             content=content,
@@ -236,3 +238,21 @@ class InteractionResponse(PydanticArbitraryType):
         )
 
     #! make update_message for message components
+
+    async def send_autocomplete_result(
+        self,
+        choices: list[ApplicationCommandOptionChoice],
+    ) -> None:
+        await request(
+            self.callback_route,
+            json={
+                'type': InteractionCallbackType.APPLICATION_COMMAND_AUTOCOMPLETE_RESULT.value,
+                'data': {
+                    'choices': [
+                        choice.model_dump(mode='json')
+                        for choice in
+                        choices
+                    ]
+                }
+            }
+        )

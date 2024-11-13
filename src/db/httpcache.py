@@ -16,7 +16,7 @@ class HTTPCache(Document):
         name = 'httpcache'
         use_cache = True
         validate_on_save = True
-        cache_expiration_time = timedelta(minutes=5)
+        cache_expiration_time = timedelta(minutes=1)
         indexes = [
             'path',
             IndexModel('ts', expireAfterSeconds=60*60*4)

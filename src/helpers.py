@@ -18,8 +18,6 @@ from fastapi import HTTPException
 
 
 # ? completely unsorted and unformatted helper functions because i'm bad at programming
-TOKEN_EPOCH = 1727988244890
-BASE66CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789=-_~'
 USERPROXY_COMMANDS = [
     {
         'name': 'proxy',
@@ -137,116 +135,6 @@ def chunk_string(string: str, chunk_size: int) -> list[str]:
 #         return total_content
 
 #     return ReplyEmbed(reference, jump_url)
-
-
-class TTLSet[_T](set):
-    def __init__(self, __iterable: Iterable[_T] | None = None, ttl: int = 86400) -> None:
-        """a normal set with an async time-to-live (seconds) for each item"""
-        __iterable = __iterable or []
-        super().__init__(__iterable)
-        self.__ttl = ttl
-        self._tasks: dict[_T, Task] = {
-            __item: create_task(self._expire(__item))
-            for __item in
-            __iterable
-        }
-
-    def _create_expire_task(self, __item: _T) -> None:
-        self._tasks[__item] = create_task(self._expire(__item))
-
-    def _cancel_task(self, __item: _T) -> None:
-        if __item in self._tasks:
-            self._tasks[__item].cancel()
-            self._tasks.pop(__item, None)
-
-    async def _expire(self, __item: _T) -> None:
-        await sleep(self.__ttl)
-        self.discard(__item)
-
-    def add(self, __item: _T) -> None:
-        super().add(__item)
-        self._cancel_task(__item)
-        self._create_expire_task(__item)
-
-    def remove(self, __item: _T) -> None:
-        super().remove(__item)
-        self._cancel_task(__item)
-
-    def update(self, *s: Iterable[_T]) -> None:
-        super().update(*s)
-
-        for iterable in s:
-            for __item in iterable:
-                self._cancel_task(__item)
-                self._create_expire_task(__item)
-
-    def clear(self) -> None:
-        super().clear()
-
-        for __item in self:
-            self._cancel_task(__item)
-
-
-class TTLDict[KT, VT](dict):
-    def __init__(self, __iterable: Mapping[KT, VT] | None = None, ttl: int = 86400) -> None:
-        """a normal dict with an async time-to-live (seconds) for each item"""
-        __iterable = __iterable or {}
-        super().__init__(__iterable)
-        self.__ttl = ttl
-        self._tasks: dict[KT, Task] = {
-            __key: create_task(self._expire(__key))
-            for __key in
-            __iterable.keys()
-        }
-
-    def _create_expire_task(self, __key: KT) -> None:
-        self._tasks[__key] = create_task(self._expire(__key))
-
-    def _cancel_task(self, __key: KT) -> None:
-        if __key in self._tasks:
-            self._tasks[__key].cancel()
-            self._tasks.pop(__key, None)
-
-    async def _expire(self, __key: KT) -> None:
-        await sleep(self.__ttl)
-        self.pop(__key, None)
-
-    def __setitem__(self, __key: KT, __value: VT) -> None:
-        super().__setitem__(__key, __value)
-        self._cancel_task(__key)
-        self._create_expire_task(__key)
-
-    def __delitem__(self, __key: KT) -> None:
-        super().__delitem__(__key)
-        self._cancel_task(__key)
-
-    def update(self, __m: Mapping, **kwargs: VT) -> None:
-        super().update(__m, **kwargs)
-
-        for __key in __m.keys():
-            self._cancel_task(__key)
-            self._create_expire_task(__key)
-
-    def clear(self) -> None:
-        super().clear()
-
-        for __key in self.keys():
-            self._cancel_task(__key)
-
-
-def encode_b66(b10: int) -> str:
-    b66 = ''
-    while b10:
-        b66 = BASE66CHARS[b10 % 66]+b66
-        b10 //= 66
-    return b66
-
-
-def decode_b66(b66: str) -> int:
-    b10 = 0
-    for i in range(len(b66)):
-        b10 += BASE66CHARS.index(b66[i])*(66**(len(b66)-i-1))
-    return b10
 
 
 def merge_dicts(*dicts: Mapping) -> dict:

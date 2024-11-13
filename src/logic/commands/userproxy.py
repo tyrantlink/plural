@@ -1,6 +1,8 @@
-from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed
+from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType
 from src.logic.modals.userproxy import umodal_send, umodal_edit
 from src.db import Reply, UserProxyInteraction
+from src.errors import InteractionError
+from src.models import project
 
 
 @slash_command(
@@ -25,7 +27,8 @@ from src.db import Reply, UserProxyInteraction
             description='queue for reply',
             required=False
         )],
-    scope=ApplicationCommandScope.USERPROXY)
+    scope=ApplicationCommandScope.USERPROXY,
+    integration_types=[ApplicationIntegrationType.USER_INSTALL])
 async def uslash_proxy(
     interaction: Interaction,
     message: str | None = None,
@@ -51,6 +54,11 @@ async def uslash_proxy(
     )
 
     if attachment:
+        assert interaction.app_permissions is not None
+        if not interaction.app_permissions & Permission.ATTACH_FILES:
+            raise InteractionError(
+                'bot does not have permission to attach files in this channel')
+
         await interaction.response.defer(MessageFlag.NONE)
 
     if not queue_for_reply:
@@ -61,6 +69,7 @@ async def uslash_proxy(
         )
 
         await UserProxyInteraction(
+            application_id=interaction.application_id,
             message_id=sent_message.id,
             token=interaction.token
         ).save()
@@ -92,7 +101,8 @@ async def uslash_proxy(
 
 @message_command(
     name='reply',
-    scope=ApplicationCommandScope.USERPROXY)
+    scope=ApplicationCommandScope.USERPROXY,
+    integration_types=[ApplicationIntegrationType.USER_INSTALL])
 async def umessage_reply(
     interaction: Interaction,
     message: Message
@@ -134,6 +144,7 @@ async def umessage_reply(
     await reply.delete()
 
     await UserProxyInteraction(
+        application_id=interaction.application_id,
         message_id=sent_message.id,
         token=interaction.token
     ).save()
@@ -141,11 +152,23 @@ async def umessage_reply(
 
 @message_command(
     name='edit',
-    scope=ApplicationCommandScope.USERPROXY)
+    scope=ApplicationCommandScope.USERPROXY,
+    integration_types=[ApplicationIntegrationType.USER_INSTALL])
 async def umessage_edit(
     interaction: Interaction,
     message: Message
 ) -> None:
+    userproxy_interaction = await UserProxyInteraction.find_one({
+        'message_id': message.id
+    })
+
+    if userproxy_interaction is None:
+        raise InteractionError(
+            'message not found\ndue to discord limitations, you can\'t edit messages that are older than 15 minutes')
+
+    if userproxy_interaction.application_id != interaction.application_id != message.webhook_id:
+        raise InteractionError('you can only edit your own messages!')
+
     await interaction.response.send_modal(
         modal=umodal_edit.with_title(
             'edit message'
@@ -154,4 +177,18 @@ async def umessage_edit(
         ).with_extra(
             message.id
         )
+    )
+
+    await interaction.followup.send(
+        embeds=[
+            Embed.warning(
+                title='deprecation warning',
+                message='\n\n'.join([
+                    'userproxy edit command is deprecated and will be removed in the future',
+                    'please add /plu/ral as a user app to edit messages',
+                    f'you can add /plu/ral by clicking [here](https://discord.com/oauth2/authorize?client_id={project.application_id})',
+                    'once you have added /plu/ral, you can run /member userproxy sync to remove this command'
+                ])
+            )
+        ]
     )

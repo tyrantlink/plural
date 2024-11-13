@@ -71,11 +71,10 @@ class Webhook(RawBaseModel):
     @classmethod
     def from_proxy_interaction(
         cls,
-        interaction: UserProxyInteraction,
-        application_id: Snowflake
+        interaction: UserProxyInteraction
     ) -> Webhook:
         return cls(
-            id=application_id,
+            id=Snowflake(interaction.application_id),
             type=WebhookType.APPLICATION,
             token=interaction.token,
         )
@@ -85,7 +84,7 @@ class Webhook(RawBaseModel):
         self,
         content: str | None = None,
         *,
-        wait: Literal[False],
+        wait: Literal[False] = False,
         thread_id: Snowflake | None = None,
         username: str | None = None,
         avatar_url: str | None = None,
@@ -106,7 +105,7 @@ class Webhook(RawBaseModel):
         self,
         content: str | None = None,
         *,
-        wait: Literal[True],
+        wait: Literal[True] = True,
         thread_id: Snowflake | None = None,
         username: str | None = None,
         avatar_url: str | None = None,

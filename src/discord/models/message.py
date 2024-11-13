@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .enums import MessageType, MessageReferenceType, MessageFlag, AllowedMentionType
+from .enums import MessageType, MessageReferenceType, MessageFlag, AllowedMentionType, InteractionType, ApplicationIntegrationType
 from src.discord.http import Route, request, File
 from asyncio import get_event_loop, create_task
 from .channel import ChannelMention, Channel
@@ -37,7 +37,14 @@ class MessageReference(RawBaseModel):
 
 
 class MessageInteractionMetadata(RawBaseModel):
-    ...
+    id: Snowflake
+    type: InteractionType
+    user: User
+    authorizing_integration_owners: dict[
+        ApplicationIntegrationType, Snowflake]
+    original_response_message_id: Snowflake | None = None
+    target_user: User | None = None
+    target_message_id: Snowflake | None = None
 
 
 class MessageInteraction(RawBaseModel):
@@ -138,9 +145,10 @@ class Message(RawBaseModel):
     async def fetch(
         cls,
         channel_id: Snowflake,
-        message_id: Snowflake
+        message_id: Snowflake,
+        populate: bool = True
     ) -> Message:
-        return cls(
+        message = cls(
             **await request(
                 Route(
                     'GET',
@@ -150,6 +158,11 @@ class Message(RawBaseModel):
                 )
             )
         )
+
+        if populate:
+            await message.populate()
+
+        return message
 
     @classmethod
     async def send(

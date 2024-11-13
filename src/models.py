@@ -29,17 +29,7 @@ class Project(BaseModel):
         )
 
 
-class ReplyAttachment(BaseModel):
-    id: str
-    filename: str
-    size: int
-    url: str
-    proxy_url: str
-    height: int | None = None
-    width: int | None = None
-
-
-class MemberUpdateType(Enum):
+class MemberUpdateType(Enum):  # ! use existing listener infrastructure
     NAME = 1
     AVATAR = 2
     DESCRIPTION = 3

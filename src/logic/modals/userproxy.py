@@ -1,6 +1,13 @@
 from src.discord import modal, TextInput, Interaction, TextInputStyle, MessageFlag, Webhook, Embed
 from src.db import UserProxyInteraction, Reply
+from src.errors import InteractionError
 from asyncio import gather
+
+
+__all__ = (
+    'umodal_send',
+    'umodal_edit',
+)
 
 
 @modal(
@@ -61,14 +68,11 @@ async def umodal_edit(
     })
 
     if userproxy_interaction is None:
-        await interaction.response.send_message(
-            'message not found\ndue to discord limitations, you can\'t edit messages that are older than 15 minutes',
-        )
-        return None
+        raise InteractionError(
+            'message not found\ndue to discord limitations, you can\'t edit messages that are older than 15 minutes')
 
     webhook = Webhook.from_proxy_interaction(
-        userproxy_interaction,
-        interaction.application_id
+        userproxy_interaction
     )
 
     await gather(

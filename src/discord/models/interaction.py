@@ -2,11 +2,11 @@ from __future__ import annotations
 from .enums import InteractionType, ApplicationCommandType, ApplicationCommandOptionType, Permission, EntitlementType, ApplicationIntegrationType, InteractionContextType  # , ComponentType
 from .response import InteractionResponse, InteractionFollowup
 from .component import Component, ActionRow  # , SelectOption
-from src.db import Member as ProxyMember
 from src.discord.types import Snowflake
 from pydantic import model_validator
 from .resolved import Resolved
 from src.models import project
+from src.db import ProxyMember
 from .base import RawBaseModel
 from datetime import datetime
 from .message import Message
@@ -115,6 +115,14 @@ class Interaction(RawBaseModel):
             return self.author.id
         assert self.author.user is not None
         return self.author.user.id
+
+    @property
+    def send(self):
+        return (
+            self.followup.send
+            if self.response.responded else
+            self.response.send_message
+        )
 
     async def populate(self) -> None:
         # ? interactions return partials, make sure to get the full objects

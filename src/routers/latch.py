@@ -3,7 +3,7 @@ from src.core.auth import api_key_validator, TokenData
 from fastapi import HTTPException, Security
 from fastapi.responses import JSONResponse
 from src.docs import latch as docs
-from src.db import Latch, Member
+from src.db import Latch, ProxyMember
 from fastapi import APIRouter
 
 router = APIRouter(prefix='/latch', tags=['Latch'])
@@ -46,7 +46,7 @@ async def patch__latch(
             case 'enabled':
                 latch.enabled = patch.enabled
             case 'member':
-                member = await Member.find_one({'_id': patch.member})
+                member = await ProxyMember.find_one({'_id': patch.member})
 
                 if member is None or token.user_id not in (await member.get_group()).accounts:
                     # ? be vauge to prevent user enumeration
@@ -74,7 +74,7 @@ async def post__latch(
     if await Latch.find_one({'user': token.user_id, 'guild': latch.guild}) is not None:
         raise HTTPException(400, 'latch already exists')
 
-    member = await Member.find_one({'_id': latch.member})
+    member = await ProxyMember.find_one({'_id': latch.member})
 
     if member is None or token.user_id not in (await member.get_group()).accounts:
         raise HTTPException(404, 'member not found')
@@ -115,7 +115,7 @@ async def put__latch(
             case 'enabled':
                 latch.enabled = upsert.enabled
             case 'member':
-                member = await Member.find_one({'_id': upsert.member})
+                member = await ProxyMember.find_one({'_id': upsert.member})
 
                 if member is None or token.user_id not in (await member.get_group()).accounts:
                     # ? be vauge to prevent user enumeration

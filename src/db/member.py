@@ -3,6 +3,7 @@ from pydantic import Field, model_validator, BaseModel
 from typing import Annotated, TYPE_CHECKING, Any
 from src.models import USERPROXY_FOOTER_LIMIT
 from beanie import Document, PydanticObjectId
+from datetime import timedelta
 from re import sub, IGNORECASE
 from .models import ProxyTag
 
@@ -11,7 +12,7 @@ if TYPE_CHECKING:
     from src.db.group import Group
 
 
-class Member(Document):
+class ProxyMember(Document):
     def __eq__(self, other: object) -> bool:
         return isinstance(other, type(self)) and self.id == other.id
 
@@ -36,6 +37,7 @@ class Member(Document):
         name = 'members'
         validate_on_save = True
         use_state_management = True
+        cache_expiration_time = timedelta(seconds=2)
         indexes = ['userproxy.bot_id']
 
     class UserProxy(BaseModel):
@@ -57,11 +59,6 @@ class Member(Document):
         description='the name of the member',
         min_length=1, max_length=50
     )
-    description: str | None = Field(
-        None,
-        description='the description of the member, only used for userproxies',
-        max_length=USERPROXY_FOOTER_LIMIT
-    )
     avatar: PydanticObjectId | None = Field(
         None,
         description='the avatar uuid of the member; overrides the group avatar'
@@ -70,7 +67,7 @@ class Member(Document):
         [],
         description='proxy tags for the member'
     )
-    userproxy: Member.UserProxy | None = Field(
+    userproxy: ProxyMember.UserProxy | None = Field(
         None,
         description='the userproxy information'
     )

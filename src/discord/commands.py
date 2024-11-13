@@ -1,6 +1,6 @@
 from __future__ import annotations
 from .models import ApplicationCommand, ApplicationCommandType, ApplicationCommandOption, ApplicationIntegrationType, InteractionContextType, Permission, InteractionCallback, ApplicationCommandScope, ApplicationCommandOptionType
-from src.db import Member as ProxyMember, HTTPCache
+from src.db import ProxyMember, HTTPCache
 from src.discord.http import Route, request
 from collections.abc import Callable
 from src.models import project

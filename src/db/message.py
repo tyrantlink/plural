@@ -14,7 +14,7 @@ class Message(Document):
     class Settings:
         name = 'messages'
         validate_on_save = True
-        cache_expiration_time = timedelta(days=1)
+        cache_expiration_time = timedelta(minutes=1)
         indexes = [
             'original_id',
             'proxy_id',
@@ -22,7 +22,8 @@ class Message(Document):
             IndexModel('ts', expireAfterSeconds=1*24*60*60)
         ]
 
-    id: PydanticObjectId = Field(default_factory=PydanticObjectId)
+    id: PydanticObjectId = Field(  # type: ignore
+        default_factory=PydanticObjectId)
     original_id: int | None = Field(
         description='the original id of the message; None if message sent through api')
     proxy_id: int = Field(description='the proxy id of the message')

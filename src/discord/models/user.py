@@ -39,6 +39,26 @@ class User(RawBaseModel):
     def display_name(self) -> str:
         return self.global_name or self.username
 
+    @property
+    def default_avatar_url(self) -> str:
+        avatar = (
+            (self.id >> 22) % 6
+            if self.discriminator in {None, '0000'} else
+            int(self.discriminator) % 5)
+
+        return f'https://cdn.discordapp.com/embed/avatars/{avatar}.png'
+
+    @property
+    def avatar_url(self) -> str:
+        if self.avatar is None:
+            return self.default_avatar_url
+
+        return 'https://cdn.discordapp.com/avatars/{id}/{avatar}.{format}?size=1024'.format(
+            id=self.id,
+            avatar=self.avatar,
+            format='gif' if self.avatar.startswith('a_') else 'png'
+        )
+
     @classmethod
     async def fetch(cls, user_id: Snowflake | Literal['@me']) -> User:
         return cls(

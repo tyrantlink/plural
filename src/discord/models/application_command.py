@@ -11,7 +11,9 @@ COMMAND_NAME_PATTERN = r'^[-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$'
 
 
 class ApplicationCommandOptionChoice(RawBaseModel):
-    ...  # !
+    name: str
+    name_localizations: dict[str, str] | None = None
+    value: str | int | float
 
 
 class ApplicationCommandOption(RawBaseModel):

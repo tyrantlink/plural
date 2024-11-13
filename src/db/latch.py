@@ -1,6 +1,6 @@
 from beanie import Document, PydanticObjectId
 from pydantic import Field
-from .member import Member
+from .member import ProxyMember
 
 
 class Latch(Document):
@@ -19,12 +19,12 @@ class Latch(Document):
     id: PydanticObjectId = Field(  # type: ignore
         default_factory=PydanticObjectId)
     user: int = Field(description='user id')
-    guild: int = Field(description='guild id')
+    guild: int | None = Field(description='guild id')
     enabled: bool = Field(False, description='whether the latch is enabled')
     member: PydanticObjectId | None = Field(
         description='the latched member id')
 
-    async def get_member(self) -> Member:
-        member = await Member.find_one({'id': self.member})
+    async def get_member(self) -> ProxyMember:
+        member = await ProxyMember.find_one({'id': self.member})
         assert member is not None
         return member

@@ -9,9 +9,9 @@ from .user import User
 
 if TYPE_CHECKING:
     from .message import Message, MessageReference, AllowedMentions
-    from .embed import Embed
     from .component import Component
     from .webhook import Webhook
+    from .embed import Embed
 
 
 class ChannelMention(RawBaseModel):
@@ -98,6 +98,14 @@ class Channel(RawBaseModel):
             )
         )
 
+    @property
+    def is_thread(self) -> bool:
+        return self.type in {ChannelType.PUBLIC_THREAD, ChannelType.PRIVATE_THREAD}
+
+    @property
+    def mention(self) -> str:
+        return f'<#{self.id}>'
+
     async def fetch_permissions_for(
         self,
         user_id: Snowflake,
@@ -180,3 +188,39 @@ class Channel(RawBaseModel):
                 reason=reason
             )
         )
+
+    async def fetch_messages(
+        self,
+        limit: int = 50,
+        before: Snowflake | None = None,
+        after: Snowflake | None = None,
+        around: Snowflake | None = None,
+    ) -> list[Message]:
+        from .message import Message
+
+        params = {
+            'limit': limit
+        }
+
+        if before is not None:
+            params['before'] = before
+
+        if after is not None:
+            params['after'] = after
+
+        if around is not None:
+            params['around'] = around
+
+        return [
+            Message(**message)
+            for message in
+            await request(
+                Route(
+                    'GET',
+                    '/channels/{channel_id}/messages',
+                    channel_id=self.id
+                ),
+                params=params,
+                ignore_cache=True
+            )
+        ]

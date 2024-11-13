@@ -1,10 +1,12 @@
-from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, ChannelType, Interaction, ApplicationCommandInteractionData, MessageComponentInteractionData, ModalSubmitInteractionData, ApplicationCommandOptionType, Snowflake, ApplicationCommandType, ActionRow, TextInput, ModalExtraType, User
-from src.db import Message as DBMessage, Member as ProxyMember, Group
+from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, Interaction, ApplicationCommandInteractionData, MessageComponentInteractionData, ModalSubmitInteractionData, ApplicationCommandOptionType, Snowflake, ApplicationCommandType, ActionRow, TextInput, CustomIdExtraType, User, Message, InteractionType, ApplicationCommandInteractionDataOption
 from src.discord.commands import commands, ApplicationCommandScope
-from src.discord.models.modal import ModalExtraTypeType
+from src.db import Message as DBMessage, ProxyMember, Group
+from src.discord.models.modal import CustomIdExtraTypeType
+from .converters import member_converter, group_converter
 from src.discord.listeners import listen, ListenerType
 from .proxy import process_proxy, get_proxy_webhook  # , handle_ping_reply
 from src.discord.components import components
+from .autocomplete import on_autocomplete
 from beanie import PydanticObjectId
 from src.models import project
 from asyncio import gather
@@ -78,10 +80,52 @@ async def on_reaction_add(reaction: MessageReactionAddEvent):
                 reaction.message_id,
                 thread_id=(
                     channel.id
-                    if channel.type in {ChannelType.PUBLIC_THREAD, ChannelType.PRIVATE_THREAD} else
+                    if channel.is_thread else
                     None
                 )
             )
+
+
+async def parse_command_options(
+    interaction: Interaction,
+    options: list[ApplicationCommandInteractionDataOption]
+) -> dict[str, Any]:
+    assert isinstance(interaction.data, ApplicationCommandInteractionData)
+    kwargs: dict[str, Any] = {}
+
+    for option in options:
+        match option.type:
+            case ApplicationCommandOptionType.ATTACHMENT:
+                assert interaction.data.resolved is not None
+                assert interaction.data.resolved.attachments is not None
+                assert isinstance(option.value, str)
+
+                kwargs[option.name] = interaction.data.resolved.attachments[
+                    Snowflake(option.value)
+                ]
+            case ApplicationCommandOptionType.STRING:
+                assert isinstance(option.value, str)
+                match option.name:
+                    case 'member':
+                        converter = member_converter
+                    case 'group':
+                        converter = group_converter
+                    case _:
+                        kwargs[option.name] = option.value
+                        continue
+
+                kwargs[option.name] = await converter(
+                    interaction,
+                    {
+                        o.name: o
+                        for o in options
+                    },
+                    option.value
+                )
+            case _:
+                kwargs[option.name] = option.value
+
+    return kwargs
 
 
 async def _on_application_command(interaction: Interaction) -> None:
@@ -120,20 +164,23 @@ async def _on_application_command(interaction: Interaction) -> None:
 
             if subcommand.name == option.name:
 
-                if option.type == ApplicationCommandOptionType.SUB_COMMAND_GROUP:
-                    command_options = option.options or []
-                    options = subcommand.options or []
-                    break
-
-                if option.type == ApplicationCommandOptionType.SUB_COMMAND:
-                    options = subcommand.options or []
-                    callback = option.callback
-                    break
+                match option.type:
+                    case ApplicationCommandOptionType.SUB_COMMAND_GROUP:
+                        command_options = option.options or []
+                        options = subcommand.options or []
+                    case ApplicationCommandOptionType.SUB_COMMAND:
+                        options = subcommand.options or []
+                        callback = option.callback
+                    case _:
+                        continue
+                break
         else:
             raise ValueError(
                 f'no callback found for {interaction.data.name}')
 
-    kwargs: dict[str, Any] = {}
+    kwargs: dict[str, Any] = await parse_command_options(
+        interaction, options
+    )
 
     match command.type:
         case ApplicationCommandType.MESSAGE:
@@ -146,45 +193,39 @@ async def _on_application_command(interaction: Interaction) -> None:
         case ApplicationCommandType.USER:
             ...
 
-    for option in options:
-        match option.type:
-            case ApplicationCommandOptionType.ATTACHMENT:
-                assert interaction.data.resolved is not None
-                assert interaction.data.resolved.attachments is not None
-                assert isinstance(option.value, str)
-
-                kwargs[option.name] = interaction.data.resolved.attachments[
-                    Snowflake(option.value)
-                ]
-            case _:
-                kwargs[option.name] = option.value
-
     await callback(interaction, **kwargs)
 
 
 async def parse_custom_id(
     custom_id: str
-) -> tuple[str, list[ModalExtraTypeType]]:
+) -> tuple[str, list[CustomIdExtraTypeType]]:
     base, *extras = custom_id.split('.')
     args = []
     for arg in extras:
-        match ModalExtraType(arg[0]):
-            case ModalExtraType.NONE:
+        match CustomIdExtraType(arg[0]):
+            case CustomIdExtraType.NONE:
                 args.append(None)
-            case ModalExtraType.STRING:
+            case CustomIdExtraType.STRING:
                 args.append(arg[1:])
-            case ModalExtraType.INTEGER:
+            case CustomIdExtraType.INTEGER:
                 args.append(int(arg[1:]))
-            case ModalExtraType.BOOLEAN:
+            case CustomIdExtraType.BOOLEAN:
                 args.append(bool(int(arg[1:])))
-            case ModalExtraType.USER:
+            case CustomIdExtraType.USER:
                 args.append(await User.fetch(Snowflake(arg[1:])))
-            case ModalExtraType.CHANNEL:
+            case CustomIdExtraType.CHANNEL:
                 args.append(await Channel.fetch(Snowflake(arg[1:])))
-            case ModalExtraType.MEMBER:
+            case CustomIdExtraType.MEMBER:
                 args.append(await ProxyMember.get(PydanticObjectId(arg[1:])))
-            case ModalExtraType.GROUP:
+            case CustomIdExtraType.GROUP:
                 args.append(await Group.get(PydanticObjectId(arg[1:])))
+            case CustomIdExtraType.MESSAGE:
+                args.append(
+                    await Message.fetch(
+                        *(Snowflake(i) for i in arg[1:].split(':')),
+                        populate=True
+                    )
+                )
             case _:
                 raise ValueError(f'invalid extra type `{arg}`')
 
@@ -230,12 +271,12 @@ async def _on_modal_submit(interaction: Interaction) -> None:
 
 @listen(ListenerType.INTERACTION)
 async def on_interaction(interaction: Interaction) -> None:
-    #! note for when doing message components
-    #! order of interaction.data typehint might be fucky
-    match interaction.data:
-        case ApplicationCommandInteractionData():
+    match interaction.type:
+        case InteractionType.APPLICATION_COMMAND:
             await _on_application_command(interaction)
-        case MessageComponentInteractionData():
+        case InteractionType.MESSAGE_COMPONENT:
             await _on_message_component(interaction)
-        case ModalSubmitInteractionData():
+        case InteractionType.MODAL_SUBMIT:
             await _on_modal_submit(interaction)
+        case InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE:
+            await on_autocomplete(interaction)

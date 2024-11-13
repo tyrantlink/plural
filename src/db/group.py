@@ -1,6 +1,8 @@
+from __future__ import annotations
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
-from src.db.member import Member
+from src.db.member import ProxyMember
+from datetime import timedelta
 from re import sub, IGNORECASE
 from asyncio import gather
 from typing import Any
@@ -47,6 +49,7 @@ class Group(Document):
         name = 'groups'
         validate_on_save = True
         use_state_management = True
+        cache_expiration_time = timedelta(seconds=2)
         indexes = ['accounts', 'members', 'name']
 
     id: PydanticObjectId = Field(  # type: ignore
@@ -68,7 +71,7 @@ class Group(Document):
     )
     tag: str | None = Field(
         None,
-        max_length=50,
+        max_length=79,
         description='''
         group tag, displayed at the end of the member name
         for example, if a member has the name 'steve' and the tag is '| the skibidi rizzlers',
@@ -82,16 +85,16 @@ class Group(Document):
         description='the members of the group'
     )
 
-    async def get_members(self) -> list[Member]:
-        return await Member.find_many(
+    async def get_members(self) -> list[ProxyMember]:
+        return await ProxyMember.find_many(
             {'_id': {'$in': list(self.members)}}
         ).to_list()
 
     async def get_member_by_name(
         self,
         name: str
-    ) -> Member | None:
-        return await Member.find_one(
+    ) -> ProxyMember | None:
+        return await ProxyMember.find_one(
             {'name': name, '_id': {'$in': list(self.members)}}
         )
 
@@ -99,13 +102,12 @@ class Group(Document):
         self,
         name: str,
         save: bool = True
-    ) -> Member:
+    ) -> ProxyMember:
         if await self.get_member_by_name(name) is not None:
             raise ValueError(f'member {name} already exists')
 
-        member = Member(
+        member = ProxyMember(
             name=name,
-            description=None,
             avatar=None,
             proxy_tags=[],
             userproxy=None
@@ -125,7 +127,7 @@ class Group(Document):
         self,
         id: PydanticObjectId
     ) -> None:
-        member = await Member.find_one(
+        member = await ProxyMember.find_one(
             {'_id': id}
         )
 
@@ -156,3 +158,20 @@ class Group(Document):
             return None
 
         return f'{project.base_url}/avatar/{image.id}.{image.extension}'
+
+    @classmethod
+    async def get_or_create_default(cls, account_id: int) -> Group:
+        group = await cls.find_one({
+            'accounts': account_id,
+            'name': 'default'
+        })
+
+        if group is not None:
+            return group
+
+        return await cls(
+            name='default',
+            accounts={account_id},
+            avatar=None,
+            tag=None,
+        ).save()

@@ -23,6 +23,7 @@
 # ? i stole most of the http stuff from py-cord
 from __future__ import annotations
 from aiohttp import __version__ as aiohttp_version, FormData, ClientResponse
+from src.errors import HTTPException, Forbidden, NotFound, ServerError
 from asyncio import sleep, Lock, Event, get_event_loop, create_task
 from typing import Any, Iterable, Sequence
 from datetime import datetime, timezone
@@ -123,22 +124,6 @@ async def json_or_text(response: ClientResponse) -> dict[str, Any] | str:
     return text
 
 
-class HTTPException(Exception):
-    ...
-
-
-class Forbidden(HTTPException):
-    ...
-
-
-class NotFound(HTTPException):
-    ...
-
-
-class ServerError(HTTPException):
-    ...
-
-
 class File:
     def __init__(
         self,
@@ -199,7 +184,7 @@ def _get_mime_type_for_image(data: bytes):
     elif data.startswith(b'RIFF') and data[8:12] == b'WEBP':
         return 'image/webp'
     else:
-        raise Exception('unsupported image type given')
+        raise ValueError('unsupported image type given')
 
 
 def _bytes_to_base64_data(data: bytes) -> str:
@@ -315,7 +300,7 @@ async def request(
 
                     if response.status == 429:
                         if not response.headers.get('Via') or isinstance(resp_data, str):
-                            raise HTTPException(response, data)
+                            raise HTTPException(data)
 
                         retry_after: float = resp_data['retry_after']
 
@@ -336,13 +321,13 @@ async def request(
 
                     match response.status:
                         case 403:
-                            raise Forbidden(response, resp_data)
+                            raise Forbidden(resp_data)
                         case 404:
-                            raise NotFound(response, resp_data)
+                            raise NotFound(resp_data)
                         case _ if response.status >= 500:
-                            raise ServerError(response, resp_data)
+                            raise ServerError(resp_data)
                         case _:
-                            raise HTTPException(response, resp_data)
+                            raise HTTPException(resp_data)
 
             except OSError as e:
                 if tries < 4 and e.errno in (54, 10054):
@@ -352,9 +337,9 @@ async def request(
 
         if response is not None:
             if response.status >= 500:
-                raise ServerError(response, data)
+                raise ServerError(data)
 
-            raise HTTPException(response, data)
+            raise HTTPException(data)
 
         raise RuntimeError('unreachable code in http handling')
 
@@ -365,8 +350,8 @@ async def get_from_cdn(url: str) -> bytes:
             case 200:
                 return await resp.read()
             case 404:
-                raise NotFound(resp, 'asset not found')
+                raise NotFound('asset not found')
             case 403:
-                raise Forbidden(resp, 'cannot retrieve asset')
+                raise Forbidden('cannot retrieve asset')
             case _:
-                raise HTTPException(resp, 'failed to get asset')
+                raise HTTPException('failed to get asset')

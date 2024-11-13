@@ -125,7 +125,7 @@ __all__ = (
     'MessageType',
     # modal.py
     'Modal',
-    'ModalExtraType',
+    'CustomIdExtraType',
     # poll.py
     'Poll',
     'PollAnswer',

@@ -1,8 +1,8 @@
 from src.discord.http import File, get_from_cdn
 from beanie import Document, PydanticObjectId
+from datetime import datetime, timedelta
 from pydantic import Field, BaseModel
 from pymongo import IndexModel
-from datetime import datetime
 from io import BytesIO
 
 
@@ -17,6 +17,7 @@ class Reply(Document):
         name = 'replies'
         validate_on_save = True
         use_state_management = True
+        cache_expiration_time = timedelta(seconds=300)
         indexes = [
             ('bot_id', 'channel'),  # ? compound index
             IndexModel('ts', expireAfterSeconds=300)

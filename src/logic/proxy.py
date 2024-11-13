@@ -1,5 +1,5 @@
-from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, ChannelType, AllowedMentions, StickerFormatType
-from src.db import Member as ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage
+from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, ChannelType, AllowedMentions, StickerFormatType, Embed
+from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.discord.http import get_from_cdn
 from src.models import DebugMessage
@@ -86,7 +86,7 @@ def _ensure_proxy_preserves_mentions(check: Match) -> bool:
 
 
 async def get_proxy_for_message(
-    message: MessageCreateEvent,
+    message: MessageCreateEvent | Message,
     debug_log: list[DebugMessage | str] | None = None
 ) -> tuple[ProxyMember, str, Latch | None] | tuple[None, None, None]:
     assert message.author is not None
@@ -182,7 +182,7 @@ async def get_proxy_for_message(
 
 
 async def permission_check(
-    message: MessageCreateEvent,
+    message: MessageCreateEvent | Message,
     debug_log: list[DebugMessage | str] | None = None,
     channel_permissions: Permission | None = None
 ) -> bool:
@@ -219,7 +219,7 @@ async def permission_check(
 
 async def get_proxy_webhook(channel: Channel) -> Webhook:
 
-    if channel.type in {ChannelType.PUBLIC_THREAD, ChannelType.PRIVATE_THREAD}:
+    if channel.is_thread:
         if channel.parent_id is None:
             raise ValueError('thread channel has no parent')
 
@@ -290,9 +290,8 @@ def handle_discord_markdown(text: str) -> str:
 
 def format_reply(
     content: str,
-    reference: Message,
-    guild_id: int | None = None
-) -> str:  # | ReplyEmbed:
+    reference: Message
+) -> str | Embed:
     assert reference.author is not None
 
     refcontent = reference.content or ''
@@ -333,15 +332,14 @@ def format_reply(
     if len(total_content) <= 2000:
         return total_content
 
-    return total_content
-
-    # return ReplyEmbed(reference, reference.jump_url)
+    return Embed.reply(reference)
 
 
 async def process_proxy(
-    message: MessageCreateEvent,
+    message: MessageCreateEvent | Message,
     debug_log: list[DebugMessage | str] | None = None,
-    channel_permissions: Permission | None = None
+    channel_permissions: Permission | None = None,
+    member: ProxyMember | None = None,
 ) -> tuple[bool, list[Emoji] | None]:
     assert message.author is not None
     assert message.channel is not None
@@ -374,7 +372,11 @@ async def process_proxy(
 
         return False, None
 
-    member, proxy_content, latch = await get_proxy_for_message(message, debug_log)
+    member, proxy_content, latch = (
+        await get_proxy_for_message(message, debug_log)
+        if member is None else
+        (member, message.content, None)
+    )
 
     if member is None or proxy_content is None:
         return False, None
@@ -492,11 +494,11 @@ async def process_proxy(
             content=proxy_content,
             thread_id=(
                 message.channel.id
-                if message.channel.type in {ChannelType.PUBLIC_THREAD, ChannelType.PRIVATE_THREAD} else
+                if message.channel.is_thread else
                 None
             ),
             wait=True,
-            username=f'{member.name} {((await member.get_group()).tag or "")}',
+            username=f'{member.name} {((await member.get_group()).tag or "")}'[:80],
             avatar_url=await member.get_avatar_url(),
             embeds=[embed] if embed is not None else [],
             attachments=attachments,
@@ -509,33 +511,6 @@ async def process_proxy(
             poll=message.poll
         )
     )
-    # webhook.send(
-    #     content=proxy_content,
-    #     thread=(
-    #         message.channel
-    #         if getattr(message.channel, 'parent', None) is not None else
-    #         MISSING
-    #     ),
-    #     wait=True,
-    #     username=f'{member.name} {((await member.get_group()).tag or '')}',
-    #     avatar_url=await member.get_avatar_url(),
-    #     embed=embed,
-    #     files=attachments,
-    #     allowed_mentions=(
-    #         AllowedMentions(
-    #             users=(
-    #                 [message.reference.resolved.author]
-    #                 if message.reference.resolved.author in message.mentions else
-    #                 []
-    #             )
-    #         )
-    #     ) if (
-    #         not embed == MISSING and
-    #         message.reference is not None and
-    #         isinstance(message.reference.resolved, Message)
-    #     ) else MISSING,
-    #     poll=message.poll or MISSING
-    # )
 
     await DBMessage(
         original_id=message.id,

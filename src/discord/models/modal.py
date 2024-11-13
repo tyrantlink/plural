@@ -1,17 +1,19 @@
 from __future__ import annotations
 from .base import RawBaseModel, PydanticArbitraryType
-from src.db import Member as ProxyMember, Group
 from .component import ActionRow, TextInput
 from typing import TYPE_CHECKING, Annotated
-from .enums import ModalExtraType
+from src.db import ProxyMember, Group
+from .enums import CustomIdExtraType
 from .channel import Channel
+from .message import Message
 from .user import User
+
 
 if TYPE_CHECKING:
     from .interaction import InteractionCallback
 
 # ? i'm so good at names
-ModalExtraTypeType = None | str | int | bool | User | Channel | ProxyMember | Group
+CustomIdExtraTypeType = None | str | int | bool | User | Channel | ProxyMember | Group | Message
 
 
 class Modal(RawBaseModel, PydanticArbitraryType):
@@ -76,7 +78,7 @@ class Modal(RawBaseModel, PydanticArbitraryType):
 
     def with_extra(
         self,
-        *extra: ModalExtraTypeType
+        *extra: CustomIdExtraTypeType
     ) -> Modal:
         modal = self.__get_self()
         modal.extra = modal.extra or []
@@ -85,21 +87,23 @@ class Modal(RawBaseModel, PydanticArbitraryType):
             parsed = ''
             match value:
                 case None:
-                    parsed = str(ModalExtraType.NONE)
+                    parsed = str(CustomIdExtraType.NONE)
                 case str():
-                    parsed = f'{ModalExtraType.STRING}{value}'
+                    parsed = f'{CustomIdExtraType.STRING}{value}'
                 case bool():
-                    parsed = f'{ModalExtraType.BOOLEAN}{int(value)}'
+                    parsed = f'{CustomIdExtraType.BOOLEAN}{int(value)}'
                 case int():
-                    parsed = f'{ModalExtraType.INTEGER}{value}'
+                    parsed = f'{CustomIdExtraType.INTEGER}{value}'
                 case User():
-                    parsed = f'{ModalExtraType.USER}{value.id}'
+                    parsed = f'{CustomIdExtraType.USER}{value.id}'
                 case Channel():
-                    parsed = f'{ModalExtraType.CHANNEL}{value.id}'
+                    parsed = f'{CustomIdExtraType.CHANNEL}{value.id}'
                 case ProxyMember():
-                    parsed = f'{ModalExtraType.MEMBER}{value.id}'
+                    parsed = f'{CustomIdExtraType.MEMBER}{value.id}'
                 case Group():
-                    parsed = f'{ModalExtraType.GROUP}{value.id}'
+                    parsed = f'{CustomIdExtraType.GROUP}{value.id}'
+                case Message():
+                    parsed = f'{CustomIdExtraType.MESSAGE}{value.channel_id}:{value.id}'
                 case _:
                     raise ValueError(f'invalid extra type `{type(value)}`')
 
