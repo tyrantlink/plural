@@ -1,12 +1,13 @@
 from __future__ import annotations
 from .enums import Permission, VerificationLevel, DefaultMessageNotificationLevel, ExplicitContentFilterLevel, GuildFeature, MFALevel, SystemChannelFlag, PremiumTier, NSFWLevel
+from pydantic import model_validator, field_validator
 from src.discord.http import Route, request
 from src.discord.types import Snowflake
-from pydantic import model_validator
 from .base import RawBaseModel
 from .sticker import Sticker
 from .emoji import Emoji
 from .role import Role
+import logfire
 
 
 class WelcomeScreenChannel(RawBaseModel):
@@ -85,6 +86,23 @@ class Guild(RawBaseModel):
         )
 
         return data
+
+    @field_validator('features', mode='before')
+    @classmethod
+    def validate_guild_feature(cls, v):
+        features = []
+        for feature in v:
+            if feature in GuildFeature.__members__:
+                features.append(GuildFeature(feature))
+                continue
+
+            logfire.warn(
+                'Unknown enum value \'{value}\' for {class_name}',
+                value=feature,
+                class_name=GuildFeature.__name__
+            )
+
+        return features
 
     @property
     def filesize_limit(self) -> int:

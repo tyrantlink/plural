@@ -2,7 +2,7 @@ from src.discord import slash_command, Interaction, message_command, Interaction
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction
 from src.logic.proxy import get_proxy_webhook, process_proxy
 from src.logic.modals import modal_plural_edit, umodal_edit
-from src.errors import InteractionError
+from src.errors import InteractionError, Forbidden
 from src.models import DebugMessage
 from asyncio import gather
 from time import time
@@ -281,7 +281,12 @@ async def slash_reproxy(
 async def message_plural_debug(interaction: Interaction, message: Message) -> None:
     debug_log: list[DebugMessage | str] = [DebugMessage.ENABLER]
 
-    await process_proxy(message, debug_log)
+    try:
+        await message.populate()
+    except Forbidden:
+        debug_log.append(DebugMessage.PERM_VIEW_CHANNEL)
+    else:
+        await process_proxy(message, debug_log, interaction.app_permissions)
 
     debug_log.remove(DebugMessage.ENABLER)
 

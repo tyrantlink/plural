@@ -4,6 +4,7 @@ from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.discord.http import get_from_cdn
 from src.models import DebugMessage
 from dataclasses import dataclass
+from src.errors import Forbidden
 from asyncio import gather
 from random import randint
 
@@ -104,7 +105,11 @@ async def get_proxy_for_message(
 
     while channel.parent_id is not None:
         channel_ids.add(channel.parent_id)
-        channel = await Channel.fetch(channel.parent_id)
+        try:
+            channel = await Channel.fetch(channel.parent_id)
+        except Forbidden:
+            debug_log.append(DebugMessage.PARENT_CHANNEL_FORBIDDEN)
+            return None, None, None
 
     channel_ids.discard(None)
 
