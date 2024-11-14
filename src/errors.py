@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from traceback import format_tb
 from src.models import project
+from asyncio import gather
 from io import BytesIO
 import logfire
 
@@ -25,7 +26,15 @@ class BasePluralException(Exception):
         super().__init__(*args, **kwargs)
 
 
+class PluralException(BasePluralException):
+    ...
+
+
 class HTTPException(BasePluralException):
+    ...
+
+
+class Unauthorized(BasePluralException):
     ...
 
 
@@ -59,18 +68,21 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
     }:
         return
 
+    tasks = []
+
     stack_info = {}
     if isinstance(error, BasePluralException):
         stack_info = error._stack_info
-    else:
+
+    if not isinstance(error, BasePluralException) or isinstance(error, PluralException):
         webhook = await Webhook.from_url(project.error_webhook)
 
-        traceback = ''.join(format_tb(error.__traceback__))
+        traceback = ''.join(format_tb(error.__traceback__)) + str(error)
 
         self_user = await User.fetch('@me')
 
         if len(traceback)+8 > 2000:
-            await webhook.execute(
+            tasks.append(webhook.execute(
                 username=self_user.username,
                 avatar_url=self_user.avatar_url,
                 attachments=[
@@ -79,19 +91,20 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
                         'error.txt'
                     )
                 ]
-            )
+            ))
         else:
-            await webhook.execute(
+            tasks.append(webhook.execute(
                 f'```\n{traceback}\n```',
                 username=self_user.username,
                 avatar_url=self_user.avatar_url
-            )
+            ))
 
-    logfire.error(
-        'interaction error',
-        _exc_info=error.with_traceback(error.__traceback__),
-        **stack_info  # type: ignore #? mypy stupid
-    )
+    if not isinstance(error, InteractionError):
+        logfire.error(
+            'interaction error',
+            _exc_info=error.with_traceback(error.__traceback__),
+            **stack_info  # type: ignore #? mypy stupid
+        )
 
     send = (
         interaction.followup.send
@@ -99,8 +112,11 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
         interaction.response.send_message
     )
 
-    await send(
-        embeds=[Embed.error(str(error))]
+    await gather(
+        *tasks,
+        send(
+            embeds=[Embed.error(str(error))]
+        )
     )
 
 

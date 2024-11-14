@@ -52,27 +52,20 @@ class Modal(RawBaseModel, PydanticArbitraryType):
         modal.title = title
         return modal
 
-    def with_text_placeholder(self, index: int, placeholder: str) -> Modal:
+    def with_text_kwargs(self, index: int, **kwargs) -> Modal:
         modal = self.__get_self()
 
         if not isinstance(modal.components[0].components[index], TextInput):
             raise ValueError(f'Component at index {index} is not a TextInput')
 
-        modal.components[0].components[
-            index
-        ].placeholder = placeholder  # type: ignore
+        components = list(modal.components[0].components)
 
-        return modal
+        components[index] = components[index].model_copy(
+            update=kwargs,
+            deep=True
+        )
 
-    def with_text_value(self, index: int, value: str) -> Modal:
-        modal = self.__get_self()
-
-        if not isinstance(modal.components[0].components[index], TextInput):
-            raise ValueError(f'Component at index {index} is not a TextInput')
-
-        modal.components[0].components[
-            index
-        ].value = value  # type: ignore
+        modal.components[0].components = components
 
         return modal
 
@@ -103,7 +96,8 @@ class Modal(RawBaseModel, PydanticArbitraryType):
                 case Group():
                     parsed = f'{CustomIdExtraType.GROUP}{value.id}'
                 case Message():
-                    parsed = f'{CustomIdExtraType.MESSAGE}{value.channel_id}:{value.id}'
+                    parsed = f'{CustomIdExtraType.MESSAGE}{
+                        value.channel_id}:{value.id}'
                 case _:
                     raise ValueError(f'invalid extra type `{type(value)}`')
 

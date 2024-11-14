@@ -37,10 +37,10 @@ async def on_message_edit(message: MessageUpdateEvent):
     if message.channel is None:
         return
 
-    # if await message.channel.history(limit=1).flatten() != [message]:
-    #     return None
+    if await message.channel.fetch_messages(limit=1) != [message]:
+        return None
 
-    # await on_message(message)
+    await on_message(message)
 
 
 @listen(ListenerType.MESSAGE_REACTION_ADD)
@@ -101,8 +101,21 @@ async def parse_command_options(
                 assert isinstance(option.value, str)
 
                 kwargs[option.name] = interaction.data.resolved.attachments[
-                    Snowflake(option.value)
-                ]
+                    Snowflake(option.value)]
+            case ApplicationCommandOptionType.USER:
+                assert interaction.data.resolved is not None
+                assert interaction.data.resolved.users is not None
+                assert isinstance(option.value, str)
+
+                kwargs[option.name] = interaction.data.resolved.users[
+                    Snowflake(option.value)]
+            case ApplicationCommandOptionType.CHANNEL:
+                assert interaction.data.resolved is not None
+                assert interaction.data.resolved.channels is not None
+                assert isinstance(option.value, str)
+
+                kwargs[option.name] = interaction.data.resolved.channels[
+                    Snowflake(option.value)]
             case ApplicationCommandOptionType.STRING:
                 assert isinstance(option.value, str)
                 match option.name:

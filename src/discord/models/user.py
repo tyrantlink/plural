@@ -1,9 +1,10 @@
 from __future__ import annotations
+from src.discord.http import request, Route, _bytes_to_base64_data
 from .avatar_decoration import AvatarDecorationData
-from src.discord.http import request, Route
 from typing import TYPE_CHECKING, Literal
 from .enums import UserFlag, PremiumType
 from src.discord.types import Snowflake
+from src.models import project
 from .base import RawBaseModel
 
 if TYPE_CHECKING:
@@ -60,13 +61,47 @@ class User(RawBaseModel):
         )
 
     @classmethod
-    async def fetch(cls, user_id: Snowflake | Literal['@me']) -> User:
+    async def fetch(
+        cls,
+        user_id: Snowflake | int | Literal['@me'],
+        token: str | None = project.bot_token
+    ) -> User:
         return cls(
             **await request(
                 Route(
                     'GET',
                     '/users/{user_id}',
                     user_id=user_id
-                )
+                ),
+                token=token
+            )
+        )
+
+    async def patch(
+        self,
+        token: str | None = project.bot_token,
+        username: str | None = None,
+        avatar: bytes | None = None,
+        banner: bytes | None = None
+    ) -> User:
+        json = {}
+
+        if username is not None:
+            json['username'] = username
+
+        if avatar is not None:
+            json['avatar'] = _bytes_to_base64_data(avatar)
+
+        if banner is not None:
+            json['banner'] = _bytes_to_base64_data(banner)
+
+        return self.__class__(
+            **await request(
+                Route(
+                    'PATCH',
+                    '/users/@me'
+                ),
+                json=json,
+                token=token
             )
         )

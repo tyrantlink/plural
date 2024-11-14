@@ -1,9 +1,24 @@
 from pydantic_core import CoreSchema, core_schema
 from pydantic.json_schema import JsonSchemaValue
 from pydantic import GetJsonSchemaHandler
+from typing import TypeVar, Union
 from enum import StrEnum
 
-__all__ = ('Snowflake',)
+__all__ = (
+    'Snowflake',
+    'MISSING',
+)
+
+
+class _MissingType:
+    pass
+
+
+MISSING = _MissingType()
+
+T = TypeVar('T')
+MissingOr = Union[T, _MissingType]
+MissingNoneOr = Union[T, None, _MissingType]
 
 
 class Snowflake(int):

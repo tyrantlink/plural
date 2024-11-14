@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pydantic_core.core_schema import CoreSchema, int_schema, enum_schema
+from pydantic_core.core_schema import CoreSchema, int_schema, enum_schema, with_info_after_validator_function
 from pydantic import GetJsonSchemaHandler, GetCoreSchemaHandler
 from enum import Enum, StrEnum, IntFlag, EnumMeta
 from pydantic.json_schema import JsonSchemaValue
@@ -407,7 +407,10 @@ class Permission(IntFlag):
         _source_type: type[Any] | None,
         _handler: GetCoreSchemaHandler,
     ) -> CoreSchema:
-        return int_schema()
+        return with_info_after_validator_function(
+            lambda x, _: cls(x),
+            int_schema()
+        )
 
     @classmethod
     def __get_pydantic_json_schema__(
@@ -646,7 +649,7 @@ class CustomIdExtraType(Enum, metaclass=CharEnumMeta):
     NONE = 0
     STRING = 1
     INTEGER = 2
-    BOOLEAN = 37
+    BOOLEAN = 3
     USER = 4
     CHANNEL = 5
     MEMBER = 6

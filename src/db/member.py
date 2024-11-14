@@ -57,7 +57,7 @@ class ProxyMember(Document):
         default_factory=PydanticObjectId)
     name: str = Field(
         description='the name of the member',
-        min_length=1, max_length=50
+        min_length=1, max_length=80
     )
     avatar: PydanticObjectId | None = Field(
         None,

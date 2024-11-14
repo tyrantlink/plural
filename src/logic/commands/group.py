@@ -68,7 +68,8 @@ async def slash_group_new(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to remove',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='from_account',
@@ -103,16 +104,24 @@ async def slash_group_remove(
         )
         return
 
+    count = len(group.members)
+
     if group.members and not with_members:
         raise InteractionError(
-            f'this group has {len(group.members)} members\nplease move them to other groups or use the `with_members` option to delete them')
+            f'this group has {count} member{'s' if count-1 else ''}\nplease move them to other groups or use the `with_members` option to delete them')
 
     response = f'removed group `{group.name}`'
 
     tasks: list = [group.delete()]
 
+    print(group.members)
+
     if with_members:
-        response += f' and all {len(group.members)} of it\'s members'
+        response += (
+            f' and all {count} of it\'s members'
+            if count-1 else
+            f' and it\'s only member'
+        )
 
         tasks.extend([
             ProxyMember.find({'_id': {'$in': group.members}}).delete(),
@@ -155,7 +164,8 @@ async def slash_group_list(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to share',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.USER,
             name='user',
@@ -173,7 +183,11 @@ async def slash_group_share(
 
     if user.id in group.accounts:
         raise InteractionError(
-            f'the user {user.username} already has access to this group')
+            f'the user {user.mention} already has access to this group')
+
+    if await Group.find_one({'accounts': user.id, 'name': group.name}):
+        raise InteractionError(
+            f'the user {user.mention} already has a group with the name `{group.name}`')
 
     share = GroupShare(
         sharer=interaction.author_id,
@@ -185,7 +199,7 @@ async def slash_group_share(
         share.save(),
         interaction.response.send_message(
             embeds=[Embed.success('\n'.join([
-                f'shared group `{group.name}` with {user.username}',
+                f'shared group `{group.name}` with {user.mention}',
                 'they can accept by running `/group accept` in the next 24 hours'])
             )]
         )
@@ -240,11 +254,13 @@ async def slash_group_accept(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to modify',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='name',
             description='new name',
+            max_length=45,
             required=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -253,6 +269,12 @@ async def slash_group_set_name(
     group: Group,
     name: str
 ) -> None:
+    for account in group.accounts-{interaction.author_id}:
+        for shared_group in await Group.find({'accounts;': account}).to_list():
+            if shared_group.name == name:
+                raise InteractionError(
+                    f'the account <@{account}> already has a group with the name `{name}`\nplease remove the group from that account or choose a different name')
+
     old_name, group.name = group.name, name
 
     await gather(
@@ -272,7 +294,8 @@ async def slash_group_set_name(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to modify',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='tag',
@@ -307,7 +330,8 @@ async def slash_group_set_tag(
                 members_str += f'\n{member.name}'
 
             embeds.append(Embed.warning(
-                title=f'{len(members_over_length)} members have names that are too long for this tag',
+                title=f'{len(members_over_length)
+                         } members have names that are too long for this tag',
                 message=members_str
             ))
 
@@ -327,7 +351,8 @@ async def slash_group_set_tag(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to modify',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.ATTACHMENT,
             name='avatar',
@@ -355,10 +380,14 @@ async def slash_group_set_avatar(
     if avatar.size > 4_194_304:
         raise InteractionError('avatars must be less than 4MB')
 
-    await interaction.response.defer()
-
-    if avatar.filename.rsplit('.', 1)[-1].lower() not in {'png', 'jpeg', 'jpg', 'gif', 'webp'}:
+    if (
+        '.' in avatar.filename and
+        avatar.filename.rsplit(
+            '.', 1)[-1].lower() not in {'png', 'jpeg', 'jpg', 'gif', 'webp'}
+    ):
         raise InteractionError('avatars must be a png, jpg, gif, or webp')
+
+    await interaction.response.defer()
 
     data = await avatar.read()
 
@@ -382,9 +411,9 @@ async def slash_group_set_avatar(
     await gather(
         group.save(),
         Image.find({'_id': current_avatar}).delete(),
-        interaction.response.send_message(
-            embeds=[Embed.success(response)]
-        )
+        interaction.followup.send(
+            embeds=[Embed.success(response)]),
+        return_exceptions=True
     )
 
 
@@ -396,7 +425,8 @@ async def slash_group_set_avatar(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to modify',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.CHANNEL,
             name='channel',
@@ -415,7 +445,8 @@ async def slash_group_channels_add(
         group.save(),
         interaction.response.send_message(
             embeds=[Embed.success(
-                f'added channel {channel.mention} to group `{group.name}` channel restrictions')]
+                f'added channel {channel.mention} to group `{group.name}` channel restrictions'
+            )]
         )
     )
 
@@ -428,7 +459,8 @@ async def slash_group_channels_add(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to list',
-            required=True)],
+            required=True,
+            autocomplete=True)],
     contexts=[InteractionContextType.GUILD],
     integration_types=[ApplicationIntegrationType.GUILD_INSTALL])
 async def slash_group_channels_list(
@@ -453,7 +485,8 @@ async def slash_group_channels_list(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to modify',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.CHANNEL,
             name='channel',

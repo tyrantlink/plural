@@ -6,7 +6,6 @@ from collections.abc import Callable
 from src.models import project
 from typing import Literal
 from copy import deepcopy
-from enum import Enum
 import logfire
 
 
@@ -118,7 +117,7 @@ async def _sync_commands(
             command.name = member.userproxy.command
             working_commands[command.name] = command
 
-        working_commands.update(commands[ApplicationCommandScope.PRIMARY])
+        working_commands.update(commands[ApplicationCommandScope.USERPROXY])
 
     if working_commands != live_commands:
         await HTTPCache.invalidate(f'/applications/{application_id}/commands')

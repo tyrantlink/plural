@@ -55,15 +55,15 @@ class Group(Document):
     id: PydanticObjectId = Field(  # type: ignore
         default_factory=PydanticObjectId)
     name: str = Field(
-        description='the name of the system',
-        min_length=1, max_length=32)
+        description='the name of the group',
+        min_length=1, max_length=45)
     accounts: set[int] = Field(
         default_factory=set,
         description='the discord accounts attached to this group'
     )
     avatar: PydanticObjectId | None = Field(
         None,
-        description='the avatar uuid of the system'
+        description='the avatar uuid of the group'
     )
     channels: set[int] = Field(
         default_factory=set,

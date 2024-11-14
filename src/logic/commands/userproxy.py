@@ -39,8 +39,8 @@ async def uslash_proxy(
         await interaction.response.send_modal(
             modal=umodal_send.with_title(
                 'proxy a message'
-            ).with_text_placeholder(
-                0, 'you should only use this if you need to send a message with newlines'
+            ).with_text_kwargs(
+                0, placeholder='you should only use this if you need to send a message with newlines'
             ).with_extra(
                 queue_for_reply
             )
@@ -172,8 +172,8 @@ async def umessage_edit(
     await interaction.response.send_modal(
         modal=umodal_edit.with_title(
             'edit message'
-        ).with_text_value(
-            0, message.content
+        ).with_text_kwargs(
+            0, value=message.content
         ).with_extra(
             message.id
         )

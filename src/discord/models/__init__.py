@@ -36,6 +36,7 @@ __all__ = (
     'ApplicationCommandOptionType',
     'ApplicationCommandScope',
     'ApplicationCommandType',
+    'COMMAND_NAME_PATTERN',
     'EntryPointCommandHandlerType',
     # application.py
     'Application',

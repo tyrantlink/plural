@@ -1,8 +1,8 @@
 from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction
+from src.errors import InteractionError, Forbidden, PluralException
 from src.logic.proxy import get_proxy_webhook, process_proxy
 from src.logic.modals import modal_plural_edit, umodal_edit
-from src.errors import InteractionError, Forbidden
 from src.models import DebugMessage
 from asyncio import gather
 from time import time
@@ -21,27 +21,24 @@ async def slash_ping(interaction: Interaction) -> None:
 
 
 async def _userproxy_edit(interaction: Interaction, message: Message) -> bool:
-    if message.interaction_metadata is None:
+    if message.interaction_metadata is None or message.webhook_id is None:
         return False
-
-    if message.interaction_metadata.user.id != interaction.author_id:
-        raise InteractionError('message is not a proxied message!')
 
     if message.interaction_metadata.user.id != interaction.author_id:
         raise InteractionError('you can only edit your own messages!')
 
-    if (
-        message.webhook_id is None or
-        not await UserProxyInteraction.find_one({'message_id': message.id}) or
-        not await ProxyMember.find_one({'userproxy.bot_id': message.webhook_id})
-    ):
+    if await ProxyMember.find_one({'userproxy.bot_id': message.webhook_id}) is None:
         raise InteractionError('message is not a proxied message!')
+
+    if not await UserProxyInteraction.find_one({'message_id': message.id}):
+        raise InteractionError(
+            'due to discord limitations, you can\'t edit userproxy messages older than 15 minutes')
 
     await interaction.response.send_modal(
         modal=umodal_edit.with_title(
             'edit message'
-        ).with_text_value(
-            0, message.content
+        ).with_text_kwargs(
+            0, value=message.content
         ).with_extra(
             message.id
         ))
@@ -62,11 +59,10 @@ async def message_plural_edit(interaction: Interaction, message: Message) -> Non
     if message.webhook_id is None:
         raise InteractionError('message is not a proxied message!')
 
-    webhook = await get_proxy_webhook(interaction.channel)
-
-    if message.webhook_id != webhook.id:
-        raise InteractionError(
-            'due to discord limitations, you can\'t edit userproxy messages older than 15 minutes')
+    try:
+        await get_proxy_webhook(interaction.channel)
+    except Forbidden:
+        raise InteractionError('bot does not access to this channel')
 
     db_message = await DBMessage.find_one({'proxy_id': message.id})
 
@@ -290,6 +286,10 @@ async def message_plural_debug(interaction: Interaction, message: Message) -> No
 
     debug_log.remove(DebugMessage.ENABLER)
 
+    if not debug_log:
+        raise PluralException(
+            'no debug messages generated\nthis should never happen and is a bug')
+
     await interaction.response.send_message(
         embeds=[Embed(
             title='debug log',
@@ -326,12 +326,13 @@ async def message_plural_proxy_info(interaction: Interaction, message: Message) 
 
     embed.add_field(
         name='author',
-        value=db_message.author_name,
+        value=f'<@{db_message.author_id}>',
         inline=False
     )
 
     embed.set_footer(
-        text=f'original message id: {db_message.original_id or 'sent through / plu/ral api'}'
+        text=f'original message id: {
+            db_message.original_id or 'sent through / plu/ral api'}'
     )
 
     embed.set_thumbnail(

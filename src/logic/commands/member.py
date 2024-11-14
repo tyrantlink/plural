@@ -1,10 +1,14 @@
-from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, SlashCommandGroup
+from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, SlashCommandGroup, User, Application, COMMAND_NAME_PATTERN
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, Group, Image, ProxyTag
+from src.logic.modals import modal_plural_edit, umodal_edit, modal_plural_member_bio
+from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
+from src.discord.http import _get_mime_type_for_image, request, Route
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT
 from src.logic.proxy import get_proxy_webhook, process_proxy
-from src.logic.modals import modal_plural_edit, umodal_edit
-from src.discord.http import _get_mime_type_for_image
-from src.errors import InteractionError
+from src.discord.commands import sync_commands
+from regex import match, IGNORECASE, UNICODE
+from src.models import project
+from base64 import b64decode
 from asyncio import gather
 from time import time
 
@@ -23,8 +27,8 @@ member_set = member.create_subgroup(
     description='set member properties'
 )
 
-member_proxy_tags = member.create_subgroup(
-    name='proxy_tags',
+member_tags = member.create_subgroup(
+    name='tags',
     description='manage a member\'s proxy tags'
 )
 
@@ -32,6 +36,19 @@ member_userproxy = member.create_subgroup(
     name='userproxy',
     description='manage a member\'s userproxy'
 )
+
+
+def _get_bot_id(token: str) -> int:
+    m = match(
+        r'^(mfa\.[a-z0-9_-]{20,})|(([a-z0-9_-]{23,28})\.[a-z0-9_-]{6,7}\.(?:[a-z0-9_-]{27}|[a-z0-9_-]{38}))$',
+        token,
+        IGNORECASE
+    )
+
+    if m is None:
+        raise InteractionError('invalid token format')
+
+    return int(b64decode(f'{m.group(3)}==').decode())
 
 
 @member.command(
@@ -47,7 +64,8 @@ member_userproxy = member.create_subgroup(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to add the member to',
-            required=False)],
+            required=False,
+            autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_new(
@@ -57,12 +75,12 @@ async def slash_member_new(
 ) -> None:
     group = group or await Group.get_or_create_default(interaction.author_id)
 
-    if group.get_member_by_name(name) is not None:
+    if await group.get_member_by_name(name) is not None:
         raise InteractionError(
-            f'member {name} already exists in group {group.name}')
+            f'member `{name}` already exists in group `{group.name}`')
 
     embeds = [
-        Embed.success(f'member {name} created in group {group.name}')
+        Embed.success(f'member `{name}` created in group `{group.name}`')
     ]
 
     if group.tag is not None:
@@ -85,7 +103,8 @@ async def slash_member_new(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to list members for (default: default)',
-            required=False)],
+            required=False,
+            autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_list(
@@ -99,7 +118,11 @@ async def slash_member_list(
             Embed.success(
                 title=f'members in group {group.name}',
                 message='\n'.join([
-                    f'{member.name}'
+                    (
+                        member.name
+                        if member.userproxy is None else
+                        f'[{member.name}](https://discord.com/oauth2/authorize?client_id={member.userproxy.bot_id}&integration_type=1&scope=applications.commands)'
+                    )
                     for member in await group.get_members()
                 ]) or 'this group has no members'
             )
@@ -115,7 +138,8 @@ async def slash_member_list(
             type=ApplicationCommandOptionType.STRING,
             name='member',
             description='member to remove',
-            required=True)],
+            required=True,
+            autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_remove(
@@ -140,11 +164,13 @@ async def slash_member_remove(
             type=ApplicationCommandOptionType.STRING,
             name='member',
             description='member to give new name',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='name',
             description='new member name',
+            max_length=80,
             required=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -153,6 +179,10 @@ async def slash_member_set_name(
     member: ProxyMember,
     name: str
 ) -> None:
+    if member.userproxy is not None and len(name) > 32:
+        raise InteractionError(
+            'members with userproxies must have names less than 32 characters')
+
     old_name, member.name = member.name, name
 
     group = await member.get_group()
@@ -174,12 +204,14 @@ async def slash_member_set_name(
             type=ApplicationCommandOptionType.STRING,
             name='member',
             description='member to move to new group',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group name',
-            required=True)],
+            required=True,
+            autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_set_group(
@@ -187,6 +219,10 @@ async def slash_member_set_group(
     member: ProxyMember,
     group: Group
 ) -> None:
+    if await group.get_member_by_name(member.name) is not None:
+        raise InteractionError(
+            f'group `{group.name}` already has a member named `{member.name}`')
+
     old_group = await member.get_group()
 
     old_group.members.remove(member.id)
@@ -211,7 +247,8 @@ async def slash_member_set_group(
             type=ApplicationCommandOptionType.STRING,
             name='member',
             description='member to give new avatar',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.ATTACHMENT,
             name='avatar',
@@ -240,10 +277,14 @@ async def slash_member_set_avatar(
     if avatar.size > 4_194_304:
         raise InteractionError('avatars must be less than 4MB')
 
-    await interaction.response.defer()
-
-    if avatar.filename.rsplit('.', 1)[-1].lower() not in {'png', 'jpeg', 'jpg', 'gif', 'webp'}:
+    if (
+        '.' in avatar.filename and
+        avatar.filename.rsplit(
+            '.', 1)[-1].lower() not in {'png', 'jpeg', 'jpg', 'gif', 'webp'}
+    ):
         raise InteractionError('avatars must be a png, jpg, gif, or webp')
+
+    await interaction.response.defer()
 
     data = await avatar.read()
 
@@ -267,27 +308,23 @@ async def slash_member_set_avatar(
     await gather(
         member.save(),
         Image.find({'_id': current_avatar}).delete(),
-        interaction.response.send_message(
-            embeds=[Embed.success(response)]
-        )
+        interaction.followup.send(
+            embeds=[Embed.success(response)]),
+        return_exceptions=True
     )
 
 
-@member_set.command(  # ! userproxy only; make modal
+@member_set.command(
     name='bio',
     description='set a member\'s bio (userproxies only)',
     options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
-            name='member',
+            name='userproxy',
             max_length=USERPROXY_FOOTER_LIMIT,
             description='member to give new bio',
-            required=True),
-        ApplicationCommandOption(
-            type=ApplicationCommandOptionType.STRING,
-            name='bio',
-            description='new member bio',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='include_attribution',
@@ -298,25 +335,61 @@ async def slash_member_set_avatar(
 async def slash_member_set_bio(
     interaction: Interaction,
     member: ProxyMember,
-    bio: str,
     include_attribution: bool = True
 ) -> None:
-    ...
+    if member.userproxy is None:
+        raise InteractionError(
+            'you can only set a bio for a userproxy (see /help)')
+
+    if member.userproxy.token is None:
+        raise InteractionError(
+            'your userproxy must have a bot token stored to set a bio')
+
+    try:
+        app = await Application.fetch_current(member.userproxy.token)
+    except Unauthorized:
+        raise InteractionError('invalid bot token')
+
+    if app.id != member.userproxy.bot_id:
+        raise InteractionError('invalid bot token')
+
+    if app.bot is None:  # ? *probably* shouldn't happen
+        raise InteractionError('bot not found')
+
+    max_length = USERPROXY_FOOTER_LIMIT if include_attribution else 400
+
+    current_bio = app.description.removesuffix(
+        USERPROXY_FOOTER.format(username=interaction.author_name)
+    )
+
+    await interaction.response.send_modal(
+        modal_plural_member_bio.with_title(
+            f'set {app.bot.username}\'s bio'
+        ).with_text_kwargs(
+            0,
+            value=current_bio,
+            max_length=max_length
+        ).with_extra(
+            member,
+            include_attribution
+        )
+    )
 
 
-@member_set.command(  # ! userproxy only
+@member_set.command(
     name='banner',
     description='set a member\'s banner (userproxies only)',
     options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
-            name='member',
+            name='userproxy',
             description='member to give new banner',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.ATTACHMENT,
             name='banner',
-            description='new member banner',
+            description='new member banner (max 15MB)',
             required=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -325,10 +398,44 @@ async def slash_member_set_banner(
     member: ProxyMember,
     banner: Attachment
 ) -> None:
-    ...
+    if member.userproxy is None:
+        raise InteractionError(
+            'you can only set a banner for a userproxy (see /help)')
+
+    if member.userproxy.token is None:
+        raise InteractionError(
+            'your userproxy must have a bot token stored to set a banner')
+
+    if banner.size > 15_728_640:
+        raise InteractionError('banners must be less than 15MB')
+
+    if (
+        '.' in banner.filename and
+        banner.filename.rsplit(
+            '.', 1)[-1].lower() not in {'png', 'jpeg', 'jpg', 'gif', 'webp'}
+    ):
+        raise InteractionError('banners must be a png, jpg, gif, or webp')
+
+    try:
+        user = await User.fetch('@me', token=member.userproxy.token)
+    except Unauthorized:
+        raise InteractionError('invalid bot token')
+
+    await interaction.response.defer()
+
+    await user.patch(
+        token=member.userproxy.token,
+        banner=await banner.read()
+    )
+
+    await interaction.followup.send(
+        embeds=[Embed.success(
+            f'banner set for userproxy `{member.name}`'
+        )]
+    )
 
 
-@member_proxy_tags.command(
+@member_tags.command(
     name='add',
     description='add proxy tags to a member (15 max)',
     options=[
@@ -336,7 +443,8 @@ async def slash_member_set_banner(
             type=ApplicationCommandOptionType.STRING,
             name='member',
             description='member to add tag to',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='prefix',
@@ -361,7 +469,7 @@ async def slash_member_set_banner(
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
-async def slash_member_proxy_tags_add(
+async def slash_member_tags_add(
     interaction: Interaction,
     member: ProxyMember,
     prefix: str | None = None,
@@ -391,7 +499,7 @@ async def slash_member_proxy_tags_add(
     )
 
 
-@member_proxy_tags.command(
+@member_tags.command(
     name='list',
     description='list a member\'s proxy tags',
     options=[
@@ -399,10 +507,11 @@ async def slash_member_proxy_tags_add(
             type=ApplicationCommandOptionType.STRING,
             name='member',
             description='member to list tags of',
-            required=True)],
+            required=True,
+            autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
-async def slash_member_proxy_tags_list(
+async def slash_member_tags_list(
     interaction: Interaction,
     member: ProxyMember
 ) -> None:
@@ -412,7 +521,8 @@ async def slash_member_proxy_tags_list(
             message='\n'.join([
                 ':'.join([
                     f'`{index}`',
-                    f'{'r' if tag.regex else ''}{'c' if tag.case_sensitive else ''}'
+                    f'{'r' if tag.regex else ''}{
+                        'c' if tag.case_sensitive else ''}'
                     f' {tag.prefix}text{tag.suffix}'])
                 for index, tag in enumerate(member.proxy_tags)
             ]) or 'this member has no proxy tags'
@@ -420,7 +530,7 @@ async def slash_member_proxy_tags_list(
     )
 
 
-@member_proxy_tags.command(
+@member_tags.command(
     name='remove',
     description='remove a proxy tag from a member',
     options=[
@@ -428,21 +538,22 @@ async def slash_member_proxy_tags_list(
             type=ApplicationCommandOptionType.STRING,
             name='member',
             description='member to remove tag from',
-            required=True),
-        ApplicationCommandOption(  # ! make an autocomplete for this {prefix}text{suffix}
-            type=ApplicationCommandOptionType.INTEGER,
-            name='index',
-            min_value=0,
-            max_value=14,
-            description='index of the tag to remove (use /member proxy_tags list to get the index)',
-            required=True)],
+            required=True,
+            autocomplete=True),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='proxy_tag',
+            description='proxy tag to remove',
+            required=True,
+            autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
-async def slash_member_proxy_tags_remove(
+async def slash_member_tags_remove(
     interaction: Interaction,
     member: ProxyMember,
-    index: int
+    proxy_tag: str
 ) -> None:
+    index = int(proxy_tag)
     if index < 0 or index >= len(member.proxy_tags):
         raise InteractionError('proxy tag index out of range')
 
@@ -458,7 +569,7 @@ async def slash_member_proxy_tags_remove(
     )
 
 
-@member_proxy_tags.command(
+@member_tags.command(
     name='clear',
     description='clear all proxy tags from a member',
     options=[
@@ -466,10 +577,11 @@ async def slash_member_proxy_tags_remove(
             type=ApplicationCommandOptionType.STRING,
             name='member',
             description='member to clear tags from',
-            required=True)],
+            required=True,
+            autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
-async def slash_member_proxy_tags_clear(
+async def slash_member_tags_clear(
     interaction: Interaction,
     member: ProxyMember
 ) -> None:
@@ -493,7 +605,8 @@ async def slash_member_proxy_tags_clear(
             type=ApplicationCommandOptionType.STRING,
             name='member',
             description='member to create userproxy for',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='bot_token',
@@ -503,6 +616,8 @@ async def slash_member_proxy_tags_clear(
             type=ApplicationCommandOptionType.STRING,
             name='proxy_command',
             description='command to use when proxying (default: /proxy)',
+            min_length=1,
+            max_length=32,
             required=False),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
@@ -515,10 +630,91 @@ async def slash_member_userproxy_new(
     interaction: Interaction,
     member: ProxyMember,
     bot_token: str,
-    proxy_command: str = '/proxy',
+    proxy_command: str = 'proxy',
     store_token: bool = True
 ) -> None:
-    ...
+    bot_id = _get_bot_id(bot_token)
+    proxy_command = proxy_command.lstrip('/')
+
+    if member.userproxy is not None:
+        raise InteractionError(
+            f'member `{member.name}` already has a userproxy; use `/member userproxy remove` to remove it')
+
+    if len(member.name) > 32:
+        raise InteractionError(
+            'members with userproxies must have names less than or equal to 32 characters in length')
+
+    if not match(COMMAND_NAME_PATTERN, proxy_command, UNICODE):
+        raise InteractionError(
+            'invalid proxy command\n\ncommands must be alphanumeric and may contain dashes and underscores')
+
+    potential_member = await ProxyMember.find_one({
+        'userproxy.bot_id': bot_id
+    })
+
+    if potential_member is not None:
+        raise InteractionError(
+            f'userproxy with bot <@{bot_id}> already exists for member `{potential_member.name}`')
+
+    try:
+        app = await Application.fetch_current(bot_token)
+    except (Unauthorized, NotFound, Forbidden):
+        raise InteractionError('invalid bot token; may be expired')
+
+    if app.bot is None:
+        raise InteractionError('bot not found')
+
+    member.userproxy = ProxyMember.UserProxy(
+        bot_id=bot_id,
+        public_key=app.verify_key,
+        token=bot_token if store_token else None,
+        command=proxy_command
+    )
+
+    await member.save()
+
+    avatar = None
+    avatar_id = (
+        member.avatar or
+        (await member.get_group()).avatar
+    )
+    if avatar_id is not None:
+        image = await Image.find_one({'_id': avatar_id})
+        if image is not None:
+            avatar = image.data
+
+    app_patch: dict = {
+        'interactions_endpoint_url': f'{project.api_url}/discord/interaction'
+    }
+    bot_patch: dict = {
+        'username': member.name
+    }
+
+    if not app.description:
+        app_patch['description'] = USERPROXY_FOOTER.format(
+            username=interaction.author_name)
+
+    if avatar is not None:
+        app_patch['icon'] = avatar
+        bot_patch['avatar'] = avatar
+
+    await gather(
+        app.patch(
+            bot_token,
+            **app_patch),
+        app.bot.patch(
+            bot_token,
+            **bot_patch),
+        sync_commands(
+            app.id, bot_token),
+        interaction.response.send_message(
+            embeds=[Embed.success('\n'.join([
+                f'userproxy created for member `{member.name}`\n',
+                'add the bot to your account:'
+                f'https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands'
+            ]))]
+        )
+    )
 
 
 @member_userproxy.command(
@@ -527,9 +723,10 @@ async def slash_member_userproxy_new(
     options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
-            name='member',
+            name='userproxy',
             description='member to sync',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='bot_token',
@@ -539,10 +736,66 @@ async def slash_member_userproxy_new(
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_userproxy_sync(
     interaction: Interaction,
-    member: ProxyMember,
+    userproxy: ProxyMember,
     bot_token: str | None = None
 ) -> None:
-    ...
+    if userproxy.userproxy is None:
+        raise InteractionError(
+            f'member `{member.name}` does not have a userproxy')
+
+    if userproxy.userproxy.token is None and bot_token is None:
+        raise InteractionError(
+            f'bot token for userproxy `{userproxy.name}` is not stored; provide a bot token to sync the userproxy')
+
+    try:
+        app = await Application.fetch_current(bot_token)
+    except (Unauthorized, NotFound, Forbidden):
+        raise InteractionError('invalid bot token; may be expired')
+
+    if app.bot is None:
+        raise InteractionError('bot not found')
+
+    avatar = None
+    avatar_id = (
+        userproxy.avatar or
+        (await userproxy.get_group()).avatar
+    )
+
+    if avatar_id is not None:
+        image = await Image.get(avatar_id)
+        if image is not None:
+            avatar = image.data
+
+    app_patch: dict = {
+        'interactions_endpoint_url': f'{project.api_url}/discord/interaction'
+    }
+    bot_patch: dict = {
+        'username': userproxy.name
+    }
+
+    if not app.description:
+        app_patch['description'] = USERPROXY_FOOTER.format(
+            username=interaction.author_name)
+
+    if avatar is not None:
+        app_patch['icon'] = avatar
+        bot_patch['avatar'] = avatar
+
+    await gather(
+        app.patch(
+            bot_token,
+            **app_patch),
+        app.bot.patch(
+            bot_token,
+            **bot_patch),
+        sync_commands(
+            app.id, bot_token),
+        interaction.response.send_message(
+            embeds=[Embed.success(
+                f'synced userproxy for member `{userproxy.name}`'
+            )]
+        )
+    )
 
 
 @member_userproxy.command(
@@ -551,9 +804,10 @@ async def slash_member_userproxy_sync(
     options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
-            name='member',
+            name='userproxy',
             description='member to edit userproxy for',
-            required=True),
+            required=True,
+            autocomplete=True),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='proxy_command',
@@ -562,17 +816,60 @@ async def slash_member_userproxy_sync(
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='bot_token',
-            description='store the bot token, required for some features (see /help)',
+            description='required if bot token is not stored (if given with store_token=True, token will be updated)',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='store_token',
+            description='whether to store bot token, required for some features (see /help) (default: False)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_userproxy_edit(
     interaction: Interaction,
-    member: ProxyMember,
+    userproxy: ProxyMember,
     proxy_command: str | None = None,
-    bot_token: str | None = None
+    bot_token: str | None = None,
+    store_token: bool = False
 ) -> None:
-    ...
+    if userproxy.userproxy is None:
+        raise InteractionError(
+            f'member `{member.name}` does not have a userproxy')
+
+    if userproxy.userproxy.token is None and bot_token is None:
+        raise InteractionError(
+            f'bot token for userproxy `{userproxy.name}` is not stored; provide a bot token to update the userproxy')
+
+    update_token = store_token and bot_token is not None
+
+    if update_token:
+        userproxy.userproxy.token = bot_token
+
+    if proxy_command is None:
+        await gather(
+            userproxy.save(),
+            interaction.response.send_message(
+                embeds=[Embed.success(
+                    f'updated userproxy token for member `{userproxy.name}`'
+                )]
+            )
+        )
+        return
+
+    userproxy.userproxy.command = proxy_command
+
+    await userproxy.save()
+
+    await gather(
+        sync_commands(
+            userproxy.userproxy.bot_id, userproxy.userproxy.token),
+        interaction.response.send_message(
+            embeds=[Embed.success(
+                f'updated userproxy command{
+                    ' and token' if update_token else ''} for member `{userproxy.name}`'
+            )]
+        )
+    )
 
 
 @member_userproxy.command(
@@ -581,13 +878,23 @@ async def slash_member_userproxy_edit(
     options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
-            name='member',
+            name='userproxy',
             description='member to remove userproxy from',
-            required=True)],
+            required=True,
+            autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_userproxy_remove(
     interaction: Interaction,
-    member: ProxyMember
+    userproxy: ProxyMember
 ) -> None:
-    ...
+    userproxy.userproxy = None
+
+    await gather(
+        userproxy.save(),
+        interaction.response.send_message(
+            embeds=[Embed.success(
+                f'removed userproxy from member `{member.name}`'
+            )]
+        )
+    )

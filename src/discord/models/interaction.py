@@ -2,6 +2,7 @@ from __future__ import annotations
 from .enums import InteractionType, ApplicationCommandType, ApplicationCommandOptionType, Permission, EntitlementType, ApplicationIntegrationType, InteractionContextType  # , ComponentType
 from .response import InteractionResponse, InteractionFollowup
 from .component import Component, ActionRow  # , SelectOption
+from src.errors import Forbidden, NotFound
 from src.discord.types import Snowflake
 from pydantic import model_validator
 from .resolved import Resolved
@@ -117,6 +118,13 @@ class Interaction(RawBaseModel):
         return self.author.user.id
 
     @property
+    def author_name(self) -> str:
+        if isinstance(self.author, User):
+            return self.author.username
+        assert self.author.user is not None
+        return self.author.user.username
+
+    @property
     def send(self):
         return (
             self.followup.send
@@ -131,16 +139,28 @@ class Interaction(RawBaseModel):
         self.followup = InteractionFollowup(self)
 
         if self.channel_id is not None:
-            self.channel = await Channel.fetch(self.channel_id)
+            try:
+                self.channel = await Channel.fetch(self.channel_id)
+            except (Forbidden, NotFound):
+                pass
 
         if self.guild_id is not None:
-            self.guild = await Guild.fetch(self.guild_id)
+            try:
+                self.guild = await Guild.fetch(self.guild_id)
+            except (Forbidden, NotFound):
+                pass
 
-        if self.member is not None and self.guild_id is not None:
-            self.member = await Member.fetch(self.guild_id, self.author_id)
+        if self.member is not None and self.guild is not None:
+            try:
+                self.member = await Member.fetch(self.guild.id, self.author_id)
+            except (Forbidden, NotFound):
+                pass
 
         if self.user is not None:
-            self.user = await User.fetch(self.author_id)
+            try:
+                self.user = await User.fetch(self.author_id)
+            except (Forbidden, NotFound):
+                pass
 
         if self.application_id != project.application_id:
             self.proxy_member = await ProxyMember.find_one(

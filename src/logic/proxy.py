@@ -1,8 +1,8 @@
 from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, ChannelType, AllowedMentions, StickerFormatType, Embed
 from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage
 from regex import finditer, Match, escape, match, IGNORECASE, sub
+from src.models import project, DebugMessage
 from src.discord.http import get_from_cdn
-from src.models import DebugMessage
 from dataclasses import dataclass
 from src.errors import Forbidden
 from asyncio import gather
@@ -196,10 +196,9 @@ async def permission_check(
 
     # ? mypy stupid
     self_permissions = channel_permissions or await message.channel.fetch_permissions_for(
-        message.author.id)
+        Snowflake(project.application_id))
 
-    if not isinstance(self_permissions, Permission):
-        return False  # ? mypy stupid
+    assert isinstance(self_permissions, Permission)
 
     if not self_permissions & Permission.SEND_MESSAGES:
         if debug_log:
@@ -384,6 +383,9 @@ async def process_proxy(
     )
 
     if member is None or proxy_content is None:
+        if debug_log and DebugMessage.AUTHOR_NO_TAGS_NO_LATCH not in debug_log:
+            debug_log.append(DebugMessage.AUTHOR_NO_TAGS_NO_LATCH)
+
         return False, None
 
     if (

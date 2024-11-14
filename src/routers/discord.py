@@ -65,12 +65,11 @@ async def post__event(
         case GatewayEventName.MESSAGE_UPDATE:
             task = emit(
                 ListenerType.MESSAGE_UPDATE,
-                MessageUpdateEvent(**event.data))
+                await MessageUpdateEvent.validate_and_populate(event.data))
         case GatewayEventName.MESSAGE_REACTION_ADD:
             task = emit(
                 ListenerType.MESSAGE_REACTION_ADD,
-                MessageReactionAddEvent(**event.data)
-            )
+                await MessageReactionAddEvent.validate_and_populate(event.data))
         case GatewayEventName.GUILD_UPDATE:
             task = HTTPCache.invalidate(f'/guilds/{event.data['id']}')
         case GatewayEventName.CHANNEL_UPDATE:

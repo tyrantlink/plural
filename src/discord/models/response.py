@@ -91,7 +91,6 @@ class InteractionResponse(PydanticArbitraryType):
 
     @property
     def callback_route(self) -> Route:
-        self.responded = True
         return Route(
             'POST',
             '/interactions/{interaction_id}/{interaction_token}/callback',
@@ -109,6 +108,7 @@ class InteractionResponse(PydanticArbitraryType):
                 }
             }
         )
+        self.responded = True
 
     async def ack(self) -> None:
         """only for MESSAGE_COMPONENT and MODAL interactions"""
@@ -119,6 +119,7 @@ class InteractionResponse(PydanticArbitraryType):
                 'type': InteractionCallbackType.DEFERRED_UPDATE_MESSAGE.value
             }
         )
+        self.responded = True
 
     async def send_message(
         self,
@@ -195,14 +196,15 @@ class InteractionResponse(PydanticArbitraryType):
             }
         )
 
-        return Message(
-            **(
-                await request(
-                    self.callback_route,
-                    **request_args
-                )
-            )['resource']['message']
-        )
+        message = (
+            await request(
+                self.callback_route,
+                **request_args
+            )
+        )['resource']['message']
+        self.responded = True
+
+        return Message(**message)
 
     async def send_modal(
         self,
@@ -213,10 +215,13 @@ class InteractionResponse(PydanticArbitraryType):
             'data': modal.as_payload()
         }
 
-        await request(
+        resp = await request(
             self.callback_route,
             json=json
         )
+        self.responded = True
+
+        print(resp)
 
     async def edit_message(
         self,
@@ -227,7 +232,6 @@ class InteractionResponse(PydanticArbitraryType):
         attachments: list[File] | None = None,
         allowed_mentions: AllowedMentions | None = None,
     ) -> Message | None:
-        self.responded = True
         await Webhook.from_interaction(self.interaction).edit_message(
             '@original',
             content=content,
@@ -236,6 +240,7 @@ class InteractionResponse(PydanticArbitraryType):
             attachments=attachments,
             allowed_mentions=allowed_mentions
         )
+        self.responded = True
 
     #! make update_message for message components
 
@@ -256,3 +261,4 @@ class InteractionResponse(PydanticArbitraryType):
                 }
             }
         )
+        self.responded = True

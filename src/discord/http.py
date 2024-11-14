@@ -22,8 +22,8 @@
 # DEALINGS IN THE SOFTWARE.
 # ? i stole most of the http stuff from py-cord
 from __future__ import annotations
+from src.errors import HTTPException, Forbidden, NotFound, ServerError, Unauthorized
 from aiohttp import __version__ as aiohttp_version, FormData, ClientResponse
-from src.errors import HTTPException, Forbidden, NotFound, ServerError
 from asyncio import sleep, Lock, Event, get_event_loop, create_task
 from typing import Any, Iterable, Sequence
 from datetime import datetime, timezone
@@ -59,10 +59,12 @@ class Route:
         method: str,
         path: str,
         discord: bool = True,
+        token: str | None = None,
         **params
     ) -> None:
         self.method = method
         self.path = path
+        self.token = token
         url = (BASE_URL if discord else '') + path
 
         if '{application_id}' in url and 'application_id' not in params:
@@ -87,9 +89,9 @@ class Route:
     @property
     def bucket(self) -> str:
         if self.webhook_id and self.webhook_token:
-            return f'{self.webhook_id}:{self.webhook_token}:{self.path}'
+            return f'{self.webhook_id}:{self.webhook_token}:{self.path}:{self.token}'
 
-        return f'{self.channel_id}:{self.guild_id}:{self.path}'
+        return f'{self.channel_id}:{self.guild_id}:{self.path}:{self.token}'
 
 
 class MaybeUnlock:
@@ -188,18 +190,23 @@ def _get_mime_type_for_image(data: bytes):
 
 
 def _bytes_to_base64_data(data: bytes) -> str:
-    fmt = 'data:{mime};base64,{data}'
-    mime = _get_mime_type_for_image(data)
-    b64 = b64encode(data).decode('ascii')
-    return fmt.format(mime=mime, data=b64)
+    return ''.join([
+        'data:', _get_mime_type_for_image(data),
+        ';base64,', b64encode(data).decode('ascii')
+    ])
 
 
-async def cache_response(route: Route, data: dict | str) -> None:
-    if route.method != 'GET' or isinstance(data, str):
+async def cache_response(route: Route, status: int, data: dict | str) -> None:
+    if any((
+        route.method != 'GET',
+        route.token != project.bot_token,
+        isinstance(data, str)
+    )):
         return
 
     await HTTPCache(
-        url=route.url,
+        id=route.url,
+        status=status,
         data=data
     ).save()
 
@@ -217,10 +224,24 @@ async def request(
     ignore_cache: bool = False,
     **kwargs,
 ) -> Any:
-    if not ignore_cache and route.method == 'GET':
-        cached = await HTTPCache.find_one({'url': route.url})
+    route.token = token
+
+    if (
+        not ignore_cache and
+        token == project.bot_token and
+        route.method == 'GET'
+    ):
+        cached = await HTTPCache.get(route.url)
         if cached is not None:
-            return cached.data
+            match cached.status:
+                case 401:
+                    raise Unauthorized(cached.data)
+                case 403:
+                    raise Forbidden(cached.data)
+                case 404:
+                    raise NotFound(cached.data)
+                case _:
+                    return cached.data
 
     lock = __locks.get(route.bucket)
 
@@ -294,8 +315,11 @@ async def request(
                             lock.release
                         )
 
+                    if response.status < 500 and response.status != 429:
+                        create_task(cache_response(
+                            route, response.status, resp_data))
+
                     if 300 > response.status >= 200:
-                        create_task(cache_response(route, resp_data))
                         return resp_data
 
                     if response.status == 429:
@@ -320,6 +344,8 @@ async def request(
                         continue
 
                     match response.status:
+                        case 401:
+                            raise Unauthorized(resp_data)
                         case 403:
                             raise Forbidden(resp_data)
                         case 404:
