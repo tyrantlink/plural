@@ -545,7 +545,7 @@ async def sync_userproxy_with_member(
             return
 
         embed.set_footer(
-            'userproxy will still be created, but setting username is rate-limited, please wait some time and use /userproxy sync to try again')
+            text='userproxy will still be created, but setting username is rate-limited, please wait some time and use /userproxy sync to try again')
         await _send_embed(ctx, embed)
 
     public_key = (loads(responses[-1][1]))['verify_key']
