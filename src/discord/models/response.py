@@ -215,13 +215,11 @@ class InteractionResponse(PydanticArbitraryType):
             'data': modal.as_payload()
         }
 
-        resp = await request(
+        await request(
             self.callback_route,
             json=json
         )
         self.responded = True
-
-        print(resp)
 
     async def edit_message(
         self,

@@ -119,7 +119,7 @@ async def parse_command_options(
             case ApplicationCommandOptionType.STRING:
                 assert isinstance(option.value, str)
                 match option.name:
-                    case 'member':
+                    case 'member' | 'userproxy':
                         converter = member_converter
                     case 'group':
                         converter = group_converter

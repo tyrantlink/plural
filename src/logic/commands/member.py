@@ -2,7 +2,7 @@ from src.discord import slash_command, Interaction, message_command, Interaction
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, Group, Image, ProxyTag
 from src.logic.modals import modal_plural_edit, umodal_edit, modal_plural_member_bio
 from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
-from src.discord.http import _get_mime_type_for_image, request, Route
+from src.discord.http import _get_mime_type_for_image, _get_bot_id
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT
 from src.logic.proxy import get_proxy_webhook, process_proxy
 from src.discord.commands import sync_commands
@@ -36,19 +36,6 @@ member_userproxy = member.create_subgroup(
     name='userproxy',
     description='manage a member\'s userproxy'
 )
-
-
-def _get_bot_id(token: str) -> int:
-    m = match(
-        r'^(mfa\.[a-z0-9_-]{20,})|(([a-z0-9_-]{23,28})\.[a-z0-9_-]{6,7}\.(?:[a-z0-9_-]{27}|[a-z0-9_-]{38}))$',
-        token,
-        IGNORECASE
-    )
-
-    if m is None:
-        raise InteractionError('invalid token format')
-
-    return int(b64decode(f'{m.group(3)}==').decode())
 
 
 @member.command(
@@ -705,13 +692,11 @@ async def slash_member_userproxy_new(
         app.bot.patch(
             bot_token,
             **bot_patch),
-        sync_commands(
-            app.id, bot_token),
+        sync_commands(bot_token),
         interaction.response.send_message(
             embeds=[Embed.success('\n'.join([
                 f'userproxy created for member `{member.name}`\n',
-                'add the bot to your account:'
-                f'https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands'
+                '[add the bot to your account](https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands)'
             ]))]
         )
     )
@@ -747,8 +732,10 @@ async def slash_member_userproxy_sync(
         raise InteractionError(
             f'bot token for userproxy `{userproxy.name}` is not stored; provide a bot token to sync the userproxy')
 
+    token = bot_token or userproxy.userproxy.token
+
     try:
-        app = await Application.fetch_current(bot_token)
+        app = await Application.fetch_current(token)
     except (Unauthorized, NotFound, Forbidden):
         raise InteractionError('invalid bot token; may be expired')
 
@@ -783,13 +770,12 @@ async def slash_member_userproxy_sync(
 
     await gather(
         app.patch(
-            bot_token,
+            token,
             **app_patch),
         app.bot.patch(
-            bot_token,
+            token,
             **bot_patch),
-        sync_commands(
-            app.id, bot_token),
+        sync_commands(token),
         interaction.response.send_message(
             embeds=[Embed.success(
                 f'synced userproxy for member `{userproxy.name}`'
@@ -856,13 +842,20 @@ async def slash_member_userproxy_edit(
         )
         return
 
+    proxy_command = proxy_command.lstrip('/')
+
+    if not match(COMMAND_NAME_PATTERN, proxy_command, UNICODE):
+        raise InteractionError(
+            'invalid proxy command\n\ncommands must be alphanumeric and may contain dashes and underscores')
+
     userproxy.userproxy.command = proxy_command
 
     await userproxy.save()
 
+    assert userproxy.userproxy.token is not None
+
     await gather(
-        sync_commands(
-            userproxy.userproxy.bot_id, userproxy.userproxy.token),
+        sync_commands(userproxy.userproxy.token),
         interaction.response.send_message(
             embeds=[Embed.success(
                 f'updated userproxy command{

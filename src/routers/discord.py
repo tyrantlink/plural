@@ -7,7 +7,7 @@ from src.discord.listeners import emit
 from asyncio import create_task
 from src.db import HTTPCache
 
-router = APIRouter(prefix='/discord', tags=['UserProxy'])
+router = APIRouter(prefix='/discord', tags=['Discord'])
 PONG = JSONResponse({'type': 1})
 
 ACCEPTED_EVENTS = {

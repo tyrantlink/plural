@@ -22,19 +22,20 @@
 # DEALINGS IN THE SOFTWARE.
 # ? i stole most of the http stuff from py-cord
 from __future__ import annotations
-from src.errors import HTTPException, Forbidden, NotFound, ServerError, Unauthorized
+from src.errors import HTTPException, Forbidden, NotFound, ServerError, Unauthorized, InteractionError
 from aiohttp import __version__ as aiohttp_version, FormData, ClientResponse
 from asyncio import sleep, Lock, Event, get_event_loop, create_task
 from typing import Any, Iterable, Sequence
 from datetime import datetime, timezone
 from weakref import WeakValueDictionary
+from base64 import b64encode, b64decode
 from src.core.session import session
+from re import match, IGNORECASE
 from orjson import dumps, loads
 from types import TracebackType
 from urllib.parse import quote
 from src.models import project
 from io import BufferedIOBase
-from base64 import b64encode
 from src.db import HTTPCache
 from sys import version_info
 
@@ -194,6 +195,19 @@ def _bytes_to_base64_data(data: bytes) -> str:
         'data:', _get_mime_type_for_image(data),
         ';base64,', b64encode(data).decode('ascii')
     ])
+
+
+def _get_bot_id(token: str) -> int:
+    m = match(
+        r'^(mfa\.[a-z0-9_-]{20,})|(([a-z0-9_-]{23,28})\.[a-z0-9_-]{6,7}\.(?:[a-z0-9_-]{27}|[a-z0-9_-]{38}))$',
+        token,
+        IGNORECASE
+    )
+
+    if m is None:
+        raise InteractionError('invalid token format')
+
+    return int(b64decode(f'{m.group(3)}==').decode())
 
 
 async def cache_response(route: Route, status: int, data: dict | str) -> None:

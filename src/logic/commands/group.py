@@ -114,8 +114,6 @@ async def slash_group_remove(
 
     tasks: list = [group.delete()]
 
-    print(group.members)
-
     if with_members:
         response += (
             f' and all {count} of it\'s members'

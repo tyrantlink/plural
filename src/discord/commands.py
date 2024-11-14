@@ -1,7 +1,7 @@
 from __future__ import annotations
 from .models import ApplicationCommand, ApplicationCommandType, ApplicationCommandOption, ApplicationIntegrationType, InteractionContextType, Permission, InteractionCallback, ApplicationCommandScope, ApplicationCommandOptionType
 from src.db import ProxyMember, HTTPCache
-from src.discord.http import Route, request
+from src.discord.http import Route, request, _get_bot_id
 from collections.abc import Callable
 from src.models import project
 from typing import Literal
@@ -20,9 +20,9 @@ commands: dict[
 
 
 async def _put_all_commands(
-    application_id: int,
     token: str
 ) -> None:
+    application_id = _get_bot_id(token)
     await request(
         Route(
             'PUT',
@@ -68,10 +68,10 @@ def _patch_reason(local_command: ApplicationCommand, live_command: ApplicationCo
 
 
 async def _sync_commands(
-    application_id: int = project.application_id,
     token: str | None = None
 ) -> None:
     global commands
+    application_id = _get_bot_id(token or project.bot_token)
 
     scope = (
         ApplicationCommandScope.PRIMARY
@@ -94,6 +94,9 @@ async def _sync_commands(
         project.bot_token
     )
 
+    if token != project.bot_token:
+        member = await ProxyMember.find_one({'userproxy.bot_id': application_id})
+
     live_commands: dict[str, ApplicationCommand] = {
         command['name']: ApplicationCommand(**command)
         for command in await request(
@@ -107,6 +110,10 @@ async def _sync_commands(
     }
 
     working_commands = commands[scope]
+
+    if scope == ApplicationCommandScope.USERPROXY:
+        # ? userproxy edit is deprecated, will be removed from codebase in the future
+        working_commands.pop('edit', None)
 
     # ? inject custom userproxy 'proxy' command name
     if scope == ApplicationCommandScope.USERPROXY and 'proxy' in working_commands:
@@ -125,7 +132,6 @@ async def _sync_commands(
     if working_commands and not live_commands:
         logfire.debug('no commands found on discord, registering all')
         await _put_all_commands(
-            application_id,
             token
         )
         return
@@ -158,7 +164,6 @@ async def _sync_commands(
     if len(updates) > 4:
         logfire.debug('too many updates, registering all')
         await _put_all_commands(
-            application_id,
             token
         )
         return
@@ -172,7 +177,7 @@ async def _sync_commands(
                     Route(
                         'POST',
                         '/applications/{application_id}/commands',
-                        application_id=project.application_id
+                        application_id=application_id
                     ),
                     json=command._as_registration_dict(),
                     token=token
@@ -187,7 +192,7 @@ async def _sync_commands(
                     Route(
                         'PATCH',
                         '/applications/{application_id}/commands/{command_id}',
-                        application_id=project.application_id,
+                        application_id=application_id,
                         command_id=command.id
                     ),
                     json=command._as_registration_dict(),
@@ -200,7 +205,7 @@ async def _sync_commands(
                     Route(
                         'DELETE',
                         '/applications/{application_id}/commands/{command_id}',
-                        application_id=project.application_id,
+                        application_id=application_id,
                         command_id=command.id
                     ),
                     token=token
@@ -208,15 +213,15 @@ async def _sync_commands(
 
 
 async def sync_commands(
-    application_id: int = project.application_id,
     token: str | None = None
 ) -> None:
+    application_id = _get_bot_id(token or project.bot_token)
     if project.logfire_token:
         with logfire.span('sync_commands with {application_id}', application_id=application_id):
-            await _sync_commands(application_id, token)
+            await _sync_commands(token)
         return
 
-    await _sync_commands(application_id, token)
+    await _sync_commands(token)
 
 
 def _base_command(
