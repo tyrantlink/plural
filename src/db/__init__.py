@@ -1,6 +1,7 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from .userproxy_interaction import UserProxyInteraction
 from .group_share import GroupShare
+from .helpers import ImageExtension
 from .httpcache import HTTPCache
 from .api_token import ApiToken
 from .member import ProxyMember
@@ -8,7 +9,6 @@ from src.models import project
 from beanie import init_beanie
 from .webhook import Webhook
 from .message import Message
-from .models import ProxyTag
 from .api_key import ApiKey
 from .group import Group
 from .latch import Latch

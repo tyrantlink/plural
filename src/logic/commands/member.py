@@ -1,18 +1,13 @@
-from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, SlashCommandGroup, User, Application, COMMAND_NAME_PATTERN
-from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, Group, Image, ProxyTag
-from src.logic.modals import modal_plural_edit, umodal_edit, modal_plural_member_bio
+from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, COMMAND_NAME_PATTERN
 from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
-from src.discord.http import _get_mime_type_for_image, _get_bot_id
+from src.discord.commands import sync_commands, _put_all_commands
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT
-from src.logic.proxy import get_proxy_webhook, process_proxy
-from src.discord.commands import sync_commands
-from regex import match, IGNORECASE, UNICODE
+from src.db import ProxyMember, Group, Image, ImageExtension
+from src.logic.modals import modal_plural_member_bio
+from src.discord.http import _get_bot_id
+from regex import match, UNICODE
 from src.models import project
-from base64 import b64decode
 from asyncio import gather
-from time import time
-
-#! when syncing userproxies, replace the interactions endpoint url
 
 
 member = SlashCommandGroup(
@@ -239,30 +234,28 @@ async def slash_member_set_group(
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.ATTACHMENT,
             name='avatar',
-            description='new member avatar',
-            required=True)],
+            description='new member avatar (max 10MB)',
+            required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_set_avatar(
     interaction: Interaction,
     member: ProxyMember,
-    avatar: Attachment
+    avatar: Attachment | None = None
 ) -> None:
     if avatar is None:
-        current_avatar, member.avatar = member.avatar, avatar
-
         await gather(
-            member.save(),
-            Image.find({'_id': current_avatar}).delete(),
+            member.delete_avatar(),
             interaction.response.send_message(
                 embeds=[Embed.success(
-                    f'removed member `{member.name}` avatar')]
+                    f'removed member `{member.name}` avatar'
+                )]
             )
         )
         return
 
-    if avatar.size > 4_194_304:
-        raise InteractionError('avatars must be less than 4MB')
+    if avatar.size > 10_485_760:
+        raise InteractionError('avatars must be less than 10MB')
 
     if (
         '.' in avatar.filename and
@@ -273,31 +266,16 @@ async def slash_member_set_avatar(
 
     await interaction.response.defer()
 
-    data = await avatar.read()
-
-    try:
-        mime_type = _get_mime_type_for_image(data[:16])
-    except ValueError:
-        raise InteractionError('invalid format; image may be corrupted')
-
-    image = await Image(
-        data=data,
-        extension=mime_type.split('/')[-1]
-    ).save()
-
-    current_avatar, member.avatar = member.avatar, image.id
+    await member.set_avatar(avatar.url)
+    assert member.avatar is not None
 
     response = f'group `{member.name}` now has the avatar `{avatar.filename}`'
 
-    if mime_type == 'image/gif':
+    if member.avatar.extension == ImageExtension.GIF:
         response += '\n\n**note:** gif avatars are not animated'
 
-    await gather(
-        member.save(),
-        Image.find({'_id': current_avatar}).delete(),
-        interaction.followup.send(
-            embeds=[Embed.success(response)]),
-        return_exceptions=True
+    await interaction.followup.send(
+        embeds=[Embed.success(response)]
     )
 
 
@@ -347,7 +325,7 @@ async def slash_member_set_bio(
 
     current_bio = app.description.removesuffix(
         USERPROXY_FOOTER.format(username=interaction.author_name)
-    )
+    ).strip()
 
     await interaction.response.send_modal(
         modal_plural_member_bio.with_title(
@@ -468,7 +446,7 @@ async def slash_member_tags_add(
         raise InteractionError('members can only have 15 proxy tags')
 
     member.proxy_tags.append(
-        ProxyTag(
+        ProxyMember.ProxyTag(
             prefix=prefix or '',
             suffix=suffix or '',
             regex=regex,
@@ -679,7 +657,7 @@ async def slash_member_userproxy_new(
 
     if not app.description:
         app_patch['description'] = USERPROXY_FOOTER.format(
-            username=interaction.author_name)
+            username=interaction.author_name).strip()
 
     if avatar is not None:
         app_patch['icon'] = avatar
@@ -881,6 +859,19 @@ async def slash_member_userproxy_remove(
     interaction: Interaction,
     userproxy: ProxyMember
 ) -> None:
+
+    if userproxy.userproxy is None:
+        raise InteractionError(
+            f'member `{member.name}` does not have a userproxy')
+
+    # ? try to clear commands if we have the token
+    if userproxy.userproxy.token is not None:
+        try:
+            await Application.fetch_current(userproxy.userproxy.token)
+            await _put_all_commands(userproxy.userproxy.token, {})
+        except Unauthorized:
+            pass
+
     userproxy.userproxy = None
 
     await gather(

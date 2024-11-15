@@ -1,7 +1,7 @@
 from __future__ import annotations
 from .models import ApplicationCommand, ApplicationCommandType, ApplicationCommandOption, ApplicationIntegrationType, InteractionContextType, Permission, InteractionCallback, ApplicationCommandScope, ApplicationCommandOptionType
-from src.db import ProxyMember, HTTPCache
 from src.discord.http import Route, request, _get_bot_id
+from src.db import ProxyMember, HTTPCache
 from collections.abc import Callable
 from src.models import project
 from typing import Literal
@@ -20,9 +20,19 @@ commands: dict[
 
 
 async def _put_all_commands(
-    token: str
+    token: str,
+    override_commands: dict[str, ApplicationCommand] | None = None
 ) -> None:
     application_id = _get_bot_id(token)
+    put_commands = (
+        override_commands
+        if override_commands is not None else
+        commands[(
+            ApplicationCommandScope.PRIMARY
+            if application_id == project.application_id else
+            ApplicationCommandScope.USERPROXY
+        )])
+
     await request(
         Route(
             'PUT',
@@ -32,11 +42,7 @@ async def _put_all_commands(
         token=token,
         json=[
             command._as_registration_dict()
-            for command in commands[(
-                ApplicationCommandScope.PRIMARY
-                if application_id == project.application_id else
-                ApplicationCommandScope.USERPROXY
-            )].values()
+            for command in put_commands.values()
         ]
     )
 

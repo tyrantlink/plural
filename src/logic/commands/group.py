@@ -1,11 +1,7 @@
-from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, SlashCommandGroup, User, Channel
-from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, Group, GroupShare, Image
-from src.logic.proxy import get_proxy_webhook, process_proxy
-from src.logic.modals import modal_plural_edit, umodal_edit
-from src.discord.http import _get_mime_type_for_image
+from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Channel
+from src.db import ProxyMember, Group, GroupShare, Image, ImageExtension
 from src.errors import InteractionError
 from asyncio import gather
-from time import time
 
 
 group = SlashCommandGroup(
@@ -124,6 +120,9 @@ async def slash_group_remove(
         tasks.extend([
             ProxyMember.find({'_id': {'$in': group.members}}).delete(),
         ])
+
+    if group.avatar is not None:
+        tasks.append(group.delete_avatar())
 
     await gather(
         *tasks,
@@ -354,7 +353,7 @@ async def slash_group_set_tag(
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.ATTACHMENT,
             name='avatar',
-            description='new avatar (exclude to remove)',
+            description='new avatar (10MB max) (exclude to remove)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -364,19 +363,18 @@ async def slash_group_set_avatar(
     avatar: Attachment | None = None
 ) -> None:
     if avatar is None:
-        current_avatar, group.avatar = group.avatar, avatar
-
         await gather(
-            group.save(),
-            Image.find({'_id': current_avatar}).delete(),
+            group.delete_avatar(),
             interaction.response.send_message(
-                embeds=[Embed.success(f'removed group `{group.name}` avatar')]
+                embeds=[Embed.success(
+                    f'removed group `{group.name}` avatar'
+                )]
             )
         )
         return
 
-    if avatar.size > 4_194_304:
-        raise InteractionError('avatars must be less than 4MB')
+    if avatar.size > 10_485_760:
+        raise InteractionError('avatars must be less than 10MB')
 
     if (
         '.' in avatar.filename and
@@ -387,31 +385,16 @@ async def slash_group_set_avatar(
 
     await interaction.response.defer()
 
-    data = await avatar.read()
-
-    try:
-        mime_type = _get_mime_type_for_image(data[:16])
-    except ValueError:
-        raise InteractionError('invalid format; image may be corrupted')
-
-    image = await Image(
-        data=data,
-        extension=mime_type.split('/')[-1]
-    ).save()
-
-    current_avatar, group.avatar = group.avatar, image.id
+    await group.set_avatar(avatar.url)
+    assert group.avatar is not None
 
     response = f'group `{group.name}` now has the avatar `{avatar.filename}`'
 
-    if mime_type == 'image/gif':
+    if group.avatar.extension == ImageExtension.GIF:
         response += '\n\n**note:** gif avatars are not animated'
 
-    await gather(
-        group.save(),
-        Image.find({'_id': current_avatar}).delete(),
-        interaction.followup.send(
-            embeds=[Embed.success(response)]),
-        return_exceptions=True
+    await interaction.followup.send(
+        embeds=[Embed.success(response)]
     )
 
 

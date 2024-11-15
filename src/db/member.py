@@ -1,11 +1,10 @@
 from __future__ import annotations
+from .helpers import avatar_setter, avatar_deleter, ImageId
 from pydantic import Field, model_validator, BaseModel
 from typing import Annotated, TYPE_CHECKING, Any
-from src.models import USERPROXY_FOOTER_LIMIT
 from beanie import Document, PydanticObjectId
 from datetime import timedelta
 from re import sub, IGNORECASE
-from .models import ProxyTag
 
 
 if TYPE_CHECKING:
@@ -33,12 +32,39 @@ class ProxyMember(Document):
         )
         return values
 
+    @model_validator(mode='before')
+    def _handle_avatar(cls, values: dict[Any, Any]) -> dict[Any, Any]:
+        if isinstance((avatar := values.get('avatar', None)), bytes):
+            values['avatar'] = ImageId.validate(avatar)
+        return values
+
     class Settings:
         name = 'members'
         validate_on_save = True
         use_state_management = True
         cache_expiration_time = timedelta(seconds=2)
         indexes = ['userproxy.bot_id']
+        bson_encoders = {ImageId: bytes}
+
+    class ProxyTag(BaseModel):
+        prefix: str = Field(
+            '',
+            max_length=50,
+            description='tag must have a prefix or suffix')
+        suffix: str = Field(
+            '',
+            max_length=50,
+            description='tag must have a prefix or suffix')
+        regex: bool = False
+        case_sensitive: bool = False
+
+        @model_validator(mode='after')
+        def check_prefix_and_suffix(cls, value):
+            if not value.prefix and not value.suffix:
+                raise ValueError(
+                    'At least one of prefix or suffix must be non-empty')
+
+            return value
 
     class UserProxy(BaseModel):
         bot_id: int = Field(description='bot id')
@@ -59,7 +85,7 @@ class ProxyMember(Document):
         description='the name of the member',
         min_length=1, max_length=80
     )
-    avatar: PydanticObjectId | None = Field(
+    avatar: ImageId | None = Field(
         None,
         description='the avatar uuid of the member; overrides the group avatar'
     )
@@ -72,6 +98,15 @@ class ProxyMember(Document):
         description='the userproxy information'
     )
 
+    @property
+    def avatar_url(self) -> str | None:
+        from src.models import project
+
+        if self.avatar is None:
+            return None
+
+        return f'{project.images.base_url}/{self.id}/{self.avatar.id}.{self.avatar.extension.name.lower()}'
+
     async def get_group(self) -> Group:
         from src.db.group import Group
 
@@ -82,17 +117,8 @@ class ProxyMember(Document):
 
         return group
 
-    async def get_avatar_url(self) -> str | None:
-        from src.models import project
-        from src.db.image import Image
-        from src.db.models import DatalessImage
+    async def set_avatar(self, url: str) -> None:
+        await avatar_setter(self, url)
 
-        if self.avatar is None or (
-                image := await Image.find_one(
-                    {'_id': self.avatar},
-                    projection_model=DatalessImage
-                )
-        ) is None:
-            return None
-
-        return f'{project.base_url}/avatar/{image.id}.{image.extension}'
+    async def delete_avatar(self) -> None:
+        await avatar_deleter(self)

@@ -34,10 +34,10 @@ async def post__interaction(
 
     await interaction.populate()
 
-    await emit(
+    create_task(emit(
         ListenerType.INTERACTION,
         interaction
-    )
+    ))
 
     return Response(status_code=202)
 

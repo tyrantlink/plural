@@ -12,6 +12,8 @@ from src.models import project
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='message',
+            min_length=0,
+            max_length=2000,
             description='message to send',
             required=False
         ),

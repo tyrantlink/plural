@@ -9,6 +9,11 @@ USERPROXY_FOOTER_LIMIT = 400 - len(USERPROXY_FOOTER.format(username='*' * 32))
 
 
 class Project(BaseModel):
+    class Images(BaseModel):
+        base_url: str
+        account_id: str
+        token: str
+
     bot_token: str
     bot_public_key: str
     mongo_uri: str
@@ -19,6 +24,7 @@ class Project(BaseModel):
     gateway_key: str
     logfire_token: str
     dev_environment: bool = True
+    images: Images
 
     @property
     def application_id(self) -> int:

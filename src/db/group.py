@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .helpers import avatar_setter, avatar_deleter, ImageId
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
 from src.db.member import ProxyMember
@@ -37,12 +38,17 @@ class Group(Document):
         )
         return values
 
+    @model_validator(mode='before')
+    def _handle_avatar(cls, values: dict[Any, Any]) -> dict[Any, Any]:
+        if isinstance((avatar := values.get('avatar', None)), bytes):
+            values['avatar'] = ImageId.validate(avatar)
+        return values
+
     def dict(self, *args, **kwargs) -> dict[str, Any]:
         data = super().dict(*args, **kwargs)
         for variable in {'accounts', 'members', 'channels'}:
             if data.get(variable, None) is not None:
                 data[variable] = list(data[variable])
-        self._cache
         return data
 
     class Settings:
@@ -51,6 +57,7 @@ class Group(Document):
         use_state_management = True
         cache_expiration_time = timedelta(seconds=2)
         indexes = ['accounts', 'members', 'name']
+        bson_encoders = {ImageId: bytes}
 
     id: PydanticObjectId = Field(  # type: ignore
         default_factory=PydanticObjectId)
@@ -61,7 +68,7 @@ class Group(Document):
         default_factory=set,
         description='the discord accounts attached to this group'
     )
-    avatar: PydanticObjectId | None = Field(
+    avatar: ImageId | None = Field(
         None,
         description='the avatar uuid of the group'
     )
@@ -84,6 +91,15 @@ class Group(Document):
         default_factory=set,
         description='the members of the group'
     )
+
+    @property
+    def avatar_url(self) -> str | None:
+        from src.models import project
+
+        if self.avatar is None:
+            return None
+
+        return f'{project.images.base_url}/{self.id}/{self.avatar.id}.{self.avatar.extension}'
 
     async def get_members(self) -> list[ProxyMember]:
         return await ProxyMember.find_many(
@@ -139,25 +155,15 @@ class Group(Document):
 
         self.members.remove(member.id)
 
-        await gather(
+        tasks = [
             self.save_changes(),
             member.delete()
-        )
+        ]
 
-    async def get_avatar_url(self) -> str | None:
-        from src.models import project
-        from src.db.image import Image
-        from src.db.models import DatalessImage
+        if member.avatar is not None:
+            tasks.append(member.delete_avatar())
 
-        if self.avatar is None or (
-                image := await Image.find_one(
-                    {'_id': self.avatar},
-                    projection_model=DatalessImage
-                )
-        ) is None:
-            return None
-
-        return f'{project.base_url}/avatar/{image.id}.{image.extension}'
+        await gather(*tasks)
 
     @classmethod
     async def get_or_create_default(cls, account_id: int) -> Group:
@@ -175,3 +181,9 @@ class Group(Document):
             avatar=None,
             tag=None,
         ).save()
+
+    async def set_avatar(self, url: str) -> None:
+        await avatar_setter(self, url)
+
+    async def delete_avatar(self) -> None:
+        await avatar_deleter(self)

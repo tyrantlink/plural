@@ -1,10 +1,15 @@
-from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment
+from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File
+from src.logic.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction
 from src.errors import InteractionError, Forbidden, PluralException
 from src.logic.proxy import get_proxy_webhook, process_proxy
 from src.logic.modals import modal_plural_edit, umodal_edit
+from src.discord.http import get_from_cdn
+from pydantic_core import ValidationError
 from src.models import DebugMessage
 from asyncio import gather
+from orjson import loads
+from io import BytesIO
 from time import time
 
 
@@ -361,12 +366,12 @@ async def slash_api(interaction: Interaction) -> None:
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='format',
-            description='export format; default: importable',
+            description='export format (default: standard)',
             required=False,
             choices=[
                 ApplicationCommandOptionChoice(
-                    name='importable; contains minimum data required for import, relatively safe to share',
-                    value='importable'
+                    name='standard; contains minimum data required for import, relatively safe to share',
+                    value='standard'
                 ),
                 ApplicationCommandOptionChoice(
                     name='full; contains complete data package, DO NOT SHARE',
@@ -376,9 +381,25 @@ async def slash_api(interaction: Interaction) -> None:
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_export(
     interaction: Interaction,
-    format: str = 'importable'
+    format: str = 'standard'
 ) -> None:
-    ...
+    export = await PluralExport.from_account_id(interaction.author_id)
+
+    if format == 'standard':
+        export = await export.to_standard()
+
+    data = export.model_dump_json()
+
+    message = await interaction.response.send_message(
+        content='your data is ready',
+        attachments=[File(
+            BytesIO(data.encode()),
+            f'plural_export_{format}.json'
+        )]
+    )
+    await interaction.followup.send(
+        message.attachments[0].url
+    )
 
 
 @slash_command(
@@ -397,12 +418,12 @@ async def slash_help(interaction: Interaction) -> None:
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.ATTACHMENT,
             name='file',
-            description='file to import. 4MB max',
+            description='file to import. 8MB max',
             required=False),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='file_url',
-            description='url of your exported file. 4MB max',
+            description='url of your exported file. 8MB max',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -411,4 +432,27 @@ async def slash_import(
     file: Attachment | None = None,
     file_url: str | None = None
 ) -> None:
-    ...
+    if file is None and file_url is None:
+        raise InteractionError('help embed not implemented')
+
+    url = file.url if file else file_url
+    assert url is not None
+
+    try:
+        data = loads(await get_from_cdn(url))
+    except Exception:
+        raise InteractionError('failed to read file')
+
+    for model in (PluralKitExport, PluralExport, TupperboxExport, StandardExport):
+        try:
+            export = model.model_validate(data)
+            break
+        except ValidationError:
+            continue
+    else:
+        raise InteractionError('invalid export format')
+
+    print(type(export))
+    print(export)
+
+    await interaction.response.send_message('a')

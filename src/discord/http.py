@@ -29,6 +29,7 @@ from typing import Any, Iterable, Sequence
 from datetime import datetime, timezone
 from weakref import WeakValueDictionary
 from base64 import b64encode, b64decode
+from src.db.httpcache import HTTPCache
 from src.core.session import session
 from re import match, IGNORECASE
 from orjson import dumps, loads
@@ -36,7 +37,6 @@ from types import TracebackType
 from urllib.parse import quote
 from src.models import project
 from io import BufferedIOBase
-from src.db import HTTPCache
 from sys import version_info
 
 
@@ -66,6 +66,7 @@ class Route:
         self.method = method
         self.path = path
         self.token = token
+        self.discord = discord
         url = (BASE_URL if discord else '') + path
 
         if '{application_id}' in url and 'application_id' not in params:
@@ -214,7 +215,8 @@ async def cache_response(route: Route, status: int, data: dict | str) -> None:
     if any((
         route.method != 'GET',
         route.token != project.bot_token,
-        isinstance(data, str)
+        isinstance(data, str),
+        not route.discord
     )):
         return
 
@@ -268,7 +270,11 @@ async def request(
     }
 
     if token:
-        headers['Authorization'] = f'Bot {token}'
+        headers['Authorization'] = (
+            f'Bot {token}'
+            if route.discord
+            else f'Bearer {token}'
+        )
 
     if json is not None and data is not None:
         raise TypeError('You can only pass either json or data')

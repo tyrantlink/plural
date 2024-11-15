@@ -87,7 +87,7 @@ class Channel(RawBaseModel):
     default_forum_layout: int | None = None
 
     @classmethod
-    async def fetch(cls, channel_id: Snowflake) -> Channel:
+    async def fetch(cls, channel_id: Snowflake | int) -> Channel:
         return cls(
             **await request(
                 Route(

@@ -495,6 +495,8 @@ async def process_proxy(
             for sticker in message.sticker_items
         ]
 
+    group = await member.get_group()
+
     responses = await gather(
         message.delete(reason='/plu/ral proxy'),
         webhook.execute(
@@ -505,8 +507,8 @@ async def process_proxy(
                 None
             ),
             wait=True,
-            username=f'{member.name} {((await member.get_group()).tag or "")}'[:80],
-            avatar_url=await member.get_avatar_url(),
+            username=f'{member.name} {(group.tag or "")}'[:80],
+            avatar_url=member.avatar_url or group.avatar_url,
             embeds=[embed] if embed is not None else [],
             attachments=attachments,
             allowed_mentions=AllowedMentions(

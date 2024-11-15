@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field
 from beanie import PydanticObjectId
-from src.db.models import ProxyTag
+from src.db import ProxyMember
 from typing import Annotated
 
 
@@ -14,7 +14,7 @@ class MemberModel(BaseModel):
         None,
         description='the avatar uuid of the member; overrides the group avatar'
     )
-    proxy_tags: Annotated[list[ProxyTag], Field(max_length=5)] = Field(
+    proxy_tags: Annotated[list[ProxyMember.ProxyTag], Field(max_length=5)] = Field(
         [],
         description='proxy tags for the member'
     )
@@ -30,7 +30,7 @@ class MemberUpdateModel(BaseModel):
     group: PydanticObjectId = Field(
         None,
         description='group id for the member')
-    proxy_tags: Annotated[list[ProxyTag], Field(max_length=5)] = Field(
+    proxy_tags: Annotated[list[ProxyMember.ProxyTag], Field(max_length=5)] = Field(
         None,
         description='proxy tags for the member'
     )
@@ -44,7 +44,7 @@ class CreateMemberModel(BaseModel):
         None,
         description='the avatar uuid of the group'
     )
-    proxy_tags: Annotated[list[ProxyTag], Field(max_length=5)] = Field(
+    proxy_tags: Annotated[list[ProxyMember.ProxyTag], Field(max_length=5)] = Field(
         [],
         description='proxy tags for the member'
     )

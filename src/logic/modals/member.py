@@ -34,6 +34,8 @@ async def modal_plural_member_bio(
     if include_attribution:
         bio += USERPROXY_FOOTER.format(username=interaction.author_name)
 
+    bio = bio.strip()
+
     if bio == app.description:
         raise InteractionError('no changes were made')
 

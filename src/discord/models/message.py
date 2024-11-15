@@ -167,7 +167,7 @@ class Message(RawBaseModel):
     @classmethod
     async def send(
         cls,
-        channel_id: Snowflake,
+        channel_id: Snowflake | int,
         content: str | None = None,
         *,
         tts: bool = False,
