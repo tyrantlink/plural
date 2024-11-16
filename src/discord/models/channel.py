@@ -151,7 +151,7 @@ class Channel(RawBaseModel):
 
         return await Message.fetch(self.id, message_id)
 
-    async def fetch_webhooks(self) -> list[Webhook]:
+    async def fetch_webhooks(self, use_cache: bool = True) -> list[Webhook]:
         from .webhook import Webhook
 
         return [
@@ -162,7 +162,8 @@ class Channel(RawBaseModel):
                     'GET',
                     '/channels/{channel_id}/webhooks',
                     channel_id=self.id
-                )
+                ),
+                ignore_cache=not use_cache
             )
         ]
 

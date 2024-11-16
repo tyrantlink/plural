@@ -2,9 +2,9 @@ from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel,
 from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage
+from src.errors import Forbidden, NotFound
 from src.discord.http import get_from_cdn
 from dataclasses import dataclass
-from src.errors import Forbidden
 from asyncio import gather
 from random import randint
 
@@ -221,7 +221,7 @@ async def permission_check(
     return True
 
 
-async def get_proxy_webhook(channel: Channel) -> Webhook:
+async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook:
 
     if channel.is_thread:
         if channel.parent_id is None:
@@ -235,11 +235,15 @@ async def get_proxy_webhook(channel: Channel) -> Webhook:
     webhook = await DBWebhook.get(channel.id)
 
     if webhook is not None:
-        return await Webhook.from_url(
-            webhook.url
-        )
+        try:
+            await Webhook.from_url(
+                webhook.url,
+                use_cache
+            )
+        except NotFound:
+            await webhook.delete()
 
-    for webhook in await channel.fetch_webhooks():
+    for webhook in await channel.fetch_webhooks(use_cache):
         if webhook.name == '/plu/ral proxy':
             assert webhook.url is not None  # ? will always exist after fetching it
             await DBWebhook(
@@ -446,7 +450,7 @@ async def process_proxy(
 
     # ? don't actually clone emotes if we're debugging
     app_emojis = list()
-    if not debug_log:
+    if webhook.user and webhook.user.id == project.application_id and not debug_log:
         app_emojis, proxy_content = await process_emoji(proxy_content)
 
     if len(proxy_content) > 2000:
@@ -504,8 +508,7 @@ async def process_proxy(
             thread_id=(
                 message.channel.id
                 if message.channel.is_thread else
-                None
-            ),
+                None),
             wait=True,
             username=f'{member.name} {(group.tag or "")}'[:80],
             avatar_url=member.avatar_url or group.avatar_url,
@@ -514,12 +517,31 @@ async def process_proxy(
             allowed_mentions=AllowedMentions(
                 replied_user=(
                     message.referenced_message is not None and
-                    message.referenced_message.author in message.mentions
-                )
-            ),
-            poll=message.poll
-        )
+                    message.referenced_message.author in message.mentions)),
+            poll=message.poll),
+        return_exceptions=True
     )
+    if isinstance(responses[1], NotFound):
+        webhook = await get_proxy_webhook(message.channel, False)
+        responses = responses[0], await webhook.execute(
+            content=proxy_content,
+            thread_id=(
+                message.channel.id
+                if message.channel.is_thread else
+                None),
+            wait=True,
+            username=f'{member.name} {(group.tag or "")}'[:80],
+            avatar_url=member.avatar_url or group.avatar_url,
+            embeds=[embed] if embed is not None else [],
+            attachments=attachments,
+            allowed_mentions=AllowedMentions(
+                replied_user=(
+                    message.referenced_message is not None and
+                    message.referenced_message.author in message.mentions)),
+            poll=message.poll)
+
+    if isinstance(responses[1], BaseException):
+        return False, app_emojis
 
     await DBMessage(
         original_id=message.id,
