@@ -1,5 +1,5 @@
 from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType
-from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage
+from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage
 from src.errors import Forbidden, NotFound
@@ -236,12 +236,15 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
 
     if webhook is not None:
         try:
-            await Webhook.from_url(
+            return await Webhook.from_url(
                 webhook.url,
-                use_cache
-            )
+                use_cache)
         except NotFound:
-            await webhook.delete()
+            gather(
+                webhook.delete(),
+                HTTPCache.invalidate(webhook.url.split('/api')[1]),
+                HTTPCache.invalidate(f'/channels/{channel.id}/webhooks')
+            )
 
     for webhook in await channel.fetch_webhooks(use_cache):
         if webhook.name == '/plu/ral proxy':
@@ -541,6 +544,7 @@ async def process_proxy(
             poll=message.poll)
 
     if isinstance(responses[1], BaseException):
+
         return False, app_emojis
 
     await DBMessage(
