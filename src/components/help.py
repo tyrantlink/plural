@@ -11,14 +11,14 @@ __all__ = ('help_components',)
 
 
 PAGES = {
-    'main': f'please select a category\n\n[privacy policy](<{project.base_url}/privacy-policy>)\n[terms of service](<{project.base_url}/terms-of-service>)',
+    'main': 'please select a category',
     'getting started': '\n'.join([
-        '- if you\'re coming from pluralkit or tupperbox, use the `/import` command and use your proxies as you have been',
+        '- if you\'re coming from pluralkit or tupperbox, use the `/import` command to use the proxies you already have',
         '- otherwise, you can start by creating a new group with `/group new`',
         '  - if you don\'t create a group, a group named "default" will be created for you when you create a member',
         '- create a new member with `/member new`',
         '  - all members *must* be a part of a group, specify in the `/member new` command, or leave it blank to use the default group',
-        '- add some proxy tags with `/member proxy add`',
+        '- add some proxy tags with `/member tags add`',
         '- that\'s all the basics, otherwise, simply type `/` and see what commands are available!']),
     'userproxies': '\n'.join([
         'note that this is an advanced feature, and requires some setup',
@@ -40,7 +40,9 @@ PAGES = {
     'info and support': '\n'.join([
         '- for more information, check out the [github](https://github.com/tyrantlink/plural)',
         '- for support, join the [discord](https://discord.gg/6t8V4Cv)',
-        '- for bugs, suggestions, or other feedback, open an issue on the github or post in the support channel'
+        '- for bugs, suggestions, or other feedback, open an issue on the github or post in the support channel',
+        f'- [privacy policy](<{project.base_url}/privacy-policy>)',
+        f'- [terms of service](<{project.base_url}/terms-of-service>)'
     ])
 }
 

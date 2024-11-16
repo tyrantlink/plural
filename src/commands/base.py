@@ -420,8 +420,7 @@ async def slash_help(interaction: Interaction) -> None:
     await interaction.response.send_message(
         embeds=[Embed(
             title='welcome to /plu/ral!',
-            description=f'please select a category\n\n[privacy policy](<{
-                project.base_url}/privacy-policy>)\n[terms of service](<{project.base_url}/terms-of-service>)',
+            description='please select a category',
             color=0x69ff69)],
         components=help_components
     )
