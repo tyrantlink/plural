@@ -1,12 +1,13 @@
-from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File
-from src.logic.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport
+from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File, ActionRow
+from src.components import modal_plural_edit, umodal_edit, button_api_key, help_components, button_delete_all_data
+from src.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport, LogMessage
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction
 from src.errors import InteractionError, Forbidden, PluralException
 from src.logic.proxy import get_proxy_webhook, process_proxy
-from src.logic.modals import modal_plural_edit, umodal_edit
 from src.discord.http import get_from_cdn
 from pydantic_core import ValidationError
 from src.models import DebugMessage
+from src.models import project
 from asyncio import gather
 from orjson import loads
 from io import BytesIO
@@ -210,7 +211,8 @@ async def slash_delete_all_data(interaction: Interaction) -> None:
             title='are you sure?',
             description='this will delete all of your data, including groups, members, avatars, latches, and messages\n\nthis action is irreversible',
             color=0xff6969
-        )]
+        )],
+        components=[ActionRow(components=[button_delete_all_data])]
     )
 
 
@@ -355,7 +357,14 @@ async def message_plural_proxy_info(interaction: Interaction, message: Message) 
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_api(interaction: Interaction) -> None:
-    ...
+    await interaction.response.send_message(
+        embeds=[Embed(
+            title='api key management',
+            description=f'i\'ll put something here eventually, for now it\'s just a token reset portal\n{
+                project.api_url}/docs',
+            color=0x69ff69)],
+        components=[ActionRow(components=[button_api_key])]
+    )
 
 
 # ! implement cooldowns
@@ -386,7 +395,7 @@ async def slash_export(
     export = await PluralExport.from_account_id(interaction.author_id)
 
     if format == 'standard':
-        export = await export.to_standard()
+        export = export.to_standard()
 
     data = export.model_dump_json()
 
@@ -408,7 +417,14 @@ async def slash_export(
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_help(interaction: Interaction) -> None:
-    ...
+    await interaction.response.send_message(
+        embeds=[Embed(
+            title='welcome to /plu/ral!',
+            description=f'please select a category\n\n[privacy policy](<{
+                project.base_url}/privacy-policy>)\n[terms of service](<{project.base_url}/terms-of-service>)',
+            color=0x69ff69)],
+        components=help_components
+    )
 
 
 @slash_command(
@@ -447,12 +463,37 @@ async def slash_import(
         try:
             export = model.model_validate(data)
             break
-        except ValidationError:
+        except ValidationError as e:
             continue
     else:
-        raise InteractionError('invalid export format')
+        raise InteractionError(
+            'invalid export format; if you believe this is a bug, please send a message in the support server')
 
-    print(type(export))
-    print(export)
+    if not isinstance(export, StandardExport):
+        export = export.to_standard()
 
-    await interaction.response.send_message('a')
+    print(export.model_dump_json())
+
+    await interaction.response.defer()
+
+    logs = [
+        log.lstrip('E: ')
+        for log in await export.to_plural().import_to_account(interaction.author_id)
+        if log.startswith('E: ')
+    ]
+
+    print('\n'.join(logs))
+
+    await interaction.followup.send(
+        embeds=(
+            [Embed.error(
+                title='import failed',
+                message=f'```{'\n'.join(logs)}```')]
+            if LogMessage.NOTHING_IMPORTED.lstrip('E: ') in logs else
+            [Embed.warning(
+                title='import successful, but with errors',
+                message=f'```{'\n'.join(logs)}```')]
+            if logs else
+            [Embed.success('import successful; no errors')]
+        )
+    )

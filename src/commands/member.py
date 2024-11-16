@@ -3,7 +3,7 @@ from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
 from src.discord.commands import sync_commands, _put_all_commands
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT
 from src.db import ProxyMember, Group, Image, ImageExtension
-from src.logic.modals import modal_plural_member_bio
+from src.components import modal_plural_member_bio
 from src.discord.http import _get_bot_id
 from regex import match, UNICODE
 from src.models import project
@@ -103,7 +103,8 @@ async def slash_member_list(
                     (
                         member.name
                         if member.userproxy is None else
-                        f'[{member.name}](https://discord.com/oauth2/authorize?client_id={member.userproxy.bot_id}&integration_type=1&scope=applications.commands)'
+                        f'[{member.name}](https://discord.com/oauth2/authorize?client_id={
+                            member.userproxy.bot_id}&integration_type=1&scope=applications.commands)'
                     )
                     for member in await group.get_members()
                 ]) or 'this group has no members'
@@ -173,7 +174,8 @@ async def slash_member_set_name(
         member.save(),
         interaction.response.send_message(
             embeds=[Embed.success(
-                f'member `{old_name}` of group `{group.name}` was renamed to `{name}`'
+                f'member `{old_name}` of group `{
+                    group.name}` was renamed to `{name}`'
             )]
         ))
 
@@ -215,7 +217,8 @@ async def slash_member_set_group(
         group.save(),
         interaction.response.send_message(
             embeds=[Embed.success(
-                f'member `{member.name}` of group `{old_group.name}` was moved from group `{group.name}`'
+                f'member `{member.name}` of group `{
+                    old_group.name}` was moved from group `{group.name}`'
             )]
         )
     )

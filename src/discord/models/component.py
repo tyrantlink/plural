@@ -1,7 +1,12 @@
 from __future__ import annotations
-from .enums import ComponentType, TextInputStyle
-from .base import RawBaseModel
-from typing import Sequence
+from .enums import ComponentType, TextInputStyle, ButtonStyle
+from src.discord.types import Snowflake, MissingOr, MISSING
+from typing import Sequence, TYPE_CHECKING, Annotated
+from .base import RawBaseModel, PydanticArbitraryType
+from .emoji import Emoji
+
+if TYPE_CHECKING:
+    from .interaction import InteractionCallback
 
 
 class BaseComponent(RawBaseModel):
@@ -20,6 +25,46 @@ class ActionRow(BaseComponent):
             'type': self.type.value,
             'components': [component.as_payload() for component in self.components]
         }
+
+
+class Button(BaseComponent):
+    type: ComponentType = ComponentType.BUTTON
+    style: ButtonStyle
+    label: MissingOr[str] = MISSING
+    emoji: MissingOr[Emoji] = MISSING
+    custom_id: MissingOr[str] = MISSING
+    sku_id: MissingOr[Snowflake] = MISSING
+    url: MissingOr[str] = MISSING
+    disabled: MissingOr[bool] = MISSING
+    # ? library stuff
+    callback: Annotated[InteractionCallback,
+                        PydanticArbitraryType] | None = None
+
+    def as_payload(self) -> dict:
+        json: dict = {
+            'type': self.type.value,
+            'style': self.style.value
+        }
+
+        if self.label:
+            json['label'] = self.label
+
+        if self.emoji:
+            json['emoji'] = self.emoji.model_dump()
+
+        if self.custom_id:
+            json['custom_id'] = self.custom_id
+
+        if self.sku_id:
+            json['sku_id'] = self.sku_id
+
+        if self.url:
+            json['url'] = self.url
+
+        if self.disabled:
+            json['disabled'] = self.disabled
+
+        return json
 
 
 class TextInput(BaseComponent):
@@ -63,4 +108,4 @@ class TextInput(BaseComponent):
         return json
 
 
-Component = TextInput | ActionRow
+Component = TextInput | Button | ActionRow

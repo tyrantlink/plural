@@ -1,6 +1,6 @@
 from __future__ import annotations
 from src.discord.types import Snowflake, MISSING, MissingOr, MissingNoneOr
-from src.discord.http import request, Route, _bytes_to_base64_data, _get_bot_id
+from src.discord.http import request, Route, _bytes_to_base64_data
 from .enums import ApplicationIntegrationType
 from src.models import project
 from .base import RawBaseModel

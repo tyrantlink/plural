@@ -2,6 +2,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from .userproxy_interaction import UserProxyInteraction
 from .group_share import GroupShare
 from .helpers import ImageExtension
+from .cfcdnproxy import CFCDNProxy
 from .httpcache import HTTPCache
 from .api_token import ApiToken
 from .member import ProxyMember
@@ -28,6 +29,7 @@ class MongoDatabase:
             document_models=[
                 UserProxyInteraction,
                 ProxyMember,
+                CFCDNProxy,
                 GroupShare,
                 HTTPCache,
                 ApiToken,

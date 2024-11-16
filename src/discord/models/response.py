@@ -149,8 +149,9 @@ class InteractionResponse(PydanticArbitraryType):
             json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')
 
         if components:
-            json['components'] = [component.model_dump(
-                mode='json') for component in components]
+            json['components'] = [
+                component.as_payload()
+                for component in components]
 
         if poll:
             json['poll'] = poll.model_dump(mode='json')
@@ -240,7 +241,36 @@ class InteractionResponse(PydanticArbitraryType):
         )
         self.responded = True
 
-    #! make update_message for message components
+    async def update_message(
+        self,
+        content: str | None = None,
+        *,
+        embeds: list[Embed] | None = None,
+        components: list[Component] | None = None
+    ) -> Message | None:
+        """only for MESSAGE_COMPONENT interactions"""
+        json = {}
+
+        if content is not None:
+            json['content'] = content
+
+        if embeds:
+            json['embeds'] = [
+                embed.model_dump(
+                    mode='json') for embed in embeds]
+
+        if components:
+            json['components'] = [
+                component.as_payload()
+                for component in components]
+
+        await request(
+            self.callback_route,
+            json={
+                'type': InteractionCallbackType.UPDATE_MESSAGE.value,
+                'data': json
+            }
+        )
 
     async def send_autocomplete_result(
         self,

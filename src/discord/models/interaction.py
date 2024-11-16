@@ -1,10 +1,10 @@
 from __future__ import annotations
-from .enums import InteractionType, ApplicationCommandType, ApplicationCommandOptionType, Permission, EntitlementType, ApplicationIntegrationType, InteractionContextType  # , ComponentType
+from .enums import InteractionType, ApplicationCommandType, ApplicationCommandOptionType, Permission, EntitlementType, ApplicationIntegrationType, InteractionContextType, ComponentType
 from .response import InteractionResponse, InteractionFollowup
-from .component import Component, ActionRow  # , SelectOption
 from src.errors import Forbidden, NotFound
 from src.discord.types import Snowflake
 from pydantic import model_validator
+from .component import ActionRow  # , SelectOption
 from .resolved import Resolved
 from src.models import project
 from src.db import ProxyMember
@@ -43,7 +43,7 @@ class ApplicationCommandInteractionData(RawBaseModel):
 
 class MessageComponentInteractionData(RawBaseModel):
     custom_id: str
-    component_type: int  # ComponentType
+    component_type: ComponentType
     values: dict | None = None  # list[SelectOption] | None = None
     resolved: Resolved | None = None
 
@@ -71,7 +71,7 @@ class Interaction(RawBaseModel):
     id: Snowflake
     application_id: Snowflake
     type: InteractionType
-    data: ApplicationCommandInteractionData | ModalSubmitInteractionData | MessageComponentInteractionData | None = None
+    data: ApplicationCommandInteractionData | MessageComponentInteractionData | ModalSubmitInteractionData | None = None
     guild: Guild | None = None
     guild_id: Snowflake | None = None
     channel: Channel | None = None

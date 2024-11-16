@@ -36,16 +36,16 @@ class StandardExport(BaseExport):
     groups: list[Group] = Field(default_factory=list)
     members: list[Member] = Field(default_factory=list)
 
-    async def to_plural(self) -> PluralExport:
+    def to_plural(self) -> PluralExport:
         from .plural import PluralExport
-        return await PluralExport.from_standard(self, self.logs)
+        return PluralExport.from_standard(self, self.logs)
 
-    async def to_pluralkit(self) -> PluralKitExport:
+    def to_pluralkit(self) -> PluralKitExport:
         # from .pluralkit import PluralKitExport
         # return await PluralKitExport.from_standard(self, self.logs)
         ...  # ? would be a lot of effort, so maybe not
 
-    async def to_tupperbox(self) -> TupperboxExport:
+    def to_tupperbox(self) -> TupperboxExport:
         # from .tupperbox import TupperboxExport
         # return await TupperboxExport.from_standard(self, self.logs)
         ...  # ? would be a lot of effort, so maybe not

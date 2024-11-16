@@ -1,15 +1,16 @@
 from __future__ import annotations
-from src.db import ApiKey, Group, ProxyMember, Message, Latch, Reply
-from pydantic import BaseModel, Field
+from src.db import ApiKey, Group, ProxyMember, Message, Latch, Reply, CFCDNProxy
+from src.core.session import session
 from beanie import PydanticObjectId
 from urllib.parse import urlparse
+from asyncio import gather, sleep
 from typing import TYPE_CHECKING
 from asyncio import create_task
 from src.models import project
 from datetime import datetime
 from .base import BaseExport
 from .log import LogMessage
-from asyncio import gather
+from pydantic import Field
 
 if TYPE_CHECKING:
     from .standard import StandardExport
@@ -23,13 +24,6 @@ class PluralExport(BaseExport):
     messages: list[Message]
     latches: list[Latch]
     replies: list[Reply]
-
-    @property
-    def logs(self) -> list[LogMessage | str]:
-        if getattr(self, '_logs', None) is None:
-            self._logs: list[LogMessage | str] = []
-
-        return self._logs
 
     @property
     def avatar_map(self) -> dict[PydanticObjectId, str]:
@@ -64,7 +58,7 @@ class PluralExport(BaseExport):
         )
 
     @classmethod
-    async def from_standard(
+    def from_standard(
         cls,
         standard: StandardExport,
         logs: list[LogMessage | str]
@@ -83,24 +77,26 @@ class PluralExport(BaseExport):
         for member in standard.members:
             if len(member.name) > 80:
                 self.logs.append(
-                    LogMessage.MEMBER_NAME_TOO_LONG.format(member.name))
+                    LogMessage.MEMBER_NAME_TOO_LONG.format(member_name=member.name))
                 continue
 
             proxy_tags = []
 
             if len(member.proxy_tags) > 15:
                 self.logs.append(
-                    LogMessage.TOO_MANY_TAGS.format(member.name))
+                    LogMessage.TOO_MANY_TAGS.format(member_name=member.name))
 
             for tag in member.proxy_tags[:15]:
                 if len(tag.prefix) > 50 or len(tag.suffix) > 50:
                     self.logs.append(
-                        LogMessage.TAG_TOO_LONG.format(member.name, tag.prefix, tag.suffix))
+                        LogMessage.TAG_TOO_LONG.format(
+                            member_name=member.name, prefix=tag.prefix, suffix=tag.suffix
+                        ))
                     continue
 
                 if not tag.prefix and not tag.suffix:
                     self.logs.append(
-                        LogMessage.TAG_NO_PREFIX_OR_SUFFIX.format(member.name))
+                        LogMessage.TAG_NO_PREFIX_OR_SUFFIX.format(member_name=member.name))
                     continue
 
                 proxy_tags.append(
@@ -125,23 +121,30 @@ class PluralExport(BaseExport):
             ported_members[ported_member.id] = ported_member
             id_map[member.id] = ported_member.id
 
+        name_counts = {}
+
         for group in standard.groups:
             if len(group.name) > 45:
                 self.logs.append(
-                    LogMessage.GROUP_NAME_TOO_LONG.format(group.name))
+                    LogMessage.GROUP_NAME_TOO_LONG.format(group_name=group.name))
                 continue
 
             if group.tag and len(group.tag) > 79:
                 self.logs.append(
-                    LogMessage.GROUP_TAG_TOO_LONG.format(group.tag))
+                    LogMessage.GROUP_TAG_TOO_LONG.format(
+                        group_name=group.name, tag=group.tag))
                 continue
 
+            name_count = name_counts.get(group.name, 0)
+
             ported_group = Group(
-                name=group.name,
+                name=f'{group.name}-{name_count}' if name_count else group.name,
                 accounts=set(),
                 avatar=None,
                 tag=group.tag
             )
+
+            name_counts[group.name] = name_count + 1
 
             for member in group.members:
                 ported_group.members.add(id_map[member])
@@ -151,11 +154,37 @@ class PluralExport(BaseExport):
 
             self.groups.append(ported_group)
 
+        groupless_members = [
+            member
+            for member in standard.members
+            if member.id not in [
+                member_id
+                for group in standard.groups
+                for member_id in group.members
+            ]
+        ]
+
+        if groupless_members:
+            for group in self.groups:
+                if group.name == 'default':
+                    break
+            else:
+                group = Group(
+                    name='default',
+                    accounts=set(),
+                    avatar=None,
+                    tag=None
+                )
+                self.groups.append(group)
+
+            for member in groupless_members:
+                group.members.add(id_map[member.id])
+
         self.members.extend(ported_members.values())
 
         return self
 
-    async def to_standard(self) -> StandardExport:
+    def to_standard(self) -> StandardExport:
         from .standard import StandardExport
         id_map = {}
 
@@ -211,28 +240,61 @@ class PluralExport(BaseExport):
             for group in existing_groups.values()
         }
 
-        for group in self.groups:
-            if group.name in existing_groups:
+        existing_members.update({
+            group.name: {}
+            for group in self.groups
+            if group.name not in existing_members
+        })
+
+        member_map = {
+            member.id: member
+            for member in self.members+[
+                member
+                for d in existing_members.values()
+                for member in d.values()
+            ]
+        }
+
+        for local_group in self.groups:
+            changes_made = False
+            if local_group.name in existing_groups:
                 self.logs.append(
-                    LogMessage.GROUP_EXISTS.format(group.name))
-                continue
+                    LogMessage.GROUP_EXISTS.format(group_name=local_group.name))
 
-            group.accounts = {account_id}
-            if (url := self.avatar_map.get(group.id)) is not None:
-                tasks.append(self._save_object_with_avatar(group, url))
+                group = existing_groups[local_group.name]
             else:
-                tasks.append(group.save())
+                local_group.accounts = {account_id}
+                group = local_group
+                changes_made = True
 
-        for member in self.members:
-            if member.name in existing_members.get(member.group.name, {}):
-                self.logs.append(
-                    LogMessage.MEMBER_EXISTS.format(member.name, member.group.name))
-                continue
+            for member_id in local_group.members:
+                member = member_map[member_id]
 
-            if (url := self.avatar_map.get(member.id)) is not None:
-                tasks.append(self._save_object_with_avatar(member, url))
-            else:
-                tasks.append(member.save())
+                if member.name in existing_members[group.name]:
+                    self.logs.append(
+                        LogMessage.MEMBER_EXISTS.format(
+                            member_name=member.name, group_name=group.name))
+                    continue
+
+                group.members.add(member.id)
+                changes_made = True
+
+                tasks.append(
+                    self._save_object_with_avatar(member, url)
+                    if (url := self.avatar_map.get(member_id)) is not None
+                    else member.save()
+                )
+
+            if changes_made:
+                tasks.append(
+                    self._save_object_with_avatar(group, url)
+                    if (url := self.avatar_map.get(group.id)) is not None
+                    else group.save()
+                )
+
+        if not tasks:
+            self.logs.append(LogMessage.NOTHING_IMPORTED)
+            return self.logs
 
         await gather(*tasks)
 
@@ -245,14 +307,16 @@ class PluralExport(BaseExport):
             project.import_proxy_channel_id,
             content=url)
 
-        if not message.embeds:
-            self.logs.append(
-                LogMessage.AVATAR_FAILED.format(object_type, object_name))
-            return None
+        for _ in range(2):
+            if message.embeds and (message.embeds[0].image or message.embeds[0].thumbnail):
+                break
 
-        if message.embeds[0].image is None and message.embeds[0].thumbnail is None:
-            self.logs.append(
-                LogMessage.AVATAR_FAILED.format(object_type, object_name))
+            await sleep(1)
+            message = await DiscordMessage.fetch(project.import_proxy_channel_id, message.id)
+        else:
+            create_task(message.delete())
+            self.logs.append(LogMessage.AVATAR_FAILED.format(
+                object_type=object_type, object_name=object_name))
             return None
 
         image = message.embeds[0].image or message.embeds[0].thumbnail
@@ -260,7 +324,26 @@ class PluralExport(BaseExport):
 
         create_task(message.delete())
 
-        return image.url
+        async with session.get(image.url) as resp:
+            content_length = resp.headers.get('Content-Length')
+            if content_length and int(content_length) > 10_485_760:
+                self.logs.append(LogMessage.AVATAR_FAILED.format(
+                    object_type=object_type, object_name=object_name))
+                return None
+
+            data = bytearray()
+
+            async for chunk in resp.content.iter_chunked(8192):
+                data.extend(chunk)
+
+                if len(data) > 10_485_760:
+                    self.logs.append(LogMessage.AVATAR_FAILED.format(
+                        object_type=object_type, object_name=object_name))
+                    return None
+
+        proxy = await CFCDNProxy(target_url=url, data=bytes(data)).save()
+
+        return proxy.proxy_url
 
     async def _save_object_with_avatar(self, object: ProxyMember | Group, url: str | None) -> None:
         if url is None:
@@ -271,23 +354,29 @@ class PluralExport(BaseExport):
         object_name = object.name
 
         match parsed.hostname:
-            case 'cdn.discordapp.com':
+            case 'cdn.discordapp.com' | 'media.discordapp.net':
                 url = await self._refresh_discord_image(object_type, object_name, url)
             case 'cdn.plural.gg' | 'cdn.pluralkit.me' | 'cdn.tupperbox.app':
-                pass
+                url = 'pass'
             case _:  # ? might restrict avatar sources later
                 pass
 
         if url is None:
             self.logs.append(
-                LogMessage.AVATAR_FAILED.format(object_type, object_name))
+                LogMessage.AVATAR_FAILED.format(
+                    object_type=object_type, object_name=object_name))
+            return None
+
+        if url == 'pass':
+            await object.save()
             return None
 
         # ? set_avatar calls a save at the end
         try:
             await object.set_avatar(url)
-        except Exception as e:
+        except Exception:
             self.logs.append(
-                LogMessage.AVATAR_FAILED.format(object_type, object_name))
+                LogMessage.AVATAR_FAILED.format(
+                    object_type=object_type, object_name=object_name))
         else:
             await object.save()

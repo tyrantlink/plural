@@ -1,11 +1,14 @@
 from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent, Interaction, InteractionType
 from src.core.auth import discord_key_validator, gateway_key_validator
 from fastapi import APIRouter, HTTPException, Depends
+from src.discord.http import _get_mime_type_for_image
 from fastapi.responses import Response, JSONResponse
 from src.discord.types import ListenerType
+from src.db import HTTPCache, CFCDNProxy
 from src.discord.listeners import emit
-from asyncio import create_task
-from src.db import HTTPCache
+from asyncio import create_task, sleep
+from src.core.session import session
+from src.models import project
 
 router = APIRouter(prefix='/discord', tags=['Discord'])
 PONG = JSONResponse({'type': 1})
@@ -82,3 +85,21 @@ async def post__event(
     create_task(task)
 
     return Response(event.name, status_code=200)
+
+
+@router.get(
+    '/imageproxy/{proxy_id}',
+    include_in_schema=False)
+async def get__imageproxy(
+    proxy_id: str
+) -> Response:
+
+    proxy = await CFCDNProxy.get(proxy_id)
+
+    if proxy is None:
+        raise HTTPException(404, 'image not found')
+
+    return Response(
+        content=proxy.data,
+        media_type=_get_mime_type_for_image(proxy.data[:16])
+    )

@@ -13,6 +13,7 @@ class ApiToken(Document):
 
     class Settings:
         name = 'api_tokens'
+        use_cache = True
         validate_on_save = True
         use_state_management = True
         cache_expiration_time = timedelta(minutes=10)

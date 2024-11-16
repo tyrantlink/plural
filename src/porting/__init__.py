@@ -3,4 +3,4 @@ from .pluralkit import PluralKitExport
 from .tupperbox import TupperboxExport
 from .standard import StandardExport
 from .plural import PluralExport
-from enum import Enum
+from .log import LogMessage

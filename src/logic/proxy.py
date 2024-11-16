@@ -1,4 +1,4 @@
-from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, ChannelType, AllowedMentions, StickerFormatType, Embed
+from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType
 from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage

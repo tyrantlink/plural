@@ -1,5 +1,5 @@
 from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType
-from src.logic.modals.userproxy import umodal_send, umodal_edit
+from src.components.userproxy import umodal_send, umodal_edit
 from src.db import Reply, UserProxyInteraction
 from src.errors import InteractionError
 from src.models import project
@@ -188,7 +188,8 @@ async def umessage_edit(
                 message='\n\n'.join([
                     'userproxy edit command is deprecated and will be removed in the future',
                     'please add /plu/ral as a user app to edit messages',
-                    f'you can add /plu/ral by clicking [here](https://discord.com/oauth2/authorize?client_id={project.application_id})',
+                    f'you can add /plu/ral by clicking [here](https://discord.com/oauth2/authorize?client_id={
+                        project.application_id})',
                     'once you have added /plu/ral, you can run /member userproxy sync to remove this command'
                 ])
             )

@@ -1,4 +1,4 @@
-from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, Interaction, ApplicationCommandInteractionData, MessageComponentInteractionData, ModalSubmitInteractionData, ApplicationCommandOptionType, Snowflake, ApplicationCommandType, ActionRow, TextInput, CustomIdExtraType, User, Message, InteractionType, ApplicationCommandInteractionDataOption
+from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, Interaction, ApplicationCommandInteractionData, MessageComponentInteractionData, ModalSubmitInteractionData, ApplicationCommandOptionType, Snowflake, ApplicationCommandType, ActionRow, TextInput, CustomIdExtraType, User, Message, InteractionType, ApplicationCommandInteractionDataOption, ComponentType
 from src.discord.commands import commands, ApplicationCommandScope
 from src.db import Message as DBMessage, ProxyMember, Group
 from src.discord.models.modal import CustomIdExtraTypeType
@@ -247,12 +247,22 @@ async def parse_custom_id(
 
 async def _on_message_component(interaction: Interaction) -> None:
     assert isinstance(interaction.data, MessageComponentInteractionData)
-    print('message component')
-    print(interaction.data._raw)
 
     component_name, args = await parse_custom_id(
         interaction.data.custom_id
     )
+
+    triggered_component = components.get(component_name)
+
+    if triggered_component is None or triggered_component.callback is None:
+        raise ValueError(f'no component found for {component_name}')
+
+    match interaction.data.component_type:
+        case ComponentType.BUTTON:
+            await triggered_component.callback(interaction, *args)
+        case _:
+            raise NotImplementedError(
+                f'unsupported component type {interaction.data.component_type}')
 
 
 async def _on_modal_submit(interaction: Interaction) -> None:

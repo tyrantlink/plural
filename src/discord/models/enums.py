@@ -663,3 +663,17 @@ class CustomIdExtraType(Enum, metaclass=CharEnumMeta):
 class ApplicationCommandScope(Enum):
     PRIMARY = 0
     USERPROXY = 1
+
+
+class ButtonStyle(Enum):
+    PRIMARY = 1
+    SECONDARY = 2
+    SUCCESS = 3
+    DANGER = 4
+    LINK = 5
+    PREMIUM = 6
+
+    BLURPLE = PRIMARY
+    GREY = SECONDARY
+    GREEN = SUCCESS
+    RED = DANGER

@@ -250,8 +250,9 @@ class Webhook(RawBaseModel):
                 mode='json') for embed in embeds]
 
         if components:
-            json['components'] = [component.model_dump(
-                mode='json') for component in components]
+            json['components'] = [
+                component.as_payload()
+                for component in components]
 
         if allowed_mentions:
             json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')

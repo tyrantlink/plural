@@ -1,5 +1,4 @@
-from src.discord import modal, TextInput, Interaction, TextInputStyle, MessageFlag, Webhook, Embed, Message, Application
-from src.logic.proxy import get_proxy_webhook
+from src.discord import modal, TextInput, Interaction, TextInputStyle, Embed, Application
 from src.errors import InteractionError
 from src.models import USERPROXY_FOOTER
 from src.db import ProxyMember

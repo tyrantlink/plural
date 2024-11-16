@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 from .log import LogMessage
-from orjson import dumps
 from typing import Self
 
 

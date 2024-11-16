@@ -10,6 +10,7 @@ from .role import RoleSubscriptionData
 from .application import Application
 from .attachment import Attachment
 from .component import Component
+from src.errors import Forbidden
 from .reaction import Reaction
 from .base import RawBaseModel
 from datetime import datetime
@@ -120,7 +121,10 @@ class Message(RawBaseModel):
         if self.channel_id is None:
             return
 
-        self.channel = await Channel.fetch(self.channel_id)
+        try:
+            self.channel = await Channel.fetch(self.channel_id)
+        except Forbidden:
+            return
 
         if self.channel.guild_id is None:
             return
@@ -144,8 +148,8 @@ class Message(RawBaseModel):
     @classmethod
     async def fetch(
         cls,
-        channel_id: Snowflake,
-        message_id: Snowflake,
+        channel_id: Snowflake | int,
+        message_id: Snowflake | int,
         populate: bool = True
     ) -> Message:
         message = cls(
@@ -191,8 +195,9 @@ class Message(RawBaseModel):
             json['embed'] = [embed.model_dump(mode='json') for embed in embeds]
 
         if components:
-            json['components'] = [component.model_dump(
-                mode='json') for component in components]
+            json['components'] = [
+                component.as_payload()
+                for component in components]
 
         if sticker_ids:
             json['sticker_ids'] = sticker_ids
@@ -273,8 +278,9 @@ class Message(RawBaseModel):
             json['embed'] = [embed.model_dump(mode='json') for embed in embeds]
 
         if components:
-            json['components'] = [component.model_dump(
-                mode='json') for component in components]
+            json['components'] = [
+                component.as_payload()
+                for component in components]
 
         if allowed_mentions:
             json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')

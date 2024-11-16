@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 from beanie import PydanticObjectId
 from enum import Enum
 

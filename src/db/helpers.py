@@ -1,6 +1,5 @@
 from __future__ import annotations
 from pydantic_core import CoreSchema, core_schema
-from pydantic.json_schema import JsonSchemaValue
 from pydantic import GetJsonSchemaHandler
 from aiohttp import MultipartWriter
 from beanie import PydanticObjectId

@@ -1,5 +1,5 @@
 from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Channel
-from src.db import ProxyMember, Group, GroupShare, Image, ImageExtension
+from src.db import ProxyMember, Group, GroupShare, ImageExtension
 from src.errors import InteractionError
 from asyncio import gather
 
@@ -426,7 +426,8 @@ async def slash_group_channels_add(
         group.save(),
         interaction.response.send_message(
             embeds=[Embed.success(
-                f'added channel {channel.mention} to group `{group.name}` channel restrictions'
+                f'added channel {channel.mention} to group `{
+                    group.name}` channel restrictions'
             )]
         )
     )

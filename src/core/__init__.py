@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Response, Request, WebSocket
-from logging import getLogger, Filter, LogRecord
+# from logging import getLogger, Filter, LogRecord
 from contextlib import asynccontextmanager
 from src.docs import root as docs
 from src.models import project
@@ -36,17 +36,19 @@ async def lifespan(app: FastAPI):
 
     # ? start running bot code
     import src.logic
+    import src.commands
     from src.discord.commands import sync_commands
 
     await sync_commands()
 
     from src.routers import image, latch, member, group, discord
     app.include_router(discord.router)
-    # app.include_router(message.router) #! on hold until discord library is implemented
-    app.include_router(member.router)
-    app.include_router(latch.router)
-    app.include_router(image.router)
-    app.include_router(group.router)
+    #! non-discord routes need to be rewritten, i'll do it later
+    # app.include_router(message.router)
+    # app.include_router(member.router)
+    # app.include_router(latch.router)
+    # app.include_router(image.router)
+    # app.include_router(group.router)
 
     yield
 

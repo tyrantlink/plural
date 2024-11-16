@@ -99,7 +99,7 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
                 avatar_url=self_user.avatar_url
             ))
 
-    if not isinstance(error, InteractionError):
+    if not isinstance(error, (InteractionError, ConversionError)):
         logfire.error(
             'interaction error',
             _exc_info=error.with_traceback(error.__traceback__),

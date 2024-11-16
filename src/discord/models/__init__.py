@@ -23,8 +23,9 @@ from .user import *
 from .webhook import *
 
 # ? to handle circular imports
-Message.model_rebuild()
 Resolved.model_rebuild()
+Message.model_rebuild()
+Button.model_rebuild()
 Modal.model_rebuild()
 
 
@@ -64,6 +65,8 @@ __all__ = (
     'VideoQualityMode',
     # component.py
     'ActionRow',
+    'Button',
+    'ButtonStyle',
     'Component',
     'ComponentType',
     'TextInput',

@@ -12,4 +12,5 @@ class LogMessage(StrEnum):
     MEMBER_NAME_TOO_LONG = 'E: member name "{member_name}" is too long; skipping'
     GROUP_NAME_TOO_LONG = 'E: group name "{group_name}" is too long; skipping'
     AVATAR_FAILED = 'E: failed to download avatar for {object_type} {object_name}'
-    GROUP_TAG_TOO_LONG = 'E: group tag "{tag}" is too long; skipping'
+    GROUP_TAG_TOO_LONG = 'E: group "{group_name}" tag "{tag}" is too long; skipping'
+    NOTHING_IMPORTED = 'E: nothing was imported'

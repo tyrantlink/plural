@@ -1,6 +1,6 @@
 from beanie import Document, PydanticObjectId
-from pydantic import Field
 from .member import ProxyMember
+from pydantic import Field
 
 
 class Latch(Document):

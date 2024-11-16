@@ -53,9 +53,10 @@ class Group(Document):
 
     class Settings:
         name = 'groups'
+        use_cache = True
         validate_on_save = True
         use_state_management = True
-        cache_expiration_time = timedelta(seconds=2)
+        cache_expiration_time = timedelta(seconds=5)
         indexes = ['accounts', 'members', 'name']
         bson_encoders = {ImageId: bytes}
 

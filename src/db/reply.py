@@ -15,6 +15,7 @@ class Reply(Document):
 
     class Settings:
         name = 'replies'
+        use_cache = True
         validate_on_save = True
         use_state_management = True
         cache_expiration_time = timedelta(seconds=300)
