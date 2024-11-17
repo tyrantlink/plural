@@ -744,7 +744,7 @@ async def slash_member_userproxy_new(
         interaction.response.send_message(
             embeds=[Embed.success('\n'.join([
                 f'userproxy created for member `{member.name}`\n',
-                '[add the bot to your account](https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands)'
+                f'[add the bot to your account](https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands)'
             ]))]
         )
     )
