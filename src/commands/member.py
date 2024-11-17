@@ -733,6 +733,14 @@ async def slash_member_userproxy_new(
             ])
         )
 
+    member.userproxy = ProxyMember.UserProxy(
+        bot_id=bot_id,
+        public_key=app.verify_key,
+        token=bot_token if store_token else None,
+        command=proxy_command,
+        include_group_tag=include_group_tag
+    )
+
     await member.save()
 
     await gather(
@@ -744,7 +752,7 @@ async def slash_member_userproxy_new(
         interaction.response.send_message(
             embeds=[Embed.success('\n'.join([
                 f'userproxy created for member `{member.name}`\n',
-                f'[add the bot to your account](https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands)'
+                '[add the bot to your account](https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands)'
             ]))]
         )
     )
