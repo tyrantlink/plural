@@ -118,12 +118,14 @@ async def _sync_commands(
     working_commands = commands[scope]
 
     if scope == ApplicationCommandScope.USERPROXY:
+        working_commands = deepcopy(working_commands)
         # ? userproxy edit is deprecated, will be removed from codebase in the future
         working_commands.pop('edit', None)
 
     # ? inject custom userproxy 'proxy' command name
     if scope == ApplicationCommandScope.USERPROXY and 'proxy' in working_commands:
-        working_commands = deepcopy(working_commands)
+        # ? move the deepcopy to here once the edit command is removed
+        # working_commands = deepcopy(working_commands)
 
         if member and member.userproxy and member.userproxy.command:
             command = working_commands.pop('proxy')
