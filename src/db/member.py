@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .helpers import avatar_setter, avatar_deleter, ImageId
+from .helpers import avatar_getter, avatar_setter, avatar_deleter, ImageId
 from pydantic import Field, model_validator, BaseModel
 from typing import Annotated, TYPE_CHECKING, Any
 from beanie import Document, PydanticObjectId
@@ -117,6 +117,9 @@ class ProxyMember(Document):
             raise ValueError(f'member {self.id} is not in any group')
 
         return group
+
+    async def get_avatar(self) -> bytes | None:
+        return await avatar_getter(self)
 
     async def set_avatar(self, url: str) -> None:
         await avatar_setter(self, url)
