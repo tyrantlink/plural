@@ -4,9 +4,9 @@ from src.discord.commands import sync_commands, _put_all_commands
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT
 from src.db import ProxyMember, Group, ImageExtension
 from src.components import modal_plural_member_bio
+from src.models import project, MemberUpdateType
 from src.discord.http import _get_bot_id
 from regex import match, UNICODE
-from src.models import project
 from asyncio import gather
 
 
@@ -31,6 +31,87 @@ member_userproxy = member.create_subgroup(
     name='userproxy',
     description='manage a member\'s userproxy'
 )
+
+
+async def _userproxy_sync(
+    member: ProxyMember,
+    changes: set[MemberUpdateType],
+    author_name: str,
+    token: str | None = None
+) -> Application:
+    if member.userproxy is None:
+        raise InteractionError(
+            f'member `{member.name}` does not have a userproxy')
+
+    bot_token = token or member.userproxy.token
+
+    if bot_token is None:
+        raise InteractionError(
+            'bot token for userproxy `{member.name}` is not stored; provide a bot token to sync the userproxy')
+
+    bot_id = _get_bot_id(bot_token)
+    app_patch: dict = {
+        'interactions_endpoint_url': f'{project.api_url}/discord/interaction'}
+    bot_patch: dict = {}
+
+    try:
+        app = await Application.fetch_current(bot_token)
+    except (Unauthorized, NotFound, Forbidden):
+        raise InteractionError(
+            '\n\n'.join([
+                f'invalid bot token; may be expired',
+                f'please go to the [discord developer portal](https://discord.com/developers/applications/{bot_id}/bot) to reset the token',
+                'then, use `/member userproxy edit` to update the token, make sure to set `store_token` to True!'
+            ])
+        )
+
+    if app.bot is None:
+        raise InteractionError('bot not found')
+
+    for change in changes:
+        match change:
+            case MemberUpdateType.NAME:
+                userproxy_name = (
+                    (member.name + (f' {(await member.get_group()).tag}' or ''))
+                    if member.userproxy.include_group_tag else
+                    member.name
+                )
+
+                if len(userproxy_name) > 32:
+                    raise InteractionError(
+                        'members with userproxies must have names less than or equal to 32 characters in length (including group tag, if included)')
+
+                bot_patch['username'] = userproxy_name
+            case MemberUpdateType.AVATAR:
+                avatar = None
+                if member.avatar is not None:
+                    avatar = await member.get_avatar()
+
+                if not avatar and (group := await member.get_group()).avatar is not None:
+                    avatar = await group.get_avatar()
+
+                if avatar is not None:
+                    app_patch['icon'] = avatar
+                    bot_patch['avatar'] = avatar
+            case MemberUpdateType.COMMAND:
+                await sync_commands(member.userproxy.token)
+            case MemberUpdateType.BIO:
+                if not app.description:
+                    app_patch['description'] = USERPROXY_FOOTER.format(
+                        username=author_name)
+            case _:
+                continue
+
+    await gather(
+        app.patch(
+            bot_token,
+            **app_patch),
+        app.bot.patch(
+            bot_token,
+            **bot_patch)
+    )
+
+    return app
 
 
 @member.command(
@@ -66,7 +147,7 @@ async def slash_member_new(
     ]
 
     if group.tag is not None:
-        if len(name+group.tag) > 80:
+        if len(name+group.tag) > 79:
             embeds.append(Embed.warning('\n\n'.join([
                 f'member name with group tag is longer than 80 characters.',
                 'display name will be truncated when proxying'
@@ -162,20 +243,29 @@ async def slash_member_set_name(
     member: ProxyMember,
     name: str
 ) -> None:
-    if member.userproxy is not None and len(name) > 32:
-        raise InteractionError(
-            'members with userproxies must have names less than 32 characters')
+    group = await member.get_group()
+
+    if member.userproxy is not None:
+        userproxy_name = (
+            name + (f' {(await member.get_group()).tag}' or '')
+            if member.userproxy.include_group_tag else
+            name)
+
+        if len(userproxy_name) > 32:
+            raise InteractionError(
+                'members with userproxies must have names less than 32 characters (including group tag, if included)')
 
     old_name, member.name = member.name, name
 
-    group = await member.get_group()
-
     await gather(
         member.save(),
+        _userproxy_sync(
+            member,
+            {MemberUpdateType.NAME},
+            interaction.author_name),
         interaction.response.send_message(
             embeds=[Embed.success(
-                f'member `{old_name}` of group `{
-                    group.name}` was renamed to `{name}`'
+                f'member `{old_name}` of group `{group.name}` was renamed to `{name}`'
             )]
         ))
 
@@ -217,8 +307,7 @@ async def slash_member_set_group(
         group.save(),
         interaction.response.send_message(
             embeds=[Embed.success(
-                f'member `{member.name}` of group `{
-                    old_group.name}` was moved from group `{group.name}`'
+                f'member `{member.name}` of group `{old_group.name}` was moved from group `{group.name}`'
             )]
         )
     )
@@ -281,6 +370,13 @@ async def slash_member_set_avatar(
         embeds=[Embed.success(response)]
     )
 
+    if member.userproxy and member.userproxy.token:
+        await _userproxy_sync(
+            member,
+            {MemberUpdateType.AVATAR},
+            interaction.author_name
+        )
+
 
 @member_set.command(
     name='bio',
@@ -290,7 +386,7 @@ async def slash_member_set_avatar(
             type=ApplicationCommandOptionType.STRING,
             name='userproxy',
             max_length=USERPROXY_FOOTER_LIMIT,
-            description='member to give new bio',
+            description='member to give new bio (you\'ll type it in a prompt)',
             required=True,
             autocomplete=True),
         ApplicationCommandOption(
@@ -591,6 +687,11 @@ async def slash_member_tags_clear(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='store_token',
             description='whether to store bot token, required for some features (see /help) (default: True)',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='include_group_tag',
+            description='include group tag in userproxy name (default: False)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -599,7 +700,8 @@ async def slash_member_userproxy_new(
     member: ProxyMember,
     bot_token: str,
     proxy_command: str = 'proxy',
-    store_token: bool = True
+    store_token: bool = True,
+    include_group_tag: bool = False
 ) -> None:
     bot_id = _get_bot_id(bot_token)
     proxy_command = proxy_command.lstrip('/')
@@ -607,10 +709,6 @@ async def slash_member_userproxy_new(
     if member.userproxy is not None:
         raise InteractionError(
             f'member `{member.name}` already has a userproxy; use `/member userproxy remove` to remove it')
-
-    if len(member.name) > 32:
-        raise InteractionError(
-            'members with userproxies must have names less than or equal to 32 characters in length')
 
     if not match(COMMAND_NAME_PATTERN, proxy_command, UNICODE):
         raise InteractionError(
@@ -635,48 +733,28 @@ async def slash_member_userproxy_new(
             ])
         )
 
-    if app.bot is None:
-        raise InteractionError('bot not found')
-
     member.userproxy = ProxyMember.UserProxy(
         bot_id=bot_id,
         public_key=app.verify_key,
         token=bot_token if store_token else None,
-        command=proxy_command
+        command=proxy_command,
+        include_group_tag=include_group_tag
     )
 
-    await member.save()
-
-    avatar = None
-    if not avatar and member.avatar is not None:
-        avatar = await member.get_avatar()
-
-    if not avatar and (group := await member.get_group()).avatar is not None:
-        avatar = await group.get_avatar()
-
-    app_patch: dict = {
-        'interactions_endpoint_url': f'{project.api_url}/discord/interaction'
-    }
-    bot_patch: dict = {
-        'username': member.name
-    }
-
-    if not app.description:
-        app_patch['description'] = USERPROXY_FOOTER.format(
-            username=interaction.author_name).strip()
-
-    if avatar is not None:
-        app_patch['icon'] = avatar
-        bot_patch['avatar'] = avatar
+    await _userproxy_sync(
+        member,
+        {MemberUpdateType.NAME, MemberUpdateType.COMMAND},
+        interaction.author_name,
+        bot_token
+    )
 
     await gather(
-        app.patch(
-            bot_token,
-            **app_patch),
-        app.bot.patch(
-            bot_token,
-            **bot_patch),
-        sync_commands(bot_token),
+        member.save(),
+        _userproxy_sync(
+            member,
+            {MemberUpdateType.AVATAR},
+            interaction.author_name,
+            bot_token),
         interaction.response.send_message(
             embeds=[Embed.success('\n'.join([
                 f'userproxy created for member `{member.name}`\n',
@@ -708,67 +786,19 @@ async def slash_member_userproxy_sync(
     userproxy: ProxyMember,
     bot_token: str | None = None
 ) -> None:
-    if userproxy.userproxy is None:
-        raise InteractionError(
-            f'member `{member.name}` does not have a userproxy')
+    await _userproxy_sync(
+        userproxy,
+        {MemberUpdateType.NAME, MemberUpdateType.COMMAND},
+        interaction.author_name,
+        bot_token
+    )
 
-    token = bot_token or userproxy.userproxy.token
-
-    if token is None:
-        raise InteractionError(
-            f'bot token for userproxy `{userproxy.name}` is not stored; provide a bot token to sync the userproxy')
-
-    try:
-        app = await Application.fetch_current(token)
-    except (Unauthorized, NotFound, Forbidden):
-        bot_id = _get_bot_id(token)
-
-        raise InteractionError(
-            '\n\n'.join([
-                f'invalid bot token; may be expired',
-                f'please go to the [discord developer portal](https://discord.com/developers/applications/{bot_id}/bot) to reset the token',
-                'then, use `/member userproxy edit` to update the token, make sure to set `store_token` to True!'
-            ])
-        )
-
-    if app.bot is None:
-        raise InteractionError('bot not found')
-
-    avatar = None
-    if not avatar and userproxy.avatar is not None:
-        avatar = await userproxy.get_avatar()
-
-    if not avatar and (group := await userproxy.get_group()).avatar is not None:
-        avatar = await group.get_avatar()
-
-    app_patch: dict = {
-        'interactions_endpoint_url': f'{project.api_url}/discord/interaction'
-    }
-    bot_patch: dict = {
-        'username': userproxy.name
-    }
-
-    if not app.description:
-        app_patch['description'] = USERPROXY_FOOTER.format(
-            username=interaction.author_name)
-
-    if avatar is not None:
-        app_patch['icon'] = avatar
-        bot_patch['avatar'] = avatar
-
-    await gather(
-        app.patch(
-            token,
-            **app_patch),
-        app.bot.patch(
-            token,
-            **bot_patch),
-        sync_commands(token),
-        interaction.response.send_message(
-            embeds=[Embed.success(
+    await interaction.response.send_message(
+        embeds=[
+            Embed.success(
                 f'synced userproxy for member `{userproxy.name}`'
-            )]
-        )
+            )
+        ]
     )
 
 
@@ -796,6 +826,11 @@ async def slash_member_userproxy_sync(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='store_token',
             description='whether to store bot token, required for some features (see /help) (default: False)',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='include_group_tag',
+            description='include group tag in userproxy name (default: Unset)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -804,50 +839,38 @@ async def slash_member_userproxy_edit(
     userproxy: ProxyMember,
     proxy_command: str | None = None,
     bot_token: str | None = None,
-    store_token: bool = False
+    store_token: bool = False,
+    include_group_tag: bool | None = None
 ) -> None:
     if userproxy.userproxy is None:
         raise InteractionError(
             f'member `{member.name}` does not have a userproxy')
 
-    if userproxy.userproxy.token is None and bot_token is None:
-        raise InteractionError(
-            f'bot token for userproxy `{userproxy.name}` is not stored; provide a bot token to update the userproxy')
+    if proxy_command is not None:
+        proxy_command = proxy_command.lstrip('/')
 
-    update_token = store_token and bot_token is not None
+        if not match(COMMAND_NAME_PATTERN, proxy_command, UNICODE):
+            raise InteractionError(
+                'invalid proxy command\n\ncommands must be alphanumeric and may contain dashes and underscores')
 
-    if update_token:
+        userproxy.userproxy.command = proxy_command
+
+    if store_token and bot_token is not None:
         userproxy.userproxy.token = bot_token
 
-    if proxy_command is None:
-        await gather(
-            userproxy.save(),
-            interaction.response.send_message(
-                embeds=[Embed.success(
-                    f'updated userproxy token for member `{userproxy.name}`'
-                )]
-            )
-        )
-        return
-
-    proxy_command = proxy_command.lstrip('/')
-
-    if not match(COMMAND_NAME_PATTERN, proxy_command, UNICODE):
-        raise InteractionError(
-            'invalid proxy command\n\ncommands must be alphanumeric and may contain dashes and underscores')
-
-    userproxy.userproxy.command = proxy_command
-
-    await userproxy.save()
-
-    assert userproxy.userproxy.token is not None
+    if include_group_tag is not None:
+        userproxy.userproxy.include_group_tag = include_group_tag
 
     await gather(
-        sync_commands(userproxy.userproxy.token),
+        userproxy.save(),
+        _userproxy_sync(
+            userproxy,
+            {MemberUpdateType.NAME, MemberUpdateType.COMMAND},
+            interaction.author_name,
+            bot_token),
         interaction.response.send_message(
             embeds=[Embed.success(
-                f'updated userproxy command{
-                    ' and token' if update_token else ''} for member `{userproxy.name}`'
+                f'updated userproxy for member `{userproxy.name}`'
             )]
         )
     )

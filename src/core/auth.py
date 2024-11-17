@@ -2,8 +2,8 @@ from src.discord.models import Interaction, ApplicationIntegrationType
 from fastapi import Security, HTTPException, Request, Header
 from fastapi.security.api_key import APIKeyHeader
 from concurrent.futures import ThreadPoolExecutor
-from nacl.exceptions import BadSignatureError
 from src.db import ApiKey, ProxyMember, ApiToken
+from nacl.exceptions import BadSignatureError
 from typing import NamedTuple, Annotated
 from nacl.signing import VerifyKey
 from asyncio import get_event_loop

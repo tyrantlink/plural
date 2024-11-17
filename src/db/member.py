@@ -75,10 +75,8 @@ class ProxyMember(Document):
             description='the bot token, only stored when autosyncing is enabled')
         command: str | None = Field(
             'proxy', description='name of the proxy command')
-
-        @property
-        def autosync(self) -> bool:
-            return self.token is not None
+        include_group_tag: bool = Field(
+            False, description='whether to include group tags in the bot name')
 
     id: PydanticObjectId = Field(  # type: ignore
         default_factory=PydanticObjectId)

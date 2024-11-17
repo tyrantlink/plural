@@ -80,7 +80,7 @@ def live_discord_redaction(request: Request | WebSocket, attributes: dict[str, A
 
 if project.logfire_token:
     logfire.configure(
-        service_name='/plu/ral',
+        service_name='/plu/ral' + ('-dev' if project.dev_environment else ''),
         token=project.logfire_token,
         environment='development' if project.dev_environment else 'production',
         scrubbing=False if project.dev_environment else None,

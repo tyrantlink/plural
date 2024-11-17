@@ -513,7 +513,8 @@ async def process_proxy(
                 if message.channel.is_thread else
                 None),
             wait=True,
-            username=f'{member.name} {(group.tag or "")}'[:80],
+            username=(member.name +
+                      (f' {group.tag}' if group.tag else ""))[:80],
             avatar_url=member.avatar_url or group.avatar_url,
             embeds=[embed] if embed is not None else [],
             attachments=attachments,
@@ -533,7 +534,8 @@ async def process_proxy(
                 if message.channel.is_thread else
                 None),
             wait=True,
-            username=f'{member.name} {(group.tag or "")}'[:80],
+            username=(member.name +
+                      (f' {group.tag}' if group.tag else ""))[:80],
             avatar_url=member.avatar_url or group.avatar_url,
             embeds=[embed] if embed is not None else [],
             attachments=attachments,

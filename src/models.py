@@ -35,10 +35,11 @@ class Project(BaseModel):
         )
 
 
-class MemberUpdateType(Enum):  # ! use existing listener infrastructure
-    NAME = 1
-    AVATAR = 2
-    DESCRIPTION = 3
+class MemberUpdateType(Enum):
+    NAME = 0
+    AVATAR = 1
+    COMMAND = 2
+    BIO = 3
 
 
 class DebugMessage(StrEnum):
