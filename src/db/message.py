@@ -29,6 +29,9 @@ class Message(Document):
         description='the original id of the message; None if message sent through api')
     proxy_id: int = Field(description='the proxy id of the message')
     author_id: int = Field(description='the author id of the message')
+    reason: str = Field(
+        default='none given',
+        description='the reason the message was proxied')
     ts: datetime = Field(
         default_factory=datetime.utcnow,
         description='the timestamp of the message')

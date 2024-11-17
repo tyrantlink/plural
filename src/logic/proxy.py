@@ -89,7 +89,7 @@ def _ensure_proxy_preserves_mentions(check: Match) -> bool:
 async def get_proxy_for_message(
     message: MessageCreateEvent | Message,
     debug_log: list[DebugMessage | str] | None = None
-) -> tuple[ProxyMember, str, Latch | None] | tuple[None, None, None]:
+) -> tuple[ProxyMember, str, Latch | None, str] | tuple[None, None, None, None]:
     assert message.author is not None
     assert message.channel is not None
     assert message.guild is not None
@@ -109,18 +109,20 @@ async def get_proxy_for_message(
             channel = await Channel.fetch(channel.parent_id)
         except Forbidden:
             debug_log.append(DebugMessage.PARENT_CHANNEL_FORBIDDEN)
-            return None, None, None
+            return None, None, None, None
 
     channel_ids.discard(None)
 
+    debug_reason = []
+
     # ? get global latch if it exists
-    latch = await Latch.find_one({'user': message.author.id, 'guild': 0})
+    latch = await Latch.find_one({'user': message.author.id, 'guild': None})
 
     if latch is None or latch.enabled is False:
         # ? if it doesn't exist or is disabled, get the guild latch
         latch = await Latch.find_one({'user': message.author.id, 'guild': message.guild.id})
 
-    latch_return: tuple[ProxyMember, str, Latch] | None = None
+    latch_return: tuple[ProxyMember, str, Latch, str] | None = None
 
     for group in groups.copy():
         if (  # ? this is a mess, if the system restricts channels and the message isn't in one of them, skip
@@ -144,7 +146,11 @@ async def get_proxy_for_message(
             if latch and latch.enabled and latch.member == member.id:
                 # ? putting this here, if there are proxy tags given, prioritize them
                 # ? also having this check here ensures that channels are still checked
-                latch_return = member, message.content, latch
+                latch_return = member, message.content, latch, (
+                    DebugMessage.MATCHED_FROM_LATCH_GUILD
+                    if latch.guild == message.guild.id else
+                    DebugMessage.MATCHED_FROM_LATCH_GLOBAL
+                )
 
             for proxy_tag in member.proxy_tags:
                 if not proxy_tag.prefix and not proxy_tag.suffix:
@@ -170,12 +176,14 @@ async def get_proxy_for_message(
                         latch.member = member.id
                         await latch.save_changes()
 
-                    return member, check.group(2), latch
+                    return member, check.group(2), latch, (
+                        DebugMessage.MATCHED_FROM_TAGS.format(prefix, suffix)
+                    )
 
     if latch is None:
         debug_log.append(DebugMessage.AUTHOR_NO_TAGS)
 
-        return None, None, None
+        return None, None, None, None
 
     if latch_return is not None:
         return latch_return
@@ -183,7 +191,7 @@ async def get_proxy_for_message(
     if debug_log:
         debug_log.append(DebugMessage.AUTHOR_NO_TAGS_NO_LATCH)
 
-    return None, None, None
+    return None, None, None, None
 
 
 async def permission_check(
@@ -383,11 +391,14 @@ async def process_proxy(
 
         return False, None
 
-    member, proxy_content, latch = (
+    member, proxy_content, latch, reason = (
         await get_proxy_for_message(message, debug_log)
         if member is None else
-        (member, message.content, None)
+        (member, message.content, None, None)
     )
+
+    if debug_log and reason is not None:
+        debug_log.append(reason)
 
     if member is None or proxy_content is None:
         if debug_log and DebugMessage.AUTHOR_NO_TAGS_NO_LATCH not in debug_log:
@@ -552,7 +563,8 @@ async def process_proxy(
     await DBMessage(
         original_id=message.id,
         proxy_id=responses[1].id,
-        author_id=message.author.id
+        author_id=message.author.id,
+        reason=reason or 'none given'
     ).save()
 
     return True, app_emojis

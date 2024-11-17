@@ -61,6 +61,9 @@ class DebugMessage(StrEnum):
     SUCCESS = 'would have successfully proxied message, no errors found'
     ATTACHMENTS_AND_STICKERS = 'message had attachments and stickers, skipping proxy'
     INCOMPATIBLE_STICKERS = 'message had incompatible stickers, skipping proxy'
+    MATCHED_FROM_TAGS = 'matched from member proxy tags: {}text{}'
+    MATCHED_FROM_LATCH_GUILD = 'matched from sever autoproxy'
+    MATCHED_FROM_LATCH_GLOBAL = 'matched from global autoproxy'
 
 
 class APIResponse(StrEnum):

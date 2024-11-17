@@ -337,6 +337,12 @@ async def message_plural_proxy_info(interaction: Interaction, message: Message) 
         inline=False
     )
 
+    embed.add_field(
+        name='reason',
+        value=db_message.reason,
+        inline=False
+    )
+
     embed.set_footer(
         text=f'original message id: {
             db_message.original_id or 'sent through / plu/ral api'}'
