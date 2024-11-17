@@ -119,6 +119,8 @@ async def umessage_reply(
             modal=umodal_send.with_title(
                 f'reply to {
                     message.author.username if message.author else 'a message'}'
+            ).with_extra(
+                False
             ))
         return
 
