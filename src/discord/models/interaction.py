@@ -4,7 +4,7 @@ from .response import InteractionResponse, InteractionFollowup
 from src.errors import Forbidden, NotFound
 from src.discord.types import Snowflake
 from pydantic import model_validator
-from .component import ActionRow  # , SelectOption
+from .component import ActionRow
 from .resolved import Resolved
 from src.models import project
 from src.db import ProxyMember

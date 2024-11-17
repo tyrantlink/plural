@@ -4,7 +4,7 @@ from src.db import Message as DBMessage, ProxyMember, Group
 from src.discord.models.modal import CustomIdExtraTypeType
 from .converters import member_converter, group_converter
 from src.discord.listeners import listen, ListenerType
-from .proxy import process_proxy, get_proxy_webhook  # , handle_ping_reply
+from .proxy import process_proxy, get_proxy_webhook
 from src.discord.components import components
 from .autocomplete import on_autocomplete
 from beanie import PydanticObjectId

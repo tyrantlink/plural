@@ -6,9 +6,7 @@ from fastapi.responses import Response, JSONResponse
 from src.discord.types import ListenerType
 from src.db import HTTPCache, CFCDNProxy
 from src.discord.listeners import emit
-from asyncio import create_task, sleep
-from src.core.session import session
-from src.models import project
+from asyncio import create_task
 
 router = APIRouter(prefix='/discord', tags=['Discord'])
 PONG = JSONResponse({'type': 1})

@@ -1,10 +1,7 @@
-from src.discord import ActionRow, Interaction, Message, ButtonStyle, Component, Embed, Button
-from src.logic.proxy import get_proxy_webhook
+from src.discord import ActionRow, Interaction, ButtonStyle, Component, Embed, Button
 from src.discord.components import button
-from src.errors import InteractionError
 from src.models import project
 from functools import partial
-from asyncio import gather
 from copy import deepcopy
 
 __all__ = ('help_components',)

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Response, Request, WebSocket
-# from logging import getLogger, Filter, LogRecord
+from logging import getLogger, Filter, LogRecord
 from contextlib import asynccontextmanager
 from src.docs import root as docs
 from src.models import project
@@ -7,21 +7,21 @@ from typing import Any
 import logfire
 
 
-# class LocalHealthcheckFilter(Filter):
-#     def filter(self, record: LogRecord) -> bool:
-#         return not bool(
-#             isinstance(record.args, tuple) and
-#             len(record.args) == 5 and
-#             all((
-#                 str(record.args[0]).startswith('172'),
-#                 record.args[1] == 'GET',
-#                 record.args[2] == '/healthcheck',
-#                 record.args[4] == 204
-#             ))
-#         )
+class LocalHealthcheckFilter(Filter):
+    def filter(self, record: LogRecord) -> bool:
+        return not bool(
+            isinstance(record.args, tuple) and
+            len(record.args) == 5 and
+            all((
+                str(record.args[0]).startswith('172'),
+                record.args[1] == 'GET',
+                record.args[2] == '/healthcheck',
+                record.args[4] == 204
+            ))
+        )
 
 
-# getLogger("uvicorn.access").addFilter(LocalHealthcheckFilter())
+getLogger("uvicorn.access").addFilter(LocalHealthcheckFilter())
 
 
 @asynccontextmanager

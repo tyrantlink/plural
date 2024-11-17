@@ -17,8 +17,8 @@ class HTTPCache(Document):
         use_cache = True
         validate_on_save = True
         cache_expiration_time = timedelta(minutes=1)
-        indexes = [
-            IndexModel('ts', expireAfterSeconds=60*60*4)
+        indexes = [  # ? one hour ttl
+            IndexModel('ts', expireAfterSeconds=60*60)
         ]
 
     id: str = Field(  # type: ignore

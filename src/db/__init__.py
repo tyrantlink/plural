@@ -21,7 +21,7 @@ from logfire import span
 class MongoDatabase:
     def __init__(self, mongo_uri: str) -> None:
         self._client: AsyncIOMotorDatabase = AsyncIOMotorClient(
-            mongo_uri, serverSelectionTimeoutMS=5000)['plural2']
+            mongo_uri, serverSelectionTimeoutMS=5000)['plural3']
 
     async def _init_beanie(self) -> None:
         await init_beanie(
