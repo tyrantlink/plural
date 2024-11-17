@@ -2,7 +2,7 @@ from src.discord import Interaction, InteractionContextType, ApplicationCommandO
 from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
 from src.discord.commands import sync_commands, _put_all_commands
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT
-from src.db import ProxyMember, Group, Image, ImageExtension
+from src.db import ProxyMember, Group, ImageExtension
 from src.components import modal_plural_member_bio
 from src.discord.http import _get_bot_id
 from regex import match, UNICODE
@@ -642,14 +642,11 @@ async def slash_member_userproxy_new(
     await member.save()
 
     avatar = None
-    avatar_id = (
-        member.avatar or
-        (await member.get_group()).avatar
-    )
-    if avatar_id is not None:
-        image = await Image.find_one({'_id': avatar_id})
-        if image is not None:
-            avatar = image.data
+    if not avatar and member.avatar is not None:
+        avatar = await member.get_avatar()
+
+    if not avatar and (group := await member.get_group()).avatar is not None:
+        avatar = await group.get_avatar()
 
     app_patch: dict = {
         'interactions_endpoint_url': f'{project.api_url}/discord/interaction'
@@ -724,15 +721,11 @@ async def slash_member_userproxy_sync(
         raise InteractionError('bot not found')
 
     avatar = None
-    avatar_id = (
-        userproxy.avatar or
-        (await userproxy.get_group()).avatar
-    )
+    if not avatar and userproxy.avatar is not None:
+        avatar = await userproxy.get_avatar()
 
-    if avatar_id is not None:
-        image = await Image.get(avatar_id)
-        if image is not None:
-            avatar = image.data
+    if not avatar and (group := await userproxy.get_group()).avatar is not None:
+        avatar = await group.get_avatar()
 
     app_patch: dict = {
         'interactions_endpoint_url': f'{project.api_url}/discord/interaction'

@@ -143,3 +143,16 @@ async def avatar_setter(self: ProxyMember | Group, url: str) -> None:
 
     self.avatar = avatar
     await self.save()
+
+
+async def avatar_getter(self: ProxyMember | Group) -> bytes | None:
+    from src.discord.http import Route, request
+    from src.core.session import session
+
+    if self.avatar is None:
+        return None
+
+    assert self.avatar_url is not None
+
+    async with session.get(self.avatar_url) as resp:
+        return await resp.read()

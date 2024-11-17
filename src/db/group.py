@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .helpers import avatar_setter, avatar_deleter, ImageId
+from .helpers import avatar_getter, avatar_setter, avatar_deleter, ImageId
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
 from src.db.member import ProxyMember
@@ -182,6 +182,12 @@ class Group(Document):
             avatar=None,
             tag=None,
         ).save()
+
+    async def get_avatar(self) -> bytes | None:
+        if self.avatar is None:
+            return None
+
+        return await avatar_getter(self)
 
     async def set_avatar(self, url: str) -> None:
         await avatar_setter(self, url)
