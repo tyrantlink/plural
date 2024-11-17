@@ -302,23 +302,23 @@ async def slash_member_set_avatar(
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_set_bio(
     interaction: Interaction,
-    member: ProxyMember,
+    userproxy: ProxyMember,
     include_attribution: bool = True
 ) -> None:
-    if member.userproxy is None:
+    if userproxy.userproxy is None:
         raise InteractionError(
             'you can only set a bio for a userproxy (see /help)')
 
-    if member.userproxy.token is None:
+    if userproxy.userproxy.token is None:
         raise InteractionError(
             'your userproxy must have a bot token stored to set a bio')
 
     try:
-        app = await Application.fetch_current(member.userproxy.token)
+        app = await Application.fetch_current(userproxy.userproxy.token)
     except Unauthorized:
         raise InteractionError('invalid bot token')
 
-    if app.id != member.userproxy.bot_id:
+    if app.id != userproxy.userproxy.bot_id:
         raise InteractionError('invalid bot token')
 
     if app.bot is None:  # ? *probably* shouldn't happen
@@ -338,7 +338,7 @@ async def slash_member_set_bio(
             value=current_bio,
             max_length=max_length
         ).with_extra(
-            member,
+            userproxy,
             include_attribution
         )
     )
@@ -363,14 +363,14 @@ async def slash_member_set_bio(
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_member_set_banner(
     interaction: Interaction,
-    member: ProxyMember,
+    userproxy: ProxyMember,
     banner: Attachment
 ) -> None:
-    if member.userproxy is None:
+    if userproxy.userproxy is None:
         raise InteractionError(
             'you can only set a banner for a userproxy (see /help)')
 
-    if member.userproxy.token is None:
+    if userproxy.userproxy.token is None:
         raise InteractionError(
             'your userproxy must have a bot token stored to set a banner')
 
@@ -385,20 +385,20 @@ async def slash_member_set_banner(
         raise InteractionError('banners must be a png, jpg, gif, or webp')
 
     try:
-        user = await User.fetch('@me', token=member.userproxy.token)
+        user = await User.fetch('@me', token=userproxy.userproxy.token)
     except Unauthorized:
         raise InteractionError('invalid bot token')
 
     await interaction.response.defer()
 
     await user.patch(
-        token=member.userproxy.token,
+        token=userproxy.userproxy.token,
         banner=await banner.read()
     )
 
     await interaction.followup.send(
         embeds=[Embed.success(
-            f'banner set for userproxy `{member.name}`'
+            f'banner set for userproxy `{userproxy.name}`'
         )]
     )
 
