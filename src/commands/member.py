@@ -588,7 +588,7 @@ async def slash_member_tags_clear(
             max_length=32,
             required=False),
         ApplicationCommandOption(
-            type=ApplicationCommandOptionType.STRING,
+            type=ApplicationCommandOptionType.BOOLEAN,
             name='store_token',
             description='whether to store bot token, required for some features (see /help) (default: True)',
             required=False)],
@@ -793,7 +793,7 @@ async def slash_member_userproxy_sync(
             description='required if bot token is not stored (if given with store_token=True, token will be updated)',
             required=False),
         ApplicationCommandOption(
-            type=ApplicationCommandOptionType.STRING,
+            type=ApplicationCommandOptionType.BOOLEAN,
             name='store_token',
             description='whether to store bot token, required for some features (see /help) (default: False)',
             required=False)],
