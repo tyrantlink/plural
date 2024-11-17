@@ -39,7 +39,7 @@ PAGES = {
         '- this will also enable you to manage your proxies from anywhere, including DMs and servers without /plu/ral',]),
     'info and support': '\n'.join([
         '- for more information, check out the [github](https://github.com/tyrantlink/plural)',
-        '- for support, join the [discord](https://discord.gg/6t8V4Cv)',
+        '- for support, join the [discord](https://discord.gg/4mteVXBDW7)',
         '- for bugs, suggestions, or other feedback, open an issue on the github or post in the support channel',
         f'- [privacy policy](<{project.base_url}/privacy-policy>)',
         f'- [terms of service](<{project.base_url}/terms-of-service>)'
