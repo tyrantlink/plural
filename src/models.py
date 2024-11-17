@@ -30,7 +30,7 @@ class Project(BaseModel):
     def application_id(self) -> int:
         return int(
             b64decode(
-                project.bot_token.split('.')[0].encode()
+                project.bot_token.split('.')[0] + '=='
             ).decode()
         )
 
