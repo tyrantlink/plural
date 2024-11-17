@@ -733,26 +733,12 @@ async def slash_member_userproxy_new(
             ])
         )
 
-    member.userproxy = ProxyMember.UserProxy(
-        bot_id=bot_id,
-        public_key=app.verify_key,
-        token=bot_token if store_token else None,
-        command=proxy_command,
-        include_group_tag=include_group_tag
-    )
-
-    await _userproxy_sync(
-        member,
-        {MemberUpdateType.NAME, MemberUpdateType.COMMAND},
-        interaction.author_name,
-        bot_token
-    )
+    await member.save()
 
     await gather(
-        member.save(),
         _userproxy_sync(
             member,
-            {MemberUpdateType.AVATAR},
+            {MemberUpdateType.NAME, MemberUpdateType.AVATAR, MemberUpdateType.COMMAND},
             interaction.author_name,
             bot_token),
         interaction.response.send_message(
