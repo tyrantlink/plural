@@ -55,9 +55,9 @@ async def modal_plural_edit(
 async def button_api_key(
     interaction: Interaction
 ) -> None:
-    assert interaction.user is not None
+    assert interaction.author_id is not None
 
-    api_key, token = ApiKey.new(interaction.user.id)
+    api_key, token = ApiKey.new(interaction.author_id)
 
     embed = Embed(
         title='api token reset!',
@@ -79,7 +79,7 @@ async def button_api_key(
 async def button_delete_all_data(
     interaction: Interaction
 ) -> None:
-    assert interaction.user is not None
+    assert interaction.author_id is not None
 
     await interaction.response.defer()
 
@@ -87,7 +87,7 @@ async def button_delete_all_data(
     tasks = []
     userproxy_ids = set()
 
-    groups = await Group.find({'accounts': interaction.user.id}).to_list()
+    groups = await Group.find({'accounts': interaction.author_id}).to_list()
 
     members = [
         member
@@ -110,14 +110,14 @@ async def button_delete_all_data(
 
         tasks.append(member.delete())
 
-    tasks.append(DBMessage.find({'author_id': interaction.user.id}).delete())
+    tasks.append(DBMessage.find({'author_id': interaction.author_id}).delete())
 
     tasks.append(Reply.find({'bot_id': {'$in': list(userproxy_ids)}}).delete())
 
     tasks.append(UserProxyInteraction.find(
         {'application_id': {'$in': list(userproxy_ids)}}).delete())
 
-    tasks.append(Latch.find({'user': interaction.user.id}).delete())
+    tasks.append(Latch.find({'user': interaction.author_id}).delete())
 
     await gather(*images)
 
