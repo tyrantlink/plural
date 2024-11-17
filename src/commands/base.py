@@ -56,14 +56,14 @@ async def _userproxy_edit(interaction: Interaction, message: Message) -> bool:
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def message_plural_edit(interaction: Interaction, message: Message) -> None:
-    assert interaction.channel is not None
-    assert interaction.guild is not None
-
     if await _userproxy_edit(interaction, message):
         return
 
     if message.webhook_id is None:
         raise InteractionError('message is not a proxied message!')
+
+    assert interaction.channel is not None
+    assert interaction.guild is not None
 
     try:
         await get_proxy_webhook(interaction.channel)
