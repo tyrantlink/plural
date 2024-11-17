@@ -900,7 +900,7 @@ async def slash_member_userproxy_remove(
 
     if userproxy.userproxy is None:
         raise InteractionError(
-            f'member `{member.name}` does not have a userproxy')
+            f'member `{userproxy.name}` does not have a userproxy')
 
     # ? try to clear commands if we have the token
     if userproxy.userproxy.token is not None:
@@ -916,7 +916,7 @@ async def slash_member_userproxy_remove(
         userproxy.save(),
         interaction.response.send_message(
             embeds=[Embed.success(
-                f'removed userproxy from member `{member.name}`'
+                f'removed userproxy from member `{userproxy.name}`'
             )]
         )
     )
