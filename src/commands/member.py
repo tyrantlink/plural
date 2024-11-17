@@ -750,9 +750,10 @@ async def slash_member_userproxy_new(
             interaction.author_name,
             bot_token),
         interaction.response.send_message(
-            embeds=[Embed.success('\n'.join([
-                f'userproxy created for member `{member.name}`\n',
-                f'[add the bot to your account](https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands)'
+            embeds=[Embed.success('\n\n'.join([
+                f'userproxy created for member `{member.name}`',
+                f'[add the bot to your account](https://discord.com/oauth2/authorize?client_id={bot_id}&integration_type=1&scope=applications.commands)',
+                'note: you may need to restart discord for the commands to show up'
             ]))]
         )
     )
