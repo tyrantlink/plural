@@ -846,6 +846,8 @@ async def slash_member_userproxy_edit(
         raise InteractionError(
             f'member `{member.name}` does not have a userproxy')
 
+    sync_changes = set()
+
     if proxy_command is not None:
         proxy_command = proxy_command.lstrip('/')
 
@@ -854,26 +856,35 @@ async def slash_member_userproxy_edit(
                 'invalid proxy command\n\ncommands must be alphanumeric and may contain dashes and underscores')
 
         userproxy.userproxy.command = proxy_command
+        sync_changes.add(MemberUpdateType.COMMAND)
 
     if store_token and bot_token is not None:
         userproxy.userproxy.token = bot_token
 
     if include_group_tag is not None:
         userproxy.userproxy.include_group_tag = include_group_tag
+        sync_changes.add(MemberUpdateType.NAME)
 
-    await gather(
+    tasks = [
         userproxy.save(),
-        _userproxy_sync(
-            userproxy,
-            {MemberUpdateType.NAME, MemberUpdateType.COMMAND},
-            interaction.author_name,
-            bot_token),
         interaction.response.send_message(
             embeds=[Embed.success(
                 f'updated userproxy for member `{userproxy.name}`'
             )]
         )
-    )
+    ]
+
+    if sync_changes:
+        tasks.append(
+            _userproxy_sync(
+                userproxy,
+                sync_changes,
+                interaction.author_name,
+                bot_token
+            )
+        )
+
+    await gather(*tasks)
 
 
 @member_userproxy.command(
