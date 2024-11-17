@@ -627,7 +627,13 @@ async def slash_member_userproxy_new(
     try:
         app = await Application.fetch_current(bot_token)
     except (Unauthorized, NotFound, Forbidden):
-        raise InteractionError('invalid bot token; may be expired')
+        raise InteractionError(
+            '\n\n'.join([
+                f'invalid bot token; may be expired',
+                f'please go to the [discord developer portal](https://discord.com/developers/applications/{bot_id}/bot) to reset the token',
+                'then, use `/member userproxy edit` to update the token, make sure to set `store_token` to True!'
+            ])
+        )
 
     if app.bot is None:
         raise InteractionError('bot not found')
@@ -706,16 +712,24 @@ async def slash_member_userproxy_sync(
         raise InteractionError(
             f'member `{member.name}` does not have a userproxy')
 
-    if userproxy.userproxy.token is None and bot_token is None:
+    token = bot_token or userproxy.userproxy.token
+
+    if token is None:
         raise InteractionError(
             f'bot token for userproxy `{userproxy.name}` is not stored; provide a bot token to sync the userproxy')
-
-    token = bot_token or userproxy.userproxy.token
 
     try:
         app = await Application.fetch_current(token)
     except (Unauthorized, NotFound, Forbidden):
-        raise InteractionError('invalid bot token; may be expired')
+        bot_id = _get_bot_id(token)
+
+        raise InteractionError(
+            '\n\n'.join([
+                f'invalid bot token; may be expired',
+                f'please go to the [discord developer portal](https://discord.com/developers/applications/{bot_id}/bot) to reset the token',
+                'then, use `/member userproxy edit` to update the token, make sure to set `store_token` to True!'
+            ])
+        )
 
     if app.bot is None:
         raise InteractionError('bot not found')
