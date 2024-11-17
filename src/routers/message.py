@@ -1,58 +1,58 @@
-# # from discord import Webhook as DiscordWebhook, InvalidArgument, Object, MISSING, AllowedMentions
-# from src.core.models.message import MessageModel, SendMessageModel
-# from src.db import Message, Webhook as DBWebhook, ProxyMember, Image
-# # from src.api.drest import user_can_send, insert_reference_text
-# from fastapi import HTTPException, Query, APIRouter, Security
-# from src.core.auth import api_key_validator, TokenData
-# from fastapi.responses import JSONResponse
-# from src.docs import message as docs
-# from datetime import datetime, UTC
-# from aiohttp import ClientSession
-# from src.models import project
-# from asyncio import sleep
+# from discord import Webhook as DiscordWebhook, InvalidArgument, Object, MISSING, AllowedMentions
+from src.core.models.message import MessageModel, SendMessageModel
+from src.db import Message, Webhook as DBWebhook, ProxyMember, Image
+# from src.api.drest import user_can_send, insert_reference_text
+from fastapi import HTTPException, Query, APIRouter, Security
+from src.core.auth import api_key_validator, TokenData
+from fastapi.responses import JSONResponse
+from src.docs import message as docs
+from datetime import datetime, UTC
+from aiohttp import ClientSession
+from src.models import project
+from asyncio import sleep
 
-# router = APIRouter(prefix='/message', tags=['Message'])
-
-
-# def _snowflake_to_age(snowflake: int) -> float:
-#     return (datetime.fromtimestamp(
-#         (snowflake >> 22) + 1420070400000 / 1000
-#     ) - datetime.now(UTC)).total_seconds()
+router = APIRouter(prefix='/message', tags=['Message'])
 
 
-# @router.get(
-#     '/{message_id}',
-#     response_model=MessageModel,
-#     responses=docs.get__message)
-# async def get__message(
-#     message_id: int,
-#     only_check_existence: bool = Query(default=False)
-# ) -> JSONResponse:
-#     _find = {
-#         '$or':
-#             [
-#                 {'original_id': message_id},
-#                 {'proxy_id': message_id}
-#             ]
-#     }
-#     message = await Message.find_one(_find)
-#     # ? /plu/ral deletes the original message and replaces it silmultaneously
-#     # ? due to discord ratelimiting, the original message may be deleted before the proxy is created
-#     while message is None and _snowflake_to_age(message_id) < 5:
-#         await sleep(0.5)
-#         message = await Message.find_one(_find)
+def _snowflake_to_age(snowflake: int) -> float:
+    return (datetime.fromtimestamp(
+        (snowflake >> 22) + 1420070400000 / 1000
+    ) - datetime.now(UTC)).total_seconds()
 
-#     if only_check_existence:
-#         return JSONResponse(
-#             content=message is not None
-#         )
 
-#     if message is None:
-#         raise HTTPException(status_code=404, detail='message not found')
+@router.get(
+    '/{message_id}',
+    response_model=MessageModel,
+    responses=docs.get__message)
+async def get__message(
+    message_id: int,
+    only_check_existence: bool = Query(default=False)
+) -> JSONResponse:
+    _find = {
+        '$or':
+            [
+                {'original_id': message_id},
+                {'proxy_id': message_id}
+            ]
+    }
+    message = await Message.find_one(_find)
+    # ? /plu/ral deletes the original message and replaces it silmultaneously
+    # ? due to discord ratelimiting, the original message may be deleted before the proxy is created
+    while message is None and _snowflake_to_age(message_id) < 5:
+        await sleep(0.5)
+        message = await Message.find_one(_find)
 
-#     return JSONResponse(
-#         content=message.model_dump_json(exclude={'id'})
-#     )
+    if only_check_existence:
+        return JSONResponse(
+            content=message is not None
+        )
+
+    if message is None:
+        raise HTTPException(status_code=404, detail='message not found')
+
+    return JSONResponse(
+        content=message.model_dump_json(exclude={'id'})
+    )
 
 
 # @router.post(
