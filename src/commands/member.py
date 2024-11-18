@@ -704,7 +704,7 @@ async def slash_member_userproxy_new(
     include_group_tag: bool = False
 ) -> None:
     bot_id = _get_bot_id(bot_token)
-    proxy_command = proxy_command.lstrip('/')
+    proxy_command = proxy_command.lstrip('/').lower()
 
     if member.userproxy is not None:
         raise InteractionError(
@@ -844,11 +844,11 @@ async def slash_member_userproxy_edit(
     sync_changes = set()
 
     if proxy_command is not None:
-        proxy_command = proxy_command.lstrip('/')
+        proxy_command = proxy_command.lstrip('/').lower()
 
         if not match(COMMAND_NAME_PATTERN, proxy_command, UNICODE):
             raise InteractionError(
-                'invalid proxy command\n\ncommands must be alphanumeric and may contain dashes and underscores')
+                'invalid proxy command\n\ncommands must be lowercase alphanumeric and may contain dashes and underscores')
 
         userproxy.userproxy.command = proxy_command
         sync_changes.add(MemberUpdateType.COMMAND)
