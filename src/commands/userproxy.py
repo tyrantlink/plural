@@ -1,4 +1,4 @@
-from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType
+from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType, InteractionContextType
 from src.components.userproxy import umodal_send, umodal_edit
 from src.db import Reply, UserProxyInteraction
 from src.errors import InteractionError
@@ -30,6 +30,7 @@ from src.models import project
             required=False
         )],
     scope=ApplicationCommandScope.USERPROXY,
+    contexts=InteractionContextType.ALL(),
     integration_types=[ApplicationIntegrationType.USER_INSTALL])
 async def uslash_proxy(
     interaction: Interaction,
@@ -104,6 +105,7 @@ async def uslash_proxy(
 @message_command(
     name='reply',
     scope=ApplicationCommandScope.USERPROXY,
+    contexts=InteractionContextType.ALL(),
     integration_types=[ApplicationIntegrationType.USER_INSTALL])
 async def umessage_reply(
     interaction: Interaction,
@@ -157,6 +159,7 @@ async def umessage_reply(
 @message_command(
     name='edit',
     scope=ApplicationCommandScope.USERPROXY,
+    contexts=InteractionContextType.ALL(),
     integration_types=[ApplicationIntegrationType.USER_INSTALL])
 async def umessage_edit(
     interaction: Interaction,
