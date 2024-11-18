@@ -761,7 +761,7 @@ async def slash_member_userproxy_new(
 
 @member_userproxy.command(
     name='sync',
-    description='sync member with userproxy, generally not required unless bot token is not stored',
+    description='sync member with userproxy, generally not required unless bot token is not stored or something broke',
     options=[
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
@@ -769,6 +769,11 @@ async def slash_member_userproxy_new(
             description='member to sync',
             required=True,
             autocomplete=True),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='sync_avatar',
+            description='sync avatar (default: False)',
+            required=False),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='bot_token',
@@ -779,11 +784,17 @@ async def slash_member_userproxy_new(
 async def slash_member_userproxy_sync(
     interaction: Interaction,
     userproxy: ProxyMember,
+    sync_avatar: bool = False,
     bot_token: str | None = None
 ) -> None:
+    changes = {MemberUpdateType.NAME, MemberUpdateType.COMMAND}
+
+    if sync_avatar:
+        changes.add(MemberUpdateType.AVATAR)
+
     await _userproxy_sync(
         userproxy,
-        {MemberUpdateType.NAME, MemberUpdateType.COMMAND},
+        changes,
         interaction.author_name,
         bot_token
     )
