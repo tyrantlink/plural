@@ -1,6 +1,7 @@
 from __future__ import annotations
+from .enums import MessageFlag, InteractionCallbackType, InteractionContextType
 from src.discord.models.base import PydanticArbitraryType
-from .enums import MessageFlag, InteractionCallbackType
+from src.discord.types import MissingNoneOr, MISSING
 from src.discord.http import File, Route, request
 from .message import Message, AllowedMentions
 from .component import Component
@@ -36,12 +37,22 @@ class InteractionFollowup(PydanticArbitraryType):
         tts: bool = False,
         embeds: list[Embed] | None = None,
         allowed_mentions: AllowedMentions | None = None,
-        flags: MessageFlag | None = MessageFlag.EPHEMERAL,
+        flags: MissingNoneOr[MessageFlag] = MISSING,
         components: list[Component] | None = None,
         attachments: list[File] | None = None,
         poll: Poll | None = None,
     ) -> Message:
         webhook = Webhook.from_interaction(self.interaction)
+
+        if flags is MISSING:
+            flags = (
+                MessageFlag.NONE
+                if self.interaction.context == InteractionContextType.BOT_DM
+                else MessageFlag.EPHEMERAL
+            )
+
+        if not flags:
+            flags = MessageFlag.EPHEMERAL
 
         return await webhook.execute(
             content=content,
@@ -128,7 +139,7 @@ class InteractionResponse(PydanticArbitraryType):
         tts: bool = False,
         embeds: list[Embed] | None = None,
         allowed_mentions: AllowedMentions | None = None,
-        flags: MessageFlag | None = MessageFlag.EPHEMERAL,
+        flags: MissingNoneOr[MessageFlag] = MISSING,
         components: list[Component] | None = None,
         attachments: list[File] | None = None,
         poll: Poll | None = None,
@@ -155,6 +166,13 @@ class InteractionResponse(PydanticArbitraryType):
 
         if poll:
             json['poll'] = poll.model_dump(mode='json')
+
+        if flags is MISSING:
+            flags = (
+                MessageFlag.NONE
+                if self.interaction.context == InteractionContextType.BOT_DM
+                else MessageFlag.EPHEMERAL
+            )
 
         if flags:
             json['flags'] = flags.value
