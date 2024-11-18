@@ -225,6 +225,23 @@ class Webhook(RawBaseModel):
 
         return None
 
+    async def fetch_message(
+        self,
+        message_id: Snowflake | int | Literal['@original']
+    ) -> Message:
+        from .message import Message
+        return Message(
+            **await request(
+                Route(
+                    'GET',
+                    '/webhooks/{webhook_id}/{webhook_token}/messages/{message_id}',
+                    webhook_id=self.id,
+                    webhook_token=self.token,
+                    message_id=message_id
+                )
+            )
+        )
+
     async def edit_message(
         self,
         message_id: Snowflake | int | Literal['@original'],

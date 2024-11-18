@@ -1,8 +1,77 @@
-from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType, InteractionContextType
+from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType, InteractionContextType, Webhook
+from regex import match as regex_match, sub, error as RegexError, IGNORECASE
 from src.components.userproxy import umodal_send, umodal_edit
+from src.errors import InteractionError, NotFound
 from src.db import Reply, UserProxyInteraction
-from src.errors import InteractionError
 from src.models import project
+from asyncio import gather
+
+
+SED_PATTERN = r'^s/(.*?)/(.*?)/?([gi]*)$'
+
+
+async def _sed_edit(
+    interaction: Interaction,
+    message: str
+) -> bool:
+    match = regex_match(SED_PATTERN, message)
+
+    if not match:
+        return False
+
+    expression, replacement, _raw_flags = match.groups()
+
+    flags = 0
+    count = 1
+
+    for flag in _raw_flags:
+        match flag:
+            case 'g':
+                count = 0
+            case 'i':
+                flags |= IGNORECASE
+            case _:  # ? should never happen as it doesn't match the pattern
+                raise InteractionError(f'invalid flag: {flag}')
+
+    userproxy_interaction = await UserProxyInteraction.find_one({
+        'application_id': interaction.application_id,
+        'channel_id': interaction.channel_id
+    })
+
+    if userproxy_interaction is None:
+        raise InteractionError(
+            'no message found; messages older than 15 minutes cannot be edited')
+
+    webhook = Webhook.from_proxy_interaction(
+        userproxy_interaction
+    )
+
+    try:
+        original_message = await webhook.fetch_message('@original')
+    except NotFound:
+        raise InteractionError(
+            'original message not found; message may have been deleted')
+
+    try:
+        edited_content = sub(
+            expression, replacement, original_message.content, count=count, flags=flags)
+    except RegexError:
+        raise InteractionError('invalid regular expression')
+
+    embed = (
+        Embed.success('message edited')
+        if edited_content != original_message.content else
+        Embed.warning('no changes were made')
+    )
+
+    gather(
+        webhook.edit_message(
+            '@original',
+            content=edited_content),
+        interaction.response.send_message(embeds=[embed])
+    )
+
+    return True
 
 
 @slash_command(
@@ -50,6 +119,9 @@ async def uslash_proxy(
         )
         return
 
+    if message and await _sed_edit(interaction, message):
+        return
+
     sender = (
         interaction.followup.send
         if attachment else
@@ -74,6 +146,7 @@ async def uslash_proxy(
         await UserProxyInteraction(
             application_id=interaction.application_id,
             message_id=sent_message.id,
+            channel_id=sent_message.channel_id,
             token=interaction.token
         ).save()
         return
@@ -152,6 +225,7 @@ async def umessage_reply(
     await UserProxyInteraction(
         application_id=interaction.application_id,
         message_id=sent_message.id,
+        channel_id=sent_message.channel_id,
         token=interaction.token
     ).save()
 

@@ -19,6 +19,7 @@ class UserProxyInteraction(Document):
         indexes = [
             'message_id',
             'application_id',
+            'channel_id',
             # ? tokens expire after 15 minutes
             IndexModel('ts', expireAfterSeconds=880)
         ]
@@ -29,6 +30,9 @@ class UserProxyInteraction(Document):
         description='the id of the application')
     message_id: int = Field(
         description='the original id of the message')
+    channel_id: int = Field(
+        0,  # ! temp default for migration
+        description='the channel id of the message')
     token: str = Field(description='the token of the interaction')
     ts: datetime = Field(
         default_factory=datetime.utcnow,
