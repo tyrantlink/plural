@@ -25,10 +25,16 @@ async def umodal_send(
     message: str
 ) -> None:
     if not queue_for_reply:
-        await interaction.response.send_message(
+        sent_message = await interaction.response.send_message(
             content=message,
             flags=MessageFlag.NONE
         )
+        await UserProxyInteraction(
+            application_id=interaction.application_id,
+            message_id=sent_message.id,
+            channel_id=sent_message.channel_id,
+            token=interaction.token
+        ).save()
         return
 
     await Reply(
