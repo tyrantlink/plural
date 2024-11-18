@@ -32,6 +32,7 @@ from base64 import b64encode, b64decode
 from src.db.httpcache import HTTPCache
 from src.core.session import session
 from re import match, IGNORECASE
+from src.version import VERSION
 from orjson import dumps, loads
 from types import TracebackType
 from urllib.parse import quote
@@ -42,8 +43,7 @@ from sys import version_info
 
 BASE_URL = 'https://discord.com/api/v10'
 USER_AGENT = ' '.join([
-    # ? probably implement real versioning here
-    f'DiscordBot (https://plural.gg, 2.0.0)',
+    f'DiscordBot (https://plural.gg, {VERSION})',
     f'Python/{'.'.join([str(i) for i in version_info])}',
     f'aiohttp/{aiohttp_version}'
 ])

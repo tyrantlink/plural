@@ -2,6 +2,7 @@ from fastapi import FastAPI, Response, Request, WebSocket
 from logging import getLogger, Filter, LogRecord
 from contextlib import asynccontextmanager
 from src.docs import root as docs
+from src.version import VERSION
 from src.models import project
 from typing import Any
 import logfire
@@ -61,7 +62,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url='/swdocs',
     redoc_url='/docs',
-    version='1.0.0',
+    version=VERSION,
     debug=project.dev_environment
 )
 
@@ -81,6 +82,7 @@ def live_discord_redaction(request: Request | WebSocket, attributes: dict[str, A
 if project.logfire_token:
     logfire.configure(
         service_name='/plu/ral' + ('-dev' if project.dev_environment else ''),
+        service_version=VERSION,
         token=project.logfire_token,
         environment='development' if project.dev_environment else 'production',
         scrubbing=False if project.dev_environment else None,
@@ -113,7 +115,7 @@ async def set_client_ip(request: Request, call_next):
     '/',
     responses=docs.get__root)
 async def get__root():
-    return {'message': 'this is very basic i\'ll work on it later'}
+    return {'message': 'this is very basic i\'ll work on it later', 'version': VERSION}
 
 
 @app.get(

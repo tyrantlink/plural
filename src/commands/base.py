@@ -4,6 +4,7 @@ from src.porting import StandardExport, PluralExport, PluralKitExport, Tupperbox
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction
 from src.errors import InteractionError, Forbidden, PluralException
 from src.logic.proxy import get_proxy_webhook, process_proxy
+from src.version import VERSION, LAST_TEN_COMMITS
 from src.discord.http import get_from_cdn
 from pydantic_core import ValidationError
 from src.models import DebugMessage
@@ -523,4 +524,19 @@ async def slash_import(
             if logs else
             [Embed.success('import successful; no errors')]
         )
+    )
+
+
+@slash_command(
+    name='version',
+    description='get the bot version and list of recent changes',
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_version(interaction: Interaction) -> None:
+    await interaction.response.send_message(
+        embeds=[Embed(
+            title=f'/plu/ral {VERSION}',
+            description='\n'.join(LAST_TEN_COMMITS),
+            color=0x69ff69
+        )]
     )

@@ -6,7 +6,8 @@ get__root = {
         status=200,
         description='success!',
         example={
-            'message': 'this is very basic i\'ll work on it later'
+            'message': 'this is very basic i\'ll work on it later',
+            'version': '2.0.0'
         }
     )
 }
