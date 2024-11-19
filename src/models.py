@@ -4,7 +4,7 @@ from base64 import b64decode
 from tomllib import loads
 
 
-USERPROXY_FOOTER = '\n\nuserproxy for @{username} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
+USERPROXY_FOOTER = '\n\na plural proxy for @{username} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
 USERPROXY_FOOTER_LIMIT = 400 - len(USERPROXY_FOOTER.format(username='*' * 32))
 
 
