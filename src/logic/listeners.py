@@ -57,19 +57,45 @@ async def on_reaction_add(reaction: MessageReactionAddEvent):
 
     match reaction.emoji.name:  # ? i might add more later
         case '❌':
-            message = await DBMessage.find_one(
+            db_message = await DBMessage.find_one(
                 {'proxy_id': reaction.message_id}
             )
 
-            if message is None:
+            if db_message is None:
                 return
 
-            if reaction.user_id != message.author_id:
+            if reaction.user_id != db_message.author_id:
                 return
 
-            channel = await Channel.fetch(reaction.channel_id)
+            channel, message = await gather(
+                Channel.fetch(reaction.channel_id),
+                Message.fetch(reaction.channel_id, reaction.message_id)
+            )
 
-            if channel is None:
+            if channel is None or message is None:
+                return
+
+            if message.webhook_id is None:
+                assert message.author is not None
+                userproxy = await ProxyMember.find_one(
+                    {'userproxy.bot_id': message.author.id})
+
+                if userproxy is None:
+                    return
+
+                assert userproxy.userproxy is not None
+
+                if userproxy.userproxy.token is None:
+                    await channel.send(
+                        'userproxy must have a token stored to delete messages',
+                        delete_after=10,
+                        reference=message
+                    )
+
+                await message.delete(
+                    'userproxy message deleted',
+                    token=userproxy.userproxy.token)
+
                 return
 
             webhook = await get_proxy_webhook(

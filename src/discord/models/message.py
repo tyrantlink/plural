@@ -134,16 +134,19 @@ class Message(RawBaseModel):
 
     async def delete(
         self,
-        reason: str | None = None
+        reason: str | None = None,
+        token: str | None = project.bot_token
     ) -> tuple[int, dict] | None:
         return await request(
             Route(
                 'DELETE',
                 '/channels/{channel_id}/messages/{message_id}',
                 channel_id=self.channel_id,
-                message_id=self.id
+                message_id=self.id,
+                token=token
             ),
-            reason=reason
+            reason=reason,
+            token=token
         )
 
     @classmethod
