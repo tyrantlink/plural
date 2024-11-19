@@ -70,7 +70,11 @@ class Route:
         url = (BASE_URL if discord else '') + path
 
         if '{application_id}' in url and 'application_id' not in params:
-            params['application_id'] = project.application_id
+            params['application_id'] = (
+                _get_bot_id(token)
+                if discord and token is not None and token != project.bot_token
+                else project.application_id
+            )
 
         self.url = url.format(**{
             k: quote(v) if isinstance(v, str) else v

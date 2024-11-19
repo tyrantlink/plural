@@ -34,7 +34,10 @@ class ProbableEmoji:
             f'https://cdn.discordapp.com/emojis/{self.id}.{"gif" if self.animated else "png"}')
 
 
-async def process_emoji(message: str) -> tuple[list[Emoji], str]:
+async def process_emoji(
+    message: str,
+    token: str = project.bot_token
+) -> tuple[list[Emoji], str]:
     guild_emojis = {
         ProbableEmoji(
             name=str(match.group(2)),
@@ -51,6 +54,7 @@ async def process_emoji(message: str) -> tuple[list[Emoji], str]:
             emoji.id: await Emoji.create_application_emoji(
                 name=f'{emoji.name[:28]}_{emoji_index()}',
                 image=await emoji.read(),
+                token=token
             )
         })
 
@@ -362,11 +366,13 @@ async def guild_userproxy(
     proxy_content: str,
     member: ProxyMember,
     debug_log: list[DebugMessage | str] | None = None
-) -> tuple[bool, list[Emoji] | None]:
+) -> tuple[bool, list[Emoji] | None, str]:
     assert member.userproxy is not None
     assert member.userproxy.token is not None
     assert message.author is not None
     assert message.channel is not None
+
+    token = member.userproxy.token
 
     attachments = [
         await attachment.as_file()
@@ -380,7 +386,7 @@ async def guild_userproxy(
         ):
             if debug_log:
                 debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
-            return False, None
+            return False, None, token
 
         attachments = [
             await sticker.as_file()
@@ -395,9 +401,9 @@ async def guild_userproxy(
             Permission.VIEW_CHANNEL
         )
     ):
-        return False, None
+        return False, None, token
 
-    app_emojis, proxy_content = await process_emoji(proxy_content)
+    app_emojis, proxy_content = await process_emoji(proxy_content, token)
 
     try:
         responses = await gather(
@@ -418,7 +424,7 @@ async def guild_userproxy(
             )
         )
     except Exception:
-        return False, app_emojis
+        return False, app_emojis, token
 
     await DBMessage(
         original_id=message.id,
@@ -427,7 +433,7 @@ async def guild_userproxy(
         reason='guild userproxy'
     ).save()
 
-    return True, app_emojis
+    return True, app_emojis, token
 
 
 async def process_proxy(
@@ -435,13 +441,15 @@ async def process_proxy(
     debug_log: list[DebugMessage | str] | None = None,
     channel_permissions: Permission | None = None,
     member: ProxyMember | None = None,
-) -> tuple[bool, list[Emoji] | None]:
+) -> tuple[bool, list[Emoji] | None, str]:
     assert message.author is not None
     assert message.channel is not None
     if debug_log is None:
         # ? if debug_log is given by debug command, it will have DebugMessage.ENABLER, being a truthy value
         # ? if it's not given, we set it to an empty list here and never append to it
         debug_log = []
+
+    token = project.bot_token
 
     valid_content = bool(
         message.content or message.attachments or message.sticker_items or message.poll)
@@ -465,7 +473,7 @@ async def process_proxy(
             if message.attachments and message.sticker_items:
                 debug_log.append(DebugMessage.ATTACHMENTS_AND_STICKERS)
 
-        return False, None
+        return False, None, token
 
     member, proxy_content, latch, reason = (
         await get_proxy_for_message(message, debug_log)
@@ -480,7 +488,7 @@ async def process_proxy(
         if debug_log and DebugMessage.AUTHOR_NO_TAGS_NO_LATCH not in debug_log:
             debug_log.append(DebugMessage.AUTHOR_NO_TAGS_NO_LATCH)
 
-        return False, None
+        return False, None, token
 
     if (
         latch is not None and
@@ -497,10 +505,10 @@ async def process_proxy(
         if debug_log:
             debug_log.append(DebugMessage.AUTOPROXY_BYPASSED)
 
-        return False, None
+        return False, None, token
 
     if not await permission_check(message, debug_log, channel_permissions):
-        return False, None
+        return False, None, token
 
     if len(proxy_content) > 1980:
         await message.channel.send(
@@ -515,7 +523,7 @@ async def process_proxy(
         if debug_log:
             debug_log.append(DebugMessage.OVER_TEXT_LIMIT)
 
-        return False, None
+        return False, None, token
 
     if sum(
         attachment.size
@@ -534,14 +542,19 @@ async def process_proxy(
         if debug_log:
             debug_log.append(DebugMessage.OVER_FILE_LIMIT)
 
-        return False, None
+        return False, None, token
 
     if member.userproxy and message.guild.id in member.userproxy.guilds:
-        success, app_emojis = await guild_userproxy(
+        success, app_emojis, token = await guild_userproxy(
             message, proxy_content, member, debug_log)
 
         if success:
-            return True, app_emojis
+            return True, app_emojis, token
+
+        if app_emojis:
+            gather(*[emoji.delete(token) for emoji in app_emojis])
+
+        token = project.bot_token
 
     webhook = await get_proxy_webhook(message.channel)
 
@@ -559,7 +572,7 @@ async def process_proxy(
             ),
             delete_after=10
         )
-        return False, app_emojis
+        return False, app_emojis, token
 
     embed = None
     if message.referenced_message:
@@ -576,7 +589,7 @@ async def process_proxy(
 
     if debug_log:
         debug_log.append(DebugMessage.SUCCESS)
-        return True, app_emojis
+        return True, app_emojis, token
 
     attachments = [
         await attachment.as_file()
@@ -589,7 +602,7 @@ async def process_proxy(
         ):
             if debug_log:
                 debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
-            return False, app_emojis
+            return False, app_emojis, token
 
         attachments = [
             await sticker.as_file()
@@ -646,8 +659,7 @@ async def process_proxy(
             poll=message.poll)
 
     if isinstance(responses[1], BaseException):
-
-        return False, app_emojis
+        return False, app_emojis, token
 
     await DBMessage(
         original_id=message.id,
@@ -656,4 +668,4 @@ async def process_proxy(
         reason=reason or 'none given'
     ).save()
 
-    return True, app_emojis
+    return True, app_emojis, token

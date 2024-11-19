@@ -1,6 +1,7 @@
 from __future__ import annotations
 from src.discord.http import get_from_cdn, request, Route, _bytes_to_base64_data
 from src.discord.types import Snowflake
+from src.models import project
 from .base import RawBaseModel
 from .user import User
 
@@ -26,26 +27,31 @@ class Emoji(RawBaseModel):
     async def create_application_emoji(
         cls,
         name: str,
-        image: bytes
+        image: bytes,
+        token: str = project.bot_token
     ) -> Emoji:
         return cls(
             **await request(
                 Route(
                     'POST',
-                    '/applications/{application_id}/emojis'
+                    '/applications/{application_id}/emojis',
+                    token=token
                 ),
                 json={
                     'name': name,
                     'image': _bytes_to_base64_data(image)
-                }
+                },
+                token=token
             )
         )
 
-    async def delete(self) -> None:
+    async def delete(self, token: str = project.bot_token) -> None:
         await request(
             Route(
                 'DELETE',
                 '/applications/{application_id}/emojis/{emoji_id}',
-                emoji_id=self.id
-            )
+                emoji_id=self.id,
+                token=token
+            ),
+            token=token
         )
