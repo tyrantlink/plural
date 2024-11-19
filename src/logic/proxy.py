@@ -246,11 +246,14 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
         try:
             return await Webhook.from_url(
                 webhook.url,
-                use_cache)
+                use_cache,
+                with_token=False)
         except NotFound:
             gather(
                 webhook.delete(),
                 HTTPCache.invalidate(webhook.url.split('/api')[1]),
+                HTTPCache.invalidate(
+                    webhook.url.split('/api')[1].rsplit('/', 1)[0]),
                 HTTPCache.invalidate(f'/channels/{channel.id}/webhooks')
             )
 
@@ -464,7 +467,7 @@ async def process_proxy(
 
     # ? don't actually clone emotes if we're debugging
     app_emojis = list()
-    if webhook.user and webhook.user.id == project.application_id and not debug_log:
+    if webhook.application_id == project.application_id and not debug_log:
         app_emojis, proxy_content = await process_emoji(proxy_content)
 
     if len(proxy_content) > 2000:

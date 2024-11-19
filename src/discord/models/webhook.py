@@ -37,7 +37,8 @@ class Webhook(RawBaseModel):
     async def from_url(
         cls,
         url: str,
-        use_cache: bool = True
+        use_cache: bool = True,
+        with_token: bool = True
     ) -> Webhook:
         match = search(
             r"discord(?:app)?.com/api/webhooks/(?P<id>\d{17,20})/(?P<token>[\w\.\-_]{60,68})",
@@ -47,17 +48,33 @@ class Webhook(RawBaseModel):
         if match is None:
             raise ValueError("Invalid webhook URL given.")
 
-        return cls(
+        if with_token:
+            return cls(
+                **await request(
+                    Route(
+                        'GET',
+                        '/webhooks/{webhook_id}/{webhook_token}',
+                        webhook_id=match['id'],
+                        webhook_token=match['token']
+                    ),
+                    ignore_cache=not use_cache
+                )
+            )
+
+        webhook = cls(
             **await request(
                 Route(
                     'GET',
-                    '/webhooks/{webhook_id}/{webhook_token}',
-                    webhook_id=match['id'],
-                    webhook_token=match['token']
+                    '/webhooks/{webhook_id}',
+                    webhook_id=match['id']
                 ),
                 ignore_cache=not use_cache
             )
         )
+
+        webhook.token = match['token']
+
+        return webhook
 
     @classmethod
     def from_interaction(
