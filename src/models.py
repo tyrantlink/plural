@@ -40,6 +40,7 @@ class MemberUpdateType(Enum):
     AVATAR = 1
     COMMAND = 2
     BIO = 3
+    GUILDS = 4
 
 
 class DebugMessage(StrEnum):

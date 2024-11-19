@@ -1,4 +1,4 @@
-from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, COMMAND_NAME_PATTERN
+from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, COMMAND_NAME_PATTERN
 from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
 from src.discord.commands import sync_commands, _put_all_commands
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT
@@ -31,6 +31,21 @@ member_userproxy = member.create_subgroup(
     name='userproxy',
     description='manage a member\'s userproxy'
 )
+
+
+async def _sync_member_guilds(member: ProxyMember) -> None:
+    if member.userproxy is None:
+        raise ValueError('member does not have a userproxy')
+
+    member.userproxy.guilds = [
+        guild.id
+        for guild in
+        await Guild.fetch_user_guilds(
+            member.userproxy.token,
+            ignore_cache=True)
+    ]
+
+    await member.save()
 
 
 async def _userproxy_sync(
@@ -68,6 +83,8 @@ async def _userproxy_sync(
     if app.bot is None:
         raise InteractionError('bot not found')
 
+    tasks = []
+
     for change in changes:
         match change:
             case MemberUpdateType.NAME:
@@ -99,17 +116,17 @@ async def _userproxy_sync(
                 if not app.description:
                     app_patch['description'] = USERPROXY_FOOTER.format(
                         username=author_name)
+            case MemberUpdateType.GUILDS:
+                tasks.append(_sync_member_guilds(member))
             case _:
                 continue
 
-    await gather(
-        app.patch(
-            bot_token,
-            **app_patch),
-        app.bot.patch(
-            bot_token,
-            **bot_patch)
-    )
+    tasks.extend([
+        app.patch(bot_token, **app_patch),
+        app.bot.patch(bot_token, **bot_patch)
+    ])
+
+    await gather(*tasks)
 
     return app
 
@@ -746,7 +763,8 @@ async def slash_member_userproxy_new(
     await gather(
         _userproxy_sync(
             member,
-            {MemberUpdateType.NAME, MemberUpdateType.AVATAR, MemberUpdateType.COMMAND},
+            {MemberUpdateType.NAME, MemberUpdateType.AVATAR,
+                MemberUpdateType.COMMAND, MemberUpdateType.GUILDS},
             interaction.author_name,
             bot_token),
         interaction.response.send_message(
@@ -787,10 +805,16 @@ async def slash_member_userproxy_sync(
     sync_avatar: bool = False,
     bot_token: str | None = None
 ) -> None:
-    changes = {MemberUpdateType.NAME, MemberUpdateType.COMMAND}
+    changes = {
+        MemberUpdateType.NAME,
+        MemberUpdateType.COMMAND,
+        MemberUpdateType.GUILDS
+    }
 
     if sync_avatar:
         changes.add(MemberUpdateType.AVATAR)
+
+    await interaction.response.defer()
 
     await _userproxy_sync(
         userproxy,
@@ -799,7 +823,7 @@ async def slash_member_userproxy_sync(
         bot_token
     )
 
-    await interaction.response.send_message(
+    await interaction.followup.send(
         embeds=[
             Embed.success(
                 f'synced userproxy for member `{userproxy.name}`'

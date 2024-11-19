@@ -357,6 +357,72 @@ def format_reply(
     return Embed.reply(reference)
 
 
+async def guild_userproxy(
+    message: MessageCreateEvent | Message,
+    proxy_content: str,
+    member: ProxyMember,
+    debug_log: list[DebugMessage | str] | None = None
+) -> bool:
+    assert member.userproxy is not None
+    assert member.userproxy.token is not None
+    assert message.author is not None
+    assert message.channel is not None
+
+    attachments = [
+        await attachment.as_file()
+        for attachment in message.attachments
+    ]
+
+    if message.sticker_items and not attachments:
+        if any(
+            sticker.format_type == StickerFormatType.LOTTIE
+            for sticker in message.sticker_items
+        ):
+            if debug_log:
+                debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
+            return False
+
+        attachments = [
+            await sticker.as_file()
+            for sticker in message.sticker_items
+        ]
+
+    bot_permissions = await message.channel.fetch_permissions_for(member.userproxy.bot_id)
+
+    if (
+        not bot_permissions & Permission.SEND_MESSAGES or
+        not bot_permissions & Permission.VIEW_CHANNEL
+    ):
+        return False
+
+    try:
+        responses = await gather(
+            message.delete(reason='/plu/ral proxy'),
+            message.channel.send(
+                proxy_content,
+                attachments=attachments,
+                reference=message.referenced_message,
+                allowed_mentions=AllowedMentions(
+                    replied_user=(
+                        message.referenced_message is not None and
+                        message.referenced_message.author in message.mentions)),
+                poll=message.poll,
+                token=member.userproxy.token
+            )
+        )
+    except Exception:
+        return False
+
+    await DBMessage(
+        original_id=message.id,
+        proxy_id=responses[1].id,
+        author_id=message.author.id,
+        reason='guild userproxy'
+    ).save()
+
+    return True
+
+
 async def process_proxy(
     message: MessageCreateEvent | Message,
     debug_log: list[DebugMessage | str] | None = None,
@@ -462,6 +528,10 @@ async def process_proxy(
             debug_log.append(DebugMessage.OVER_FILE_LIMIT)
 
         return False, None
+
+    if member.userproxy and message.guild.id in member.userproxy.guilds:
+        if await guild_userproxy(message, proxy_content, member, debug_log):
+            return True, None
 
     webhook = await get_proxy_webhook(message.channel)
 

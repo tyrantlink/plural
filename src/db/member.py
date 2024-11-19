@@ -77,6 +77,9 @@ class ProxyMember(Document):
             'proxy', description='name of the proxy command')
         include_group_tag: bool = Field(
             False, description='whether to include group tags in the bot name')
+        guilds: list[int] = Field(
+            default_factory=list,
+            description='guilds the userproxy is enabled in')
 
     id: PydanticObjectId = Field(  # type: ignore
         default_factory=PydanticObjectId)

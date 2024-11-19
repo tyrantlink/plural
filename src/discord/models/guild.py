@@ -3,6 +3,7 @@ from .enums import Permission, VerificationLevel, DefaultMessageNotificationLeve
 from pydantic import model_validator, field_validator
 from src.discord.http import Route, request
 from src.discord.types import Snowflake
+from src.models import project
 from .base import RawBaseModel
 from .sticker import Sticker
 from .emoji import Emoji
@@ -119,3 +120,22 @@ class Guild(RawBaseModel):
                 )
             )
         )
+
+    @classmethod
+    async def fetch_user_guilds(
+        cls,
+        token: str | None = project.bot_token,
+        ignore_cache: bool = False
+    ) -> list[Guild]:
+        return [
+            cls(**guild)
+            for guild in
+            await request(
+                Route(
+                    'GET',
+                    '/users/@me/guilds'
+                ),
+                token=token,
+                ignore_cache=ignore_cache
+            )
+        ]

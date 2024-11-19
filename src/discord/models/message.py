@@ -12,6 +12,7 @@ from .attachment import Attachment
 from .component import Component
 from src.errors import Forbidden
 from .reaction import Reaction
+from src.models import project
 from .base import RawBaseModel
 from datetime import datetime
 from pydantic import Field
@@ -159,7 +160,8 @@ class Message(RawBaseModel):
                     '/channels/{channel_id}/messages/{message_id}',
                     channel_id=channel_id,
                     message_id=message_id
-                )
+                ),
+                ignore_cache=True
             )
         )
 
@@ -181,7 +183,9 @@ class Message(RawBaseModel):
         sticker_ids: list[Snowflake] | None = None,
         reference: Message | MessageReference | None = None,
         allowed_mentions: AllowedMentions | None = None,
+        poll: Poll | None = None,
         delete_after: float | None = None,
+        token: str | None = project.bot_token
     ) -> Message:
         json = {}
 
@@ -215,6 +219,9 @@ class Message(RawBaseModel):
         if allowed_mentions:
             json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')
 
+        if poll:
+            json['poll'] = poll.as_create_request()
+
         form = None  # ? mypy is stupid
         if attachments:
             form, json_attachments = [], []
@@ -239,14 +246,16 @@ class Message(RawBaseModel):
                 **await request(
                     route,
                     form=form,
-                    files=attachments
+                    files=attachments,
+                    token=token
                 )
             )
             if attachments else
             cls(
                 **await request(
                     route,
-                    json=json
+                    json=json,
+                    token=token
                 )
             )
         )
@@ -307,6 +316,7 @@ class Message(RawBaseModel):
                         channel_id=self.channel_id,
                         message_id=self.id
                     ),
+                    ignore_cache=True,
                     form=form,
                     files=attachments
                 )
@@ -320,6 +330,7 @@ class Message(RawBaseModel):
                         channel_id=self.channel_id,
                         message_id=self.id
                     ),
+                    ignore_cache=True,
                     json=json
                 )
             )

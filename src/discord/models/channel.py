@@ -3,6 +3,7 @@ from .enums import ChannelType, OverwriteType, VideoQualityMode, ChannelFlag, Pe
 from src.discord.http import Route, request, File
 from src.discord.types import Snowflake
 from typing import TYPE_CHECKING
+from src.models import project
 from .base import RawBaseModel
 from datetime import datetime
 from .user import User
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
     from .component import Component
     from .webhook import Webhook
     from .embed import Embed
+    from .poll import Poll
 
 
 class ChannelMention(RawBaseModel):
@@ -108,7 +110,7 @@ class Channel(RawBaseModel):
 
     async def fetch_permissions_for(
         self,
-        user_id: Snowflake,
+        user_id: Snowflake | int,
     ) -> Permission:
         from .member import Member
 
@@ -130,7 +132,9 @@ class Channel(RawBaseModel):
         sticker_ids: list[Snowflake] | None = None,
         reference: Message | MessageReference | None = None,
         allowed_mentions: AllowedMentions | None = None,
+        poll: Poll | None = None,
         delete_after: float | None = None,
+        token: str | None = project.bot_token
     ) -> Message:
         from .message import Message
         return await Message.send(
@@ -143,7 +147,9 @@ class Channel(RawBaseModel):
             sticker_ids=sticker_ids,
             reference=reference,
             allowed_mentions=allowed_mentions,
+            poll=poll,
             delete_after=delete_after,
+            token=token
         )
 
     async def fetch_message(self, message_id: Snowflake) -> Message:
