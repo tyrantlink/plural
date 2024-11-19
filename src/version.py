@@ -1,14 +1,22 @@
 from subprocess import PIPE, run
+from src.models import project
+from typing import overload, Literal
 
 
 START_COMMIT = '2f6d679338fe64940e7d6e606e4424bce9d2d125'
-VERSION = '2.0.0'
-LAST_TEN_COMMITS: list[str] = []
 
 
-def _read_commits() -> dict[str, str]:
-    global LAST_TEN_COMMITS
+@overload
+def _read_commits(last_ten: Literal[True]) -> list[str]:
+    ...
 
+
+@overload
+def _read_commits(last_ten: Literal[False] = False) -> dict[str, str]:
+    ...
+
+
+def _read_commits(last_ten: bool = False) -> dict[str, str] | list[str]:
     process = run(
         'git log --pretty=oneline',
         shell=True, stdout=PIPE, text=True
@@ -19,11 +27,12 @@ def _read_commits() -> dict[str, str]:
         for commit in reversed(process.stdout.splitlines())
     }
 
-    LAST_TEN_COMMITS = [
-        f'[`{hash[:7]}`](<https://github.com/tyrantlink/plural/commit/{hash}>): {message}'
-        for hash, message in
-        commits.items()
-    ][-10:][::-1]
+    if last_ten:
+        return [
+            f'[`{hash[:7]}`](<https://github.com/tyrantlink/plural/commit/{hash}>): {message}'
+            for hash, message in
+            commits.items()
+        ][-10:][::-1]
 
     return commits
 
@@ -49,7 +58,7 @@ def _find_start_commit(
 def calculate_version(
     commits: dict[str, str]
 ) -> list[int]:
-    version = list(map(int, VERSION.split('.')))
+    version = list(map(int, VERSION.split('-')[0].split('.')))
 
     for message in commits.values():
         match message.strip().lower()[:6]:
@@ -63,10 +72,14 @@ def calculate_version(
     return version
 
 
-def load_semantic_version() -> None:
-    global VERSION
+def load_semantic_version() -> str:
     commits = _read_commits()
     filtered_commits = _find_start_commit(commits)
     version = calculate_version(filtered_commits)
 
-    VERSION = '.'.join(map(str, version))
+    return '.'.join(map(str, version)) + \
+        ('-dev' if project.dev_environment else '')
+
+
+VERSION = load_semantic_version()
+LAST_TEN_COMMITS: list[str] = _read_commits(True)
