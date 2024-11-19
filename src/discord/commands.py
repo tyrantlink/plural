@@ -91,9 +91,7 @@ async def _sync_commands(
         if (
             scope == ApplicationCommandScope.USERPROXY and
             (
-                member := await ProxyMember.find_one(
-                    {'userproxy.bot_id': application_id},
-                    ignore_cache=True)
+                member := await ProxyMember.find_one({'userproxy.bot_id': application_id})
             ) and
             member.userproxy is not None and
             member.userproxy.token is not None
@@ -140,7 +138,8 @@ async def _sync_commands(
     if working_commands and not live_commands:
         logfire.debug('no commands found on discord, registering all')
         await _put_all_commands(
-            token
+            token,
+            working_commands
         )
         return
 
@@ -172,7 +171,8 @@ async def _sync_commands(
     if len(updates) > 4:
         logfire.debug('too many updates, registering all')
         await _put_all_commands(
-            token
+            token,
+            working_commands
         )
         return
 
