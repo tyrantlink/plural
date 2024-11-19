@@ -1,8 +1,9 @@
 from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType, InteractionContextType, Webhook
-from regex import match as regex_match, sub, error as RegexError, IGNORECASE
+from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape
 from src.components.userproxy import umodal_send, umodal_edit
 from src.errors import InteractionError, NotFound
 from src.db import Reply, UserProxyInteraction
+from beanie import SortDirection
 from src.models import project
 from asyncio import gather
 
@@ -33,28 +34,35 @@ async def _sed_edit(
             case _:  # ? should never happen as it doesn't match the pattern
                 raise InteractionError(f'invalid flag: {flag}')
 
-    userproxy_interaction = await UserProxyInteraction.find_one({
-        'application_id': interaction.application_id,
-        'channel_id': interaction.channel_id
-    })
+    userproxy_interaction = await UserProxyInteraction.find(
+        {
+            'application_id': interaction.application_id,
+            'channel_id': interaction.channel_id
+        },
+        ignore_cache=True
+    ).sort(('ts', SortDirection.DESCENDING)).limit(1).to_list()
 
-    if userproxy_interaction is None:
+    if not userproxy_interaction:
         raise InteractionError(
             'no message found; messages older than 15 minutes cannot be edited')
+
+    userproxy_interaction = userproxy_interaction[0]
 
     webhook = Webhook.from_proxy_interaction(
         userproxy_interaction
     )
 
     try:
-        original_message = await webhook.fetch_message('@original')
+        original_message = await webhook.fetch_message(
+            '@original',
+            ignore_cache=True)
     except NotFound:
         raise InteractionError(
             'original message not found; message may have been deleted')
 
     try:
         edited_content = sub(
-            expression, replacement, original_message.content, count=count, flags=flags)
+            escape(expression), replacement, original_message.content, count=count, flags=flags)
     except RegexError:
         raise InteractionError('invalid regular expression')
 
