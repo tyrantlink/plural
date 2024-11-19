@@ -362,7 +362,7 @@ async def guild_userproxy(
     proxy_content: str,
     member: ProxyMember,
     debug_log: list[DebugMessage | str] | None = None
-) -> bool:
+) -> tuple[bool, list[Emoji] | None]:
     assert member.userproxy is not None
     assert member.userproxy.token is not None
     assert message.author is not None
@@ -380,7 +380,7 @@ async def guild_userproxy(
         ):
             if debug_log:
                 debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
-            return False
+            return False, None
 
         attachments = [
             await sticker.as_file()
@@ -395,7 +395,9 @@ async def guild_userproxy(
             Permission.VIEW_CHANNEL
         )
     ):
-        return False
+        return False, None
+
+    app_emojis, proxy_content = await process_emoji(proxy_content)
 
     try:
         responses = await gather(
@@ -416,7 +418,7 @@ async def guild_userproxy(
             )
         )
     except Exception:
-        return False
+        return False, app_emojis
 
     await DBMessage(
         original_id=message.id,
@@ -425,7 +427,7 @@ async def guild_userproxy(
         reason='guild userproxy'
     ).save()
 
-    return True
+    return True, app_emojis
 
 
 async def process_proxy(
@@ -535,8 +537,11 @@ async def process_proxy(
         return False, None
 
     if member.userproxy and message.guild.id in member.userproxy.guilds:
-        if await guild_userproxy(message, proxy_content, member, debug_log):
-            return True, None
+        success, app_emojis = await guild_userproxy(
+            message, proxy_content, member, debug_log)
+
+        if success:
+            return True, app_emojis
 
     webhook = await get_proxy_webhook(message.channel)
 
