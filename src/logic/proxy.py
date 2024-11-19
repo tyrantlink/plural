@@ -407,7 +407,10 @@ async def guild_userproxy(
                 allowed_mentions=AllowedMentions(
                     replied_user=(
                         message.referenced_message is not None and
-                        message.referenced_message.author in message.mentions)),
+                        message.referenced_message.author is not None and
+                        message.referenced_message.author.id in [
+                            user.id for user in message.mentions
+                        ])),
                 poll=message.poll,
                 token=member.userproxy.token
             )
@@ -607,7 +610,10 @@ async def process_proxy(
             allowed_mentions=AllowedMentions(
                 replied_user=(
                     message.referenced_message is not None and
-                    message.referenced_message.author in message.mentions)),
+                    message.referenced_message.author is not None and
+                    message.referenced_message.author.id in [
+                        user.id for user in message.mentions
+                    ])),
             poll=message.poll),
         return_exceptions=True
     )
@@ -628,7 +634,10 @@ async def process_proxy(
             allowed_mentions=AllowedMentions(
                 replied_user=(
                     message.referenced_message is not None and
-                    message.referenced_message.author in message.mentions)),
+                    message.referenced_message.author is not None and
+                    message.referenced_message.author.id in [
+                        user.id for user in message.mentions
+                    ])),
             poll=message.poll)
 
     if isinstance(responses[1], BaseException):
