@@ -956,3 +956,34 @@ async def slash_member_userproxy_remove(
             )]
         )
     )
+
+
+@member_userproxy.command(
+    name='invite',
+    description='invite a userproxy to a server',
+    options=[
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='userproxy',
+            description='member to invite userproxy for',
+            required=True,
+            autocomplete=True)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_member_userproxy_invite(
+    interaction: Interaction,
+    userproxy: ProxyMember
+) -> None:
+    if userproxy.userproxy is None:
+        raise InteractionError(
+            f'member `{userproxy.name}` does not have a userproxy')
+
+    await interaction.response.send_message(
+        embeds=[Embed.success(
+            title='invite userproxy',
+            message='\n\n'.join([
+                f'[add the bot to your account](https://discord.com/oauth2/authorize?client_id={userproxy.userproxy.bot_id}&integration_type=1&scope=applications.commands)',
+                f'[invite the bot to a server](https://discord.com/oauth2/authorize?client_id={userproxy.userproxy.bot_id}&integration_type=0&scope=applications.commands)'
+            ])
+        )]
+    )
