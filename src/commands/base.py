@@ -81,7 +81,9 @@ async def message_plural_edit(interaction: Interaction, message: Message) -> Non
         raise InteractionError('you can only edit your own messages!')
 
     await interaction.response.send_modal(
-        modal_plural_edit.with_extra(
+        modal_plural_edit.with_text_kwargs(
+            0, value=message.content
+        ).with_extra(
             message
         )
     )
