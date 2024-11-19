@@ -1,50 +1,33 @@
-from __future__ import annotations
+from .base import excluded_model, patch_model
 from pydantic import BaseModel, Field
 from beanie import PydanticObjectId
+from typing import TYPE_CHECKING
 from src.db import ProxyMember
-from typing import Annotated
 
 
-class MemberModel(BaseModel):
-    id: PydanticObjectId = Field(description='the id of the member')
-    name: str = Field(
-        description='the name of the member',
-        min_length=1, max_length=50)
-    avatar: PydanticObjectId | None = Field(
-        None,
-        description='the avatar uuid of the member; overrides the group avatar'
-    )
-    proxy_tags: Annotated[list[ProxyMember.ProxyTag], Field(max_length=5)] = Field(
-        [],
-        description='proxy tags for the member'
-    )
+class MemberGet(excluded_model(
+    original_model=ProxyMember,
+    exclude_fields=[
+        '_id',
+        'revision_id'
+    ]
+)):
+    ...
 
 
-class MemberUpdateModel(BaseModel):
-    name: str = Field(
-        None, description='the name of the member', min_length=1, max_length=50)
-    avatar: PydanticObjectId | None = Field(
-        None,
-        description='the avatar uuid of the member; overrides the group avatar'
-    )
-    group: PydanticObjectId = Field(
-        None,
-        description='group id for the member')
-    proxy_tags: Annotated[list[ProxyMember.ProxyTag], Field(max_length=5)] = Field(
-        None,
-        description='proxy tags for the member'
-    )
+class MemberPatch(patch_model(
+    original_model=ProxyMember,
+    include_fields=[
+        'name',
+        'group',
+        'proxy_tags'
+    ]
+)):
+    if TYPE_CHECKING:
+        name: str
+        group: PydanticObjectId
+        proxy_tags: list[ProxyMember.ProxyTag]
 
 
-class CreateMemberModel(BaseModel):
-    name: str = Field(
-        description='the name of the group',
-        min_length=1, max_length=32)
-    avatar: PydanticObjectId | None = Field(
-        None,
-        description='the avatar uuid of the group'
-    )
-    proxy_tags: Annotated[list[ProxyMember.ProxyTag], Field(max_length=5)] = Field(
-        [],
-        description='proxy tags for the member'
-    )
+class MemberPost(BaseModel):
+    ...

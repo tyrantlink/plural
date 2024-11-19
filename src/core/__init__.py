@@ -42,13 +42,11 @@ async def lifespan(app: FastAPI):
 
     await sync_commands()
 
-    from src.routers import discord, message, member, latch, image, group
+    from src.routers import discord, message, member  # , latch, group
     app.include_router(discord.router)
-    #! non-discord routes need to be rewritten, i'll do it later
     app.include_router(message.router)
-    # app.include_router(member.router)
+    app.include_router(member.router)
     # app.include_router(latch.router)
-    # app.include_router(image.router)
     # app.include_router(group.router)
 
     yield

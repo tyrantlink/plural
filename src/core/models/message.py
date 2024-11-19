@@ -1,34 +1,29 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 from beanie import PydanticObjectId
-from datetime import datetime
+from .base import excluded_model
+from src.db import Message
 
 
-class MessageModel(BaseModel):
-    original_id: int | None = Field(
-        description='the original id of the message; None if message sent through api')
-    proxy_id: int = Field(description='the proxy id of the message')
-    author_id: int = Field(description='the author id of the message')
-    ts: datetime = Field(description='the timestamp of the message')
+MessageGet = excluded_model(
+    original_model=Message,
+    exclude_fields=[
+        '_id',
+        'revision_id'
+    ]
+)
 
 
-class SendMessageModel(BaseModel):
-    member: PydanticObjectId = Field(
-        description='the member id of the message')
+class MessagePost(BaseModel):
+    channel_id: int = Field(
+        description='the channel or thread to send the message to'
+    )
     content: str = Field(
-        description='the content of the message', min_length=1, max_length=2000)
-    channel: int = Field(description='the channel id of the message')
-    thread: int = Field(
+        description='the content of the message'
+    )
+    member_id: PydanticObjectId = Field(
+        description='the member sending the message'
+    )
+    reference: int | None = Field(
         None,
-        description='the thread id of the message; None if not in a thread')
-    reference: int = Field(
-        None,
-        description='the reference id of the message; None if not a reply')
-
-    @model_validator(mode='before')
-    def validate_content(cls, value):
-        if value.get('content') is None:
-            return value  # ? leave to standard validation
-
-        value['content'] = value['content'].strip()
-
-        return value
+        description='the id of the message to reply to'
+    )
