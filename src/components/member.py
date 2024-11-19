@@ -16,12 +16,12 @@ __all__ = ('modal_plural_member_bio',)
             style=TextInputStyle.LONG,
             max_length=2000,
             label='bio',
-            required=True)])
+            required=False)])
 async def modal_plural_member_bio(
     interaction: Interaction,
     member: ProxyMember,
     include_attribution: bool,
-    bio: str
+    bio: str = ''
 ) -> None:
     assert member.userproxy is not None
 
