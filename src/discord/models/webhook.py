@@ -244,7 +244,8 @@ class Webhook(RawBaseModel):
 
     async def fetch_message(
         self,
-        message_id: Snowflake | int | Literal['@original']
+        message_id: Snowflake | int | Literal['@original'],
+        ignore_cache: bool = False
     ) -> Message:
         from .message import Message
         return Message(
@@ -255,7 +256,8 @@ class Webhook(RawBaseModel):
                     webhook_id=self.id,
                     webhook_token=self.token,
                     message_id=message_id
-                )
+                ),
+                ignore_cache=ignore_cache
             )
         )
 

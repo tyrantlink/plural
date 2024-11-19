@@ -34,7 +34,7 @@ class Member(RawBaseModel):
         )
 
     @classmethod
-    async def fetch(cls, guild_id: Snowflake, user_id: Snowflake) -> Member:
+    async def fetch(cls, guild_id: Snowflake | int, user_id: Snowflake | int) -> Member:
         return cls(
             **await request(
                 Route(
@@ -48,8 +48,8 @@ class Member(RawBaseModel):
 
     async def fetch_permissions_for(
         self,
-        guild_id: Snowflake,
-        channel_id: Snowflake,
+        guild_id: Snowflake | int,
+        channel_id: Snowflake | int,
     ) -> Permission:
         if self.user is None:
             raise ValueError('User not found')
@@ -76,7 +76,7 @@ class Member(RawBaseModel):
         # ? compute channel overwrites
         channel = await Channel.fetch(channel_id)
 
-        overwrites: dict[Snowflake, tuple[Permission, Permission]] = {
+        overwrites: dict[Snowflake | int, tuple[Permission, Permission]] = {
             overwrite.id: (overwrite.allow, overwrite.deny)
             for overwrite in channel.permission_overwrites or []
         }

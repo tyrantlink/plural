@@ -109,7 +109,7 @@ class Guild(RawBaseModel):
         return self.premium_tier.filesize_limit
 
     @classmethod
-    async def fetch(cls, guild_id: Snowflake) -> Guild:
+    async def fetch(cls, guild_id: Snowflake | int) -> Guild:
         return cls(
             **await request(
                 Route(

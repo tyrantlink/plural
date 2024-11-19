@@ -316,7 +316,9 @@ async def slash_group_set_tag(
         members_over_length = [
             member
             for member in members
-            if len(member.name+tag) > 80
+            if len(f'{member} {tag}') > (
+                32 if member.userproxy and member.userproxy.include_group_tag else 80
+            )
         ]
 
         if members_over_length:
@@ -341,9 +343,14 @@ async def slash_group_set_tag(
     )
 
     sync_tasks = []
+    failed = []
 
     for member in members:
         if not (member.userproxy and member.userproxy.include_group_tag):
+            continue
+
+        if tag and len(f'{member} {tag}') > 32:
+            failed.append(member)
             continue
 
         from .member import _userproxy_sync
@@ -351,6 +358,14 @@ async def slash_group_set_tag(
 
         sync_tasks.append(_userproxy_sync(
             member, {MemberUpdateType.NAME}, interaction.author_name))
+
+    if failed:
+        await interaction.response.send_message(
+            embeds=[Embed.warning(
+                title='failed to update the following userproxies; their names with the group tag are too long',
+                message='\n'.join(member.name for member in failed)
+            )]
+        )
 
     await gather(*sync_tasks)
 
