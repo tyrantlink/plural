@@ -318,10 +318,13 @@ async def message_plural_debug(interaction: Interaction, message: Message) -> No
     contexts=[InteractionContextType.GUILD],
     integration_types=[ApplicationIntegrationType.GUILD_INSTALL])
 async def message_plural_proxy_info(interaction: Interaction, message: Message) -> None:
-    if message.webhook_id is None:
+    if (
+        message.author is None or
+        message.webhook_id is None and
+        message.interaction_metadata is None and
+        not message.author.bot
+    ):
         raise InteractionError('message is not a proxied message!')
-
-    assert message.author is not None
 
     db_message = await DBMessage.find_one({'proxy_id': message.id})
 
