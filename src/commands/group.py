@@ -309,8 +309,9 @@ async def slash_group_set_tag(
     embeds = [
         Embed.success(f'set group `{group.name}` tag to `{tag}`')
     ]
+    members = await group.get_members()
+
     if tag is not None:
-        members = await group.get_members()
 
         members_over_length = [
             member
@@ -338,6 +339,20 @@ async def slash_group_set_tag(
         group.save(),
         interaction.response.send_message(embeds=embeds)
     )
+
+    sync_tasks = []
+
+    for member in members:
+        if not (member.userproxy and member.userproxy.include_group_tag):
+            continue
+
+        from .member import _userproxy_sync
+        from src.models import MemberUpdateType
+
+        sync_tasks.append(_userproxy_sync(
+            member, {MemberUpdateType.NAME}, interaction.author_name))
+
+    await gather(*sync_tasks)
 
 
 @group_set.command(
