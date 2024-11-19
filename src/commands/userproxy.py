@@ -72,6 +72,8 @@ async def _sed_edit(
         Embed.warning('no changes were made')
     )
 
+    embed.set_footer(text=f'message id: {original_message.id}')
+
     gather(
         webhook.edit_message(
             '@original',
