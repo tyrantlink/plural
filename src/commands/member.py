@@ -983,7 +983,7 @@ async def slash_member_userproxy_invite(
             title='invite userproxy',
             message='\n\n'.join([
                 f'[add the bot to your account](https://discord.com/oauth2/authorize?client_id={userproxy.userproxy.bot_id}&integration_type=1&scope=applications.commands)',
-                f'[invite the bot to a server](https://discord.com/oauth2/authorize?client_id={userproxy.userproxy.bot_id}&integration_type=0&scope=applications.commands)'
+                f'[invite the bot to a server](https://discord.com/oauth2/authorize?client_id={userproxy.userproxy.bot_id}&permissions=0&integration_type=0&scope=bot)'
             ])
         )]
     )
