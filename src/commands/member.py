@@ -409,7 +409,7 @@ async def slash_member_set_avatar(
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='include_attribution',
-            description='whether to add "userproxy for @user, powered by /plu/ral" to the end of the bio',
+            description='whether to add "a plural proxy for @user, powered by /plu/ral" to the end of the bio',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
