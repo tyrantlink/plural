@@ -4,6 +4,7 @@ from typing import overload, Literal
 
 
 START_COMMIT = '2f6d679338fe64940e7d6e606e4424bce9d2d125'
+BASE_VERSION = '2.0.0' + ('-dev' if project.dev_environment else '')
 
 
 @overload
@@ -58,7 +59,7 @@ def _find_start_commit(
 def calculate_version(
     commits: dict[str, str]
 ) -> list[int]:
-    version = list(map(int, VERSION.split('-')[0].split('.')))
+    version = list(map(int, BASE_VERSION.split('-')[0].split('.')))
 
     for message in commits.values():
         match message.strip().lower()[:6]:
