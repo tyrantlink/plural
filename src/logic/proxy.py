@@ -389,9 +389,11 @@ async def guild_userproxy(
 
     bot_permissions = await message.channel.fetch_permissions_for(member.userproxy.bot_id)
 
-    if (
-        not bot_permissions & Permission.SEND_MESSAGES or
-        not bot_permissions & Permission.VIEW_CHANNEL
+    if not (
+        bot_permissions & (
+            Permission.SEND_MESSAGES |
+            Permission.VIEW_CHANNEL
+        )
     ):
         return False
 

@@ -60,7 +60,16 @@ class Member(RawBaseModel):
         if guild.owner_id == self.user.id:
             return Permission.all()
 
-        permissions = Permission.NONE
+        if guild.roles is None:
+            raise ValueError('Roles not found')
+
+        everyone_role = [
+            role.permissions
+            for role in guild.roles
+            if role.id == guild.id
+        ][0]
+
+        permissions = everyone_role
 
         for role in [
             role
@@ -83,19 +92,24 @@ class Member(RawBaseModel):
 
         # ? @everyone overwrite
         if (overwrite := overwrites.pop(guild_id, None)) is not None:
-            permissions &= ~overwrite[0]
-            permissions |= overwrite[1]
+            permissions &= ~overwrite[1]  # ? deny
+            permissions |= overwrite[0]  # ? allow
 
         # ? role overwrites
+        role_allow = Permission.NONE
+        role_deny = Permission.NONE
         for role_id in self.roles or []:
             if (overwrite := overwrites.pop(role_id, None)) is not None:
-                permissions &= ~overwrite[0]
-                permissions |= overwrite[1]
+                role_deny |= overwrite[1]  # ? deny
+                role_allow |= overwrite[0]  # ? allow
+
+        permissions &= ~role_deny
+        permissions |= role_allow
 
         # ? member overwrite
         if (overwrite := overwrites.pop(self.user.id, None)) is not None:
-            permissions &= ~overwrite[0]
-            permissions |= overwrite[1]
+            permissions &= ~overwrite[1]
+            permissions |= overwrite[0]
 
         if self.communication_disabled:
             permissions &= (

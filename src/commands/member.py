@@ -987,3 +987,22 @@ async def slash_member_userproxy_invite(
             ])
         )]
     )
+
+
+# @member_userproxy.command(
+#     name='nickname',
+#     description='set a userproxy\'s nickname in this server (bot must be added to the server)',
+#     options=[
+#         ApplicationCommandOption(
+#             type=ApplicationCommandOptionType.STRING,
+#             name='userproxy',
+#             description='member to set nickname for',
+#             required=True,
+#             autocomplete=True),
+#         ApplicationCommandOption(
+#             type=ApplicationCommandOptionType.STRING,
+#             name='nickname',
+#             description='new nickname',
+#             required=True)],
+#     contexts=InteractionContextType.ALL(),
+#     integration_types=[ApplicationIntegrationType.GUILD])

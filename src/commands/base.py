@@ -502,8 +502,6 @@ async def slash_import(
     if not isinstance(export, StandardExport):
         export = export.to_standard()
 
-    print(export.model_dump_json())
-
     await interaction.response.defer()
 
     logs = [
@@ -511,8 +509,6 @@ async def slash_import(
         for log in await export.to_plural().import_to_account(interaction.author_id)
         if log.startswith('E: ')
     ]
-
-    print('\n'.join(logs))
 
     await interaction.followup.send(
         embeds=(
