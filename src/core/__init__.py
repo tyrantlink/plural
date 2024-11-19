@@ -54,6 +54,8 @@ async def lifespan(app: FastAPI):
     yield
 
     await session.close()
+    logfire.info('shutting down')
+    logfire.shutdown()
 
 
 app = FastAPI(
