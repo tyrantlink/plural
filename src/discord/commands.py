@@ -91,7 +91,9 @@ async def _sync_commands(
         if (
             scope == ApplicationCommandScope.USERPROXY and
             (
-                member := await ProxyMember.find_one({'userproxy.bot_id': application_id})
+                member := await ProxyMember.find_one(
+                    {'userproxy.bot_id': application_id},
+                    ignore_cache=True)
             ) and
             member.userproxy is not None and
             member.userproxy.token is not None
