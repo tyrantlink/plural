@@ -152,7 +152,7 @@ class Channel(RawBaseModel):
             token=token
         )
 
-    async def fetch_message(self, message_id: Snowflake) -> Message:
+    async def fetch_message(self, message_id: Snowflake | int) -> Message:
         from .message import Message
 
         return await Message.fetch(self.id, message_id)

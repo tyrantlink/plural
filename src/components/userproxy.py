@@ -1,6 +1,6 @@
 from src.discord import modal, TextInput, Interaction, TextInputStyle, MessageFlag, Webhook, Embed
-from src.db import UserProxyInteraction, Reply
-from src.errors import InteractionError
+from src.db import UserProxyInteraction, Reply, ProxyMember
+from src.errors import InteractionError, HTTPException
 from asyncio import gather
 
 
@@ -67,24 +67,50 @@ async def umodal_send(
 async def umodal_edit(
     interaction: Interaction,
     message_id: int,
+    author_id: int,
     message: str
 ) -> None:
+
     userproxy_interaction = await UserProxyInteraction.find_one({
         'message_id': message_id
     })
 
-    if userproxy_interaction is None:
+    if userproxy_interaction is not None:
+        webhook = Webhook.from_proxy_interaction(
+            userproxy_interaction
+        )
+
+        await gather(
+            webhook.edit_message(
+                message_id,
+                content=message
+            ),
+            interaction.response.ack()
+        )
+
+        return
+
+    member = await ProxyMember.find_one({
+        'userproxy.bot_id': author_id
+    })
+
+    if member is None:
+        raise InteractionError('message not found')
+
+    assert member.userproxy is not None
+    assert member.userproxy.token is not None
+
+    assert interaction.channel is not None
+    try:
+        og_message = await interaction.channel.fetch_message(message_id)
+    except HTTPException:
         raise InteractionError(
             'message not found\ndue to discord limitations, you can\'t edit messages that are older than 15 minutes')
 
-    webhook = Webhook.from_proxy_interaction(
-        userproxy_interaction
-    )
-
     await gather(
-        webhook.edit_message(
-            message_id,
-            content=message
+        og_message.edit(
+            content=message,
+            token=member.userproxy.token
         ),
         interaction.response.ack()
     )

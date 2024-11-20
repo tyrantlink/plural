@@ -280,6 +280,7 @@ class Message(RawBaseModel):
         components: list[Component] | None = None,
         attachments: list[File] | None = None,
         allowed_mentions: AllowedMentions | None = None,
+        token: str | None = project.bot_token
     ) -> Message:
         json = {}
 
@@ -321,7 +322,8 @@ class Message(RawBaseModel):
                     ),
                     ignore_cache=True,
                     form=form,
-                    files=attachments
+                    files=attachments,
+                    token=token
                 )
             )
             if attachments else
@@ -334,7 +336,8 @@ class Message(RawBaseModel):
                         message_id=self.id
                     ),
                     ignore_cache=True,
-                    json=json
+                    json=json,
+                    token=token
                 )
             )
         )

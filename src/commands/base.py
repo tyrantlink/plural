@@ -28,16 +28,27 @@ async def slash_ping(interaction: Interaction) -> None:
 
 
 async def _userproxy_edit(interaction: Interaction, message: Message) -> bool:
-    if message.interaction_metadata is None or message.webhook_id is None:
+    assert message.author is not None
+
+    if not message.author.bot:
         return False
 
-    if message.interaction_metadata.user.id != interaction.author_id:
+    member = await ProxyMember.find_one({'userproxy.bot_id': message.author.id})
+
+    if member is None or member.userproxy is None:
+        return False
+
+    if interaction.author_id not in (await member.get_group()).accounts:
         raise InteractionError('you can only edit your own messages!')
 
-    if await ProxyMember.find_one({'userproxy.bot_id': message.webhook_id}) is None:
-        raise InteractionError('message is not a proxied message!')
+    if member.userproxy.token is None:
+        raise InteractionError(
+            'you must have the bot token stored to edit messages')
 
-    if not await UserProxyInteraction.find_one({'message_id': message.id}):
+    if (
+        message.interaction_metadata is not None and
+        await UserProxyInteraction.find_one({'message_id': message.id}) is None
+    ):
         raise InteractionError(
             'due to discord limitations, you can\'t edit userproxy messages older than 15 minutes')
 
@@ -47,7 +58,8 @@ async def _userproxy_edit(interaction: Interaction, message: Message) -> bool:
         ).with_text_kwargs(
             0, value=message.content
         ).with_extra(
-            message.id
+            message.id,
+            message.author.id
         ))
     return True
 
