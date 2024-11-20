@@ -176,7 +176,7 @@ async def get_proxy_for_message(
                     if not _ensure_proxy_preserves_mentions(check):
                         continue
 
-                    if latch is not None and latch.enabled:
+                    if latch is not None and latch.enabled and not latch.fronting:
                         latch.member = member.id
                         await latch.save_changes()
 

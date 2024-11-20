@@ -21,6 +21,8 @@ class Latch(Document):
     user: int = Field(description='user id')
     guild: int | None = Field(description='guild id')
     enabled: bool = Field(False, description='whether the latch is enabled')
+    fronting: bool = Field(
+        False, description='whether the latch is in fronting mode')
     member: PydanticObjectId | None = Field(
         description='the latched member id')
 

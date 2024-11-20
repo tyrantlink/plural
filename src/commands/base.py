@@ -122,6 +122,11 @@ async def message_plural_edit(interaction: Interaction, message: Message) -> Non
             type=ApplicationCommandOptionType.BOOLEAN,
             name='server_only',
             description='whether to enable/disable in every server or just this one',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='fronting_mode',
+            description='when enabled, using proxy tags will NOT auto switch (default: Unset / False)',
             required=False)],
     contexts=[InteractionContextType.GUILD],
     integration_types=[ApplicationIntegrationType.GUILD_INSTALL])
@@ -129,7 +134,8 @@ async def slash_autoproxy(
     interaction: Interaction,
     enabled: bool | None = None,
     member: ProxyMember | None = None,
-    server_only: bool = True
+    server_only: bool = True,
+    fronting_mode: bool | None = None
 ) -> None:
     if interaction.guild is None and server_only:
         raise InteractionError(
@@ -145,6 +151,7 @@ async def slash_autoproxy(
             user=interaction.author_id,
             guild=interaction.guild_id if server_only else None,
             enabled=False,
+            fronting=fronting_mode or False,
             member=None
         ).save()
     )
@@ -160,6 +167,9 @@ async def slash_autoproxy(
 
     if not latch.enabled:
         latch.member = None
+
+    if fronting_mode is not None:
+        latch.fronting = fronting_mode
 
     message = (
         f'autoproxying in `{interaction.guild.name}` is now '
@@ -198,20 +208,27 @@ async def slash_autoproxy(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='enabled',
             description='enable or disable auto proxying',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='fronting_mode',
+            description='when enabled, using proxy tags will NOT auto switch (default: False)',
             required=False)],
     contexts=[InteractionContextType.GUILD],
     integration_types=[ApplicationIntegrationType.GUILD_INSTALL])
 async def slash_switch(
     interaction: Interaction,
     member: ProxyMember,
-    enabled: bool | None = None
+    enabled: bool | None = None,
+    fronting_mode: bool = False
 ) -> None:
     assert slash_autoproxy.callback is not None
     await slash_autoproxy.callback(
         interaction,
         enabled=enabled,
         member=member,
-        server_only=False
+        server_only=False,
+        fronting_mode=fronting_mode
     )
 
 
