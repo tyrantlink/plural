@@ -175,7 +175,7 @@ async def uslash_proxy(
         )
     ).save()
 
-    await interaction.response.send_message(
+    await sender(
         embeds=[
             Embed.success(
                 title='message queued for reply',
