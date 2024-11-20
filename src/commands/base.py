@@ -212,7 +212,7 @@ async def slash_autoproxy(
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='fronting_mode',
-            description='when enabled, using proxy tags will NOT auto switch (default: False)',
+            description='when enabled, using proxy tags will NOT auto switch (default: Unset / False)',
             required=False)],
     contexts=[InteractionContextType.GUILD],
     integration_types=[ApplicationIntegrationType.GUILD_INSTALL])
@@ -220,7 +220,7 @@ async def slash_switch(
     interaction: Interaction,
     member: ProxyMember,
     enabled: bool | None = None,
-    fronting_mode: bool = False
+    fronting_mode: bool | None = None
 ) -> None:
     assert slash_autoproxy.callback is not None
     await slash_autoproxy.callback(
