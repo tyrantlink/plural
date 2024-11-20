@@ -89,7 +89,8 @@ class Message(RawBaseModel):
     application_id: Snowflake | None = None
     flags: MessageFlag
     message_reference: MessageReference | None = None
-    message_snapshots: list[Message] | None = None
+    # ? i don't care enough to model partial messages right now
+    message_snapshots: list[dict[str, dict]] | None = None
     referenced_message: Message | None = None
     interaction_metadata: MessageInteractionMetadata | None = None
     interaction: MessageInteraction | None = None  # deprecated
