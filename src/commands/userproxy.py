@@ -132,21 +132,20 @@ async def uslash_proxy(
     if message and await _sed_edit(interaction, message):
         return
 
-    sender = (
-        interaction.followup.send
-        if attachment else
-        interaction.response.send_message
-    )
-
     if attachment:
         assert interaction.app_permissions is not None
         if not interaction.app_permissions & Permission.ATTACH_FILES:
             raise InteractionError(
                 'bot does not have permission to attach files in this channel')
 
-        await interaction.response.defer(
-            MessageFlag.EPHEMERAL if queue_for_reply else MessageFlag.NONE
-        )
+        if not queue_for_reply:
+            await interaction.response.defer(MessageFlag.NONE)
+
+    sender = (
+        interaction.followup.send
+        if interaction.response.responded else
+        interaction.response.send_message
+    )
 
     if not queue_for_reply:
         sent_message = await sender(
