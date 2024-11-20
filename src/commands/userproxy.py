@@ -144,7 +144,9 @@ async def uslash_proxy(
             raise InteractionError(
                 'bot does not have permission to attach files in this channel')
 
-        await interaction.response.defer(MessageFlag.NONE)
+        await interaction.response.defer(
+            MessageFlag.EPHEMERAL if queue_for_reply else MessageFlag.NONE
+        )
 
     if not queue_for_reply:
         sent_message = await sender(
