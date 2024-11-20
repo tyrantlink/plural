@@ -1,7 +1,7 @@
 from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, COMMAND_NAME_PATTERN
+from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT, LEGACY_FOOTER
 from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
 from src.discord.commands import sync_commands, _put_all_commands
-from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT
 from src.db import ProxyMember, Group, ImageExtension
 from src.components import modal_plural_member_bio
 from src.models import project, MemberUpdateType
@@ -439,6 +439,11 @@ async def slash_member_set_bio(
 
     max_length = USERPROXY_FOOTER_LIMIT if include_attribution else 400
 
+    # ? attempt to strip legacy footer
+    current_bio = app.description.removesuffix(
+        LEGACY_FOOTER.format(username=interaction.author_name)
+    ).strip()
+
     current_bio = app.description.removesuffix(
         USERPROXY_FOOTER.format(username=interaction.author_name)
     ).strip()
@@ -448,7 +453,7 @@ async def slash_member_set_bio(
             f'set {app.bot.username}\'s bio'
         ).with_text_kwargs(
             0,
-            value=current_bio,
+            value=current_bio[:max_length],  # ? truncate to max length
             max_length=max_length
         ).with_extra(
             userproxy,
