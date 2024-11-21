@@ -1,4 +1,4 @@
-from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, Member, COMMAND_NAME_PATTERN
+from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, COMMAND_NAME_PATTERN
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT, LEGACY_FOOTER
 from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
 from src.discord.commands import sync_commands, _put_all_commands
@@ -201,8 +201,7 @@ async def slash_member_list(
                     (
                         member.name
                         if member.userproxy is None else
-                        f'[{member.name}](https://discord.com/oauth2/authorize?client_id={
-                            member.userproxy.bot_id}&integration_type=1&scope=applications.commands)'
+                        f'[{member.name}](https://discord.com/oauth2/authorize?client_id={member.userproxy.bot_id}&integration_type=1&scope=applications.commands)'
                     )
                     for member in await group.get_members()
                 ]) or 'this group has no members'
@@ -569,13 +568,28 @@ async def slash_member_tags_add(
     if prefix is None and suffix is None:
         raise InteractionError('at least one of prefix or suffix is required')
 
+    proxy_tag = ProxyMember.ProxyTag(
+        prefix=prefix or '',
+        suffix=suffix or '',
+        regex=regex,
+        case_sensitive=case_sensitive
+    )
+
+    if proxy_tag in member.proxy_tags:
+        raise InteractionError(f'member `{member.name}` already has this tag')
+
+    existing_members: set[str] = set()
+    async for group in Group.find({'accounts': interaction.author_id}):
+        for member in await group.get_members():
+            if member.id != member.id:
+                continue
+
+            for tag in member.proxy_tags:
+                if tag == proxy_tag:
+                    existing_members.add(f'`[{group.name}] {member.name}`')
+
     member.proxy_tags.append(
-        ProxyMember.ProxyTag(
-            prefix=prefix or '',
-            suffix=suffix or '',
-            regex=regex,
-            case_sensitive=case_sensitive
-        )
+        proxy_tag
     )
 
     await gather(
@@ -586,6 +600,14 @@ async def slash_member_tags_add(
             )]
         )
     )
+
+    if existing_members:
+        await interaction.followup.send(
+            embeds=[Embed.warning(
+                title=f'tag overlaps with {len(existing_members)} other member{'s' if len(existing_members)-1 else ''}',
+                message='\n'.join(existing_members)
+            )]
+        )
 
 
 @member_tags.command(

@@ -48,6 +48,15 @@ class ProxyMember(Document):
         bson_encoders = {ImageId: bytes}
 
     class ProxyTag(BaseModel):
+        def __eq__(self, value: object) -> bool:
+            return (
+                isinstance(value, type(self)) and
+                self.prefix == value.prefix and
+                self.suffix == value.suffix and
+                self.regex == value.regex and
+                self.case_sensitive == value.case_sensitive
+            )
+
         prefix: str = Field(
             '',
             max_length=50,
