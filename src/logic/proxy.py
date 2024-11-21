@@ -253,7 +253,7 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
                 use_cache,
                 with_token=False)
         except NotFound:
-            gather(
+            await gather(
                 webhook.delete(),
                 HTTPCache.invalidate(webhook.url.split('/api')[1]),
                 HTTPCache.invalidate(
