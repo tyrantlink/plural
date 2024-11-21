@@ -10,7 +10,7 @@ get__message = {
                 'original_id': 1309185110070923304,
                 'proxy_id': 1309185113774489671,
                 'author_id': 250797109022818305,
-                'reason': 'matched from member proxy tags: text--steve',
+                'reason': 'matched from member proxy tags:\ntext--steve',
                 'ts': '2024-10-13T03:19:08.984000'
             },
             'only_check_existence = true': True
