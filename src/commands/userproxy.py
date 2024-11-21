@@ -250,6 +250,8 @@ async def umessage_edit(
     interaction: Interaction,
     message: Message
 ) -> None:
+    assert message.author is not None
+
     userproxy_interaction = await UserProxyInteraction.find_one({
         'message_id': message.id
     })
@@ -267,7 +269,8 @@ async def umessage_edit(
         ).with_text_kwargs(
             0, value=message.content
         ).with_extra(
-            message.id
+            message.id,
+            message.author.id
         )
     )
 
