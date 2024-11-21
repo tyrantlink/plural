@@ -1,7 +1,10 @@
+from src.discord import Message, Resolved, Snowflake, MessageType, MessageFlag, User, Guild, GuildFeature, Permission, Member, Channel
+from src.core.auth import api_key_validator, TokenData, Security
+from src.core.models import MessageResponse, MessageSend
+from src.db import Message as DBMessage, ProxyMember
 from fastapi import HTTPException, Query, APIRouter
-from src.core.models.message import MessageModel
 from fastapi.responses import JSONResponse
-from src.db import Message as DBMessage
+from src.logic.proxy import process_proxy
 from src.docs import message as docs
 from datetime import datetime, UTC
 from asyncio import sleep
@@ -17,14 +20,54 @@ def _snowflake_to_age(snowflake: int) -> float:
     ).total_seconds()
 
 
+class FakeMessage(Message):
+    def __init__(
+        self,
+        channel_id: int,
+        content: str,
+        author: User,
+        referenced_message: Message | None = None,
+        **kwargs
+    ) -> None:
+        super().__init__(
+            id=Snowflake(0),
+            channel_id=Snowflake(channel_id),
+            content=content,
+            timestamp=datetime.now(UTC),
+            mention_everyone=False,
+            mentions=[],
+            mention_roles=[],
+            attachments=[],
+            embeds=[],
+            pinned=False,
+            type=MessageType.DEFAULT,
+            flags=MessageFlag.NONE,
+            resolved=Resolved(messages={}),
+            author=author,
+            referenced_message=referenced_message,
+            **kwargs
+        )
+
+    async def delete(
+        self,
+        reason: str | None = None,
+        token: str | None = None
+    ) -> None:
+        pass
+
+
 @router.get(
     '/{message_id}',
-    response_model=MessageModel,
+    response_model=MessageResponse,
     responses=docs.get__message)
 async def get__message(
     message_id: int,
-    only_check_existence: bool = Query(default=False),
-    max_wait: int = Query(default=10, ge=0, le=10)
+    only_check_existence: bool = Query(
+        default=False,
+        description='if True, returns a boolean indicating whether the message was found'),
+    max_wait: int = Query(
+        default=10, ge=0, le=10,
+        description='the maximum time to wait for the message to be found')
 ) -> JSONResponse:
     _find = {
         '$or':
@@ -58,81 +101,82 @@ async def get__message(
     )
 
 
-# @router.post(
-#     '',
-#     response_model=MessageModel,
-#     responses=docs.post__message)
-# async def post__message(
-#     message: SendMessageModel,
-#     token: TokenData = Security(api_key_validator)
-# ) -> JSONResponse:
-#     webhook = await DBWebhook.find_one({'_id': message.channel})
+@router.post(
+    '',
+    response_model=MessageResponse,
+    responses=docs.post__message)
+async def post__message(
+    message: MessageSend,
+    token: TokenData = Security(api_key_validator)
+) -> JSONResponse:
+    """
 
-#     if webhook is None:
-#         raise HTTPException(
-#             404, 'webhook not found; make sure at least one message is sent via discord message before using the API')
+    send a message through the api, you must have the MANAGE_GUILD permission if the server has auto moderation enabled, otherwise you must have the SEND_MESSAGES and VIEW_CHANNEL permissions
 
-#     if webhook.guild is None:
-#         raise HTTPException(
-#             400, 'invalid webhook url found, please send a message through the bot and try again')
+    """
 
-#     member = await ProxyMember.find_one({'_id': message.member})
+    try:
+        channel = await Channel.fetch(message.channel_id)
+    except Exception:
+        raise HTTPException(404, 'channel not found')
 
-#     if member is None or token.user_id not in (await member.get_group()).accounts:
-#         raise HTTPException(404, 'member not found')
+    if channel.guild_id is None:
+        raise HTTPException(
+            400, 'channel not found')
 
-#     # if not await user_can_send(token.user_id, webhook.guild, message):
-#     #     raise HTTPException(
-#     #         403, 'you do not have permission to send messages to this channel')
+    member = await ProxyMember.get(message.member_id)
 
-#     embed = MISSING
-#     if message.reference is not None:
-#         # await insert_reference_text(message, webhook.guild)
-#         proxy_with_reply = ''
+    if member is None or token.user_id not in (await member.get_group()).accounts:
+        raise HTTPException(404, 'member not found')
 
-#         if isinstance(proxy_with_reply, str):
-#             message.content = proxy_with_reply
+    try:
+        author = await Member.fetch(channel.guild_id, token.user_id)
+    except Exception:
+        raise HTTPException(
+            403, 'you do not have permission to send messages to this channel')
 
-#         else:
-#             embed = proxy_with_reply
+    permissions = await author.fetch_permissions_for(channel.guild_id, message.channel_id)
 
-#     avatar = None
-#     if member.avatar:
-#         image = await Image.find_one({'_id': member.avatar})
-#         if image is not None:
-#             avatar = (
-#                 f'{project.base_url}/avatar/{image.id}.{image.extension}')
+    guild = await Guild.fetch(channel.guild_id)
 
-#     async with ClientSession() as session:
-#         try:
-#             discord_webhook = DiscordWebhook.from_url(
-#                 webhook.url, session=session)
-#         except InvalidArgument:
-#             raise HTTPException(
-#                 400, 'invalid webhook url found, please send a message through the bot and try again')
+    required_permissions = (
+        Permission.MANAGE_GUILD
+        if GuildFeature.AUTO_MODERATION in guild.features else
+        Permission.SEND_MESSAGES | Permission.VIEW_CHANNEL
+    )
 
-#         discord_message = await discord_webhook.send(
-#             allowed_mentions=AllowedMentions(
-#                 everyone=False, roles=False, users=False),
-#             content=message.content,
-#             username=member.name,
-#             avatar_url=avatar,
-#             wait=True,
-#             thread=(
-#                 Object(message.thread)
-#                 if message.thread else
-#                 MISSING),
-#             embed=embed
-#         )
+    if not permissions & required_permissions:
+        raise HTTPException(
+            403, 'you do not have permission to send messages to this channel\nif the server has auto moderation enabled, you must have the manage server permission, otherwise you must have the send messages and view channel permissions')
 
-#     db_message = Message(
-#         original_id=None,
-#         proxy_id=discord_message.id,
-#         author_id=token.user_id
-#     )
+    referenced_message = None
 
-#     await db_message.save()
+    if message.reference_id is not None:
+        try:
+            referenced_message = await Message.fetch(
+                channel.id, message.reference_id)
+        except Exception:
+            raise HTTPException(404, 'referenced message not found')
 
-#     return JSONResponse(
-#         content=db_message.model_dump_json(exclude={'id'})
-#     )
+    assert author.user is not None
+
+    fake_message = FakeMessage(
+        channel_id=message.channel_id,
+        content=message.content,
+        author=author.user,
+        referenced_message=referenced_message
+    )
+
+    await fake_message.populate()
+
+    _, _, _, db_message = await process_proxy(
+        fake_message,
+        member=member,
+    )
+
+    if db_message is None:
+        raise HTTPException(500, 'failed to send message')
+
+    return JSONResponse(
+        content=db_message.model_dump_json(exclude={'id'})
+    )

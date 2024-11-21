@@ -122,6 +122,7 @@ async def get__root():
 
 @app.get(
     '/healthcheck',
-    status_code=204)
+    status_code=204,
+    include_in_schema=False)
 async def get__healthcheck():
     return Response(status_code=204)

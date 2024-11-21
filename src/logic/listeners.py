@@ -23,7 +23,7 @@ async def on_message(message: MessageCreateEvent):
     ):
         return
 
-    proxied, app_emojis, token = await process_proxy(message)
+    proxied, app_emojis, token, db_message = await process_proxy(message)
 
     if app_emojis:
         gather(*[emoji.delete(token) for emoji in app_emojis])
