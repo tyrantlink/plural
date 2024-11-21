@@ -1,27 +1,7 @@
 from typing import Any
 
 
-def response(
-    status: int,
-    description: str,
-    example: Any
-) -> dict[str | int, dict]:
-    return {
-        status:
-        {
-            'description': description,
-            'content':
-            {
-                'application/json':
-                {
-                    'example': example
-                }
-            }
-        }
-    }
-
-
-def multi_response(
+def json_response(
     status: int,
     description: str,
     examples: dict[str, Any]
@@ -54,22 +34,6 @@ def multi_response(
 
 
 def file_response(
-    content_type: str
-) -> dict[str | int, dict]:
-    return {
-        content_type:
-        {
-            'schema':
-            {
-                'type': 'string',
-                'format': 'binary',
-                'example': 'binary file'
-            }
-        }
-    }
-
-
-def multi_file_response(
     status: int,
     description: str,
     content_types: list[str]

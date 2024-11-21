@@ -122,7 +122,7 @@ async def post__message(
 
     if channel.guild_id is None:
         raise HTTPException(
-            400, 'channel not found')
+            404, 'channel not found')
 
     member = await ProxyMember.get(message.member_id)
 
@@ -133,7 +133,8 @@ async def post__message(
         author = await Member.fetch(channel.guild_id, token.user_id)
     except Exception:
         raise HTTPException(
-            403, 'you do not have permission to send messages to this channel')
+            # ? using channel not found for privacy
+            404, 'channel not found')
 
     permissions = await author.fetch_permissions_for(channel.guild_id, message.channel_id)
 

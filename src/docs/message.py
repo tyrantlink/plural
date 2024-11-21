@@ -1,57 +1,73 @@
-from src.docs.responses import response, multi_response
+from src.docs.responses import json_response
 
 
 get__message = {
-    **multi_response(
+    **json_response(
         status=200,
-        description='image found',
+        description='message found or only_check_existence = true',
         examples={
-            'only check existence = false': {
-                'original_id': 1294861959618891788,
-                'proxy_id': 1294861961028309093,
+            'only_check_existence = false': {
+                'original_id': 1309185110070923304,
+                'proxy_id': 1309185113774489671,
                 'author_id': 250797109022818305,
+                'reason': 'matched from member proxy tags: text--steve',
                 'ts': '2024-10-13T03:19:08.984000'
             },
-            'only check existence = true': True
+            'only_check_existence = true': True
         }
     ),
-    **response(
+    **json_response(
         status=404,
         description='message not found',
-        example={
-            'detail': 'message not found'
+        examples={
+            'message not found': {
+                'detail': 'message not found'
+            }
         }
     )
 }
 
 post__message = {
-    **response(
+    **json_response(
         status=200,
         description='message sent',
-        example={
-            'original_id': None,
-            'proxy_id': 1294861961028309093,
-            'author_id': 250797109022818305,
-            'ts': '2024-10-13T03:19:08.984000'
-        }
-    ),
-    **multi_response(
-        status=404,
-        description='webhook or member not found',
         examples={
-            'member not found': {
-                'detail': 'member not found'
-            },
-            'webhook not found': {
-                'detail': 'webhook not found; make sure at least one message is sent via discord message before using the API'
+            'message sent': {
+                'original_id': None,
+                'proxy_id': 1294861961028309093,
+                'author_id': 250797109022818305,
+                'ts': '2024-10-13T03:19:08.984000'
             }
         }
     ),
-    **response(
-        status=400,
-        description='invalid webhook url',
-        example={
-            'detail': 'invalid webhook url found, please send a message through the bot and try again'
+    **json_response(
+        status=403,
+        description='missing permissions',
+        examples={
+            'missing permissions': {
+                'detail': 'you do not have permission to send messages to this channel\nif the server has auto moderation enabled, you must have the manage server permission, otherwise you must have the send messages and view channel permissions'
+            }
+        }
+    ),
+    **json_response(
+        status=404,
+        description='channel or proxy member not found',
+        examples={
+            'channel not found': {
+                'detail': 'channel not found'
+            },
+            'member not found': {
+                'detail': 'member not found'
+            }
+        }
+    ),
+    **json_response(
+        status=500,
+        description='failed to send message',
+        examples={
+            'failed to send message': {
+                'detail': 'failed to send message'
+            }
         }
     )
 }
