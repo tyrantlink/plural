@@ -23,7 +23,8 @@ def _snowflake_to_age(snowflake: int) -> float:
     responses=docs.get__message)
 async def get__message(
     message_id: int,
-    only_check_existence: bool = Query(default=False)
+    only_check_existence: bool = Query(default=False),
+    max_wait: int = Query(default=10, ge=0, le=10)
 ) -> JSONResponse:
     _find = {
         '$or':
@@ -38,8 +39,7 @@ async def get__message(
     # ? /plu/ral deletes the original message and replaces it silmultaneously
     # ? due to discord ratelimiting, the original message may be deleted before the proxy is created
     for _ in range(15):
-        print(_snowflake_to_age(message_id))
-        if message is not None or _snowflake_to_age(message_id) > 10:
+        if message is not None or _snowflake_to_age(message_id) > max_wait:
             break
 
         await sleep(0.5)
