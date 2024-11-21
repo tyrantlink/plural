@@ -566,6 +566,9 @@ async def slash_member_tags_add(
     if len(member.proxy_tags) >= 15:
         raise InteractionError('members can only have 15 proxy tags')
 
+    if prefix is None and suffix is None:
+        raise InteractionError('at least one of prefix or suffix is required')
+
     member.proxy_tags.append(
         ProxyMember.ProxyTag(
             prefix=prefix or '',
