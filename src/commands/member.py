@@ -1,4 +1,4 @@
-from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, COMMAND_NAME_PATTERN
+from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, Member, COMMAND_NAME_PATTERN
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT, LEGACY_FOOTER
 from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
 from src.discord.commands import sync_commands, _put_all_commands
@@ -994,20 +994,62 @@ async def slash_member_userproxy_invite(
     )
 
 
-# @member_userproxy.command(
-#     name='nickname',
-#     description='set a userproxy\'s nickname in this server (bot must be added to the server)',
-#     options=[
-#         ApplicationCommandOption(
-#             type=ApplicationCommandOptionType.STRING,
-#             name='userproxy',
-#             description='member to set nickname for',
-#             required=True,
-#             autocomplete=True),
-#         ApplicationCommandOption(
-#             type=ApplicationCommandOptionType.STRING,
-#             name='nickname',
-#             description='new nickname',
-#             required=True)],
-#     contexts=InteractionContextType.ALL(),
-#     integration_types=[ApplicationIntegrationType.GUILD])
+@member_userproxy.command(
+    name='nickname',
+    description='set a userproxy\'s nickname in this server (bot must be added to the server)',
+    options=[
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='userproxy',
+            description='member to set nickname for',
+            required=True,
+            autocomplete=True),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='nickname',
+            description='new nickname (leave blank to remove)',
+            required=False)],
+    contexts=[InteractionContextType.GUILD],
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_member_userproxy_nickname(
+    interaction: Interaction,
+    userproxy: ProxyMember,
+    nickname: str | None = None
+) -> None:
+    if userproxy.userproxy is None:
+        raise InteractionError(
+            f'member `{userproxy.name}` does not have a userproxy')
+
+    if userproxy.userproxy.token is None:
+        raise InteractionError(
+            'your userproxy must have a bot token stored to set a nickname')
+
+    if interaction.guild is None:
+        raise InteractionError(
+            'current server not found'
+        )
+
+    if interaction.guild.id not in userproxy.userproxy.guilds:
+        raise InteractionError(
+            'bot is not in this server; use `/member userproxy invite` to invite the bot and then use `/member userproxy sync` to sync the bot'
+        )
+
+    try:
+        await interaction.guild.modify_current_member(
+            nick=nickname,
+            token=userproxy.userproxy.token
+        )
+    except NotFound:
+        raise InteractionError(
+            'bot is not in this server; use `/member userproxy invite` to invite the bot and then use `/member userproxy sync` to sync the bot'
+        )
+    except Forbidden:
+        raise InteractionError(
+            'bot does not have permission to change it\'s own nickname'
+        )
+
+    await interaction.response.send_message(
+        embeds=[Embed.success(
+            f'set nickname for userproxy `{userproxy.name}` to `{nickname}`'
+        )]
+    )

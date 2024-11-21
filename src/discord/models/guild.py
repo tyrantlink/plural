@@ -1,14 +1,18 @@
 from __future__ import annotations
 from .enums import Permission, VerificationLevel, DefaultMessageNotificationLevel, ExplicitContentFilterLevel, GuildFeature, MFALevel, SystemChannelFlag, PremiumTier, NSFWLevel
+from src.discord.types import Snowflake, MissingNoneOr, MISSING
 from pydantic import model_validator, field_validator
 from src.discord.http import Route, request
-from src.discord.types import Snowflake
+from typing import TYPE_CHECKING
 from src.models import project
 from .base import RawBaseModel
 from .sticker import Sticker
 from .emoji import Emoji
 from .role import Role
 import logfire
+
+if TYPE_CHECKING:
+    from .member import Member
 
 
 class WelcomeScreenChannel(RawBaseModel):
@@ -139,3 +143,28 @@ class Guild(RawBaseModel):
                 ignore_cache=ignore_cache
             )
         ]
+
+    async def modify_current_member(
+        self,
+        nick: MissingNoneOr[str] = MISSING,
+        token: str | None = project.bot_token
+    ) -> Member:
+        from .member import Member
+
+        json = {}
+
+        if nick is not MISSING:
+            json['nick'] = nick
+
+        return Member(
+            **await request(
+                Route(
+                    'PATCH',
+                    '/guilds/{guild_id}/members/@me',
+                    guild_id=self.id,
+                    token=token
+                ),
+                json=json,
+                token=token
+            )
+        )
