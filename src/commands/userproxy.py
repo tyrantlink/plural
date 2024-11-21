@@ -200,11 +200,15 @@ async def umessage_reply(
         'channel': int(interaction.channel_id or 0)
     })
 
+    title = f'reply to {message.author.username if message.author else 'a message'}'
+
+    if len(title) > 45:
+        title = 'reply to a message'
+
     if reply is None:
         await interaction.response.send_modal(
             modal=umodal_send.with_title(
-                f'reply to {
-                    message.author.username if message.author else 'a message'}'
+                title
             ).with_extra(
                 False
             ))
