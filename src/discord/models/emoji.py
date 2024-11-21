@@ -7,7 +7,7 @@ from .user import User
 
 
 class Emoji(RawBaseModel):
-    id: Snowflake | None
+    id: Snowflake | None = None
     name: str | None
     roles: list[Snowflake] | None = None
     user: User | None = None
