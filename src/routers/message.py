@@ -1,23 +1,20 @@
-# from discord import Webhook as DiscordWebhook, InvalidArgument, Object, MISSING, AllowedMentions
-from src.core.models.message import MessageModel, SendMessageModel
-from src.db import Message, Webhook as DBWebhook, ProxyMember, Image
-# from src.api.drest import user_can_send, insert_reference_text
-from fastapi import HTTPException, Query, APIRouter, Security
-from src.core.auth import api_key_validator, TokenData
+from fastapi import HTTPException, Query, APIRouter
+from src.core.models.message import MessageModel
 from fastapi.responses import JSONResponse
+from src.db import Message as DBMessage
 from src.docs import message as docs
 from datetime import datetime, UTC
-from aiohttp import ClientSession
-from src.models import project
 from asyncio import sleep
 
 router = APIRouter(prefix='/message', tags=['Message'])
 
 
 def _snowflake_to_age(snowflake: int) -> float:
-    return (datetime.fromtimestamp(
-        (snowflake >> 22) + 1420070400000 / 1000
-    ) - datetime.now(UTC)).total_seconds()
+    return (
+        datetime.now(UTC) - datetime.fromtimestamp(
+            ((snowflake >> 22) + 1420070400000) / 1000,
+            tz=UTC)
+    ).total_seconds()
 
 
 @router.get(
@@ -35,12 +32,18 @@ async def get__message(
                 {'proxy_id': message_id}
             ]
     }
-    message = await Message.find_one(_find)
+
+    message = await DBMessage.find_one(_find)
+
     # ? /plu/ral deletes the original message and replaces it silmultaneously
     # ? due to discord ratelimiting, the original message may be deleted before the proxy is created
-    while message is None and _snowflake_to_age(message_id) < 5:
+    for _ in range(15):
+        print(_snowflake_to_age(message_id))
+        if message is not None or _snowflake_to_age(message_id) > 10:
+            break
+
         await sleep(0.5)
-        message = await Message.find_one(_find)
+        message = await DBMessage.find_one(_find, ignore_cache=True)
 
     if only_check_existence:
         return JSONResponse(
