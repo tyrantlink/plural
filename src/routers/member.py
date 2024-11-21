@@ -2,7 +2,7 @@ from src.core.models.member import MemberModel, MemberUpdateModel
 from src.core.auth import api_key_validator, TokenData
 from fastapi import HTTPException, Security, APIRouter
 from fastapi.responses import JSONResponse
-from src.db import ProxyMember, Group, Image
+from src.db import ProxyMember, Group
 from src.docs import member as docs
 from beanie import PydanticObjectId
 from asyncio import gather

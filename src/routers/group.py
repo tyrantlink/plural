@@ -5,8 +5,8 @@ from src.core.auth import api_key_validator, TokenData
 from fastapi.responses import JSONResponse
 from beanie import PydanticObjectId
 from src.docs import group as docs
-from src.db import Group, Image
 from asyncio import gather
+from src.db import Group
 
 router = APIRouter(prefix='/group', tags=['Group'])
 

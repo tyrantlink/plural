@@ -13,7 +13,6 @@ from .message import Message
 from .api_key import ApiKey
 from .group import Group
 from .latch import Latch
-from .image import Image
 from .reply import Reply
 from logfire import span
 
@@ -37,7 +36,6 @@ class MongoDatabase:
                 Message,
                 ApiKey,
                 Group,
-                Image,
                 Latch,
                 Reply,
             ]
