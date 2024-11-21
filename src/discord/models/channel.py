@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .enums import ChannelType, OverwriteType, VideoQualityMode, ChannelFlag, Permission
+from .enums import ChannelType, OverwriteType, VideoQualityMode, ChannelFlag, Permission, MessageFlag
 from src.discord.http import Route, request, File
 from src.discord.types import Snowflake
 from typing import TYPE_CHECKING
@@ -133,6 +133,7 @@ class Channel(RawBaseModel):
         reference: Message | MessageReference | None = None,
         allowed_mentions: AllowedMentions | None = None,
         poll: Poll | None = None,
+        flags: MessageFlag | None = None,
         delete_after: float | None = None,
         token: str | None = project.bot_token
     ) -> Message:
@@ -148,6 +149,7 @@ class Channel(RawBaseModel):
             reference=reference,
             allowed_mentions=allowed_mentions,
             poll=poll,
+            flags=flags,
             delete_after=delete_after,
             token=token
         )

@@ -188,6 +188,7 @@ class Message(RawBaseModel):
         reference: Message | MessageReference | None = None,
         allowed_mentions: AllowedMentions | None = None,
         poll: Poll | None = None,
+        flags: MessageFlag | None = None,
         delete_after: float | None = None,
         token: str | None = project.bot_token
     ) -> Message:
@@ -225,6 +226,9 @@ class Message(RawBaseModel):
 
         if poll:
             json['poll'] = poll.as_create_request()
+
+        if flags:
+            json['flags'] = flags
 
         form = None  # ? mypy is stupid
         if attachments:

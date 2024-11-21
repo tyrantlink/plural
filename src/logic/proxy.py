@@ -1,4 +1,4 @@
-from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType
+from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag
 from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage
@@ -420,6 +420,7 @@ async def guild_userproxy(
                             user.id for user in message.mentions
                         ])),
                 poll=message.poll,
+                flags=MessageFlag.SUPPRESS_NOTIFICATIONS,
                 token=member.userproxy.token
             )
         )
