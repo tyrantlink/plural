@@ -496,14 +496,14 @@ async def slash_import(
         embed.add_field(
             name='pluralkit',
             value='\n'.join([
-                '​1. start a DM with pluralkit',
+                '​1. start a DM with pluralkit (<@466378653216014359>)',
                 '​2. send `pk;export` and copy the link it DMs you',
                 '​3. use the `/import` command and paste the link to the `file_url` parameter']),
             inline=False)
         embed.add_field(
             name='tupperbox',
             value='\n'.join([
-                '​1. start a DM with tupperbox',
+                '​1. start a DM with tupperbox (<@431544605209788416>)',
                 '​2. send `tul!export` and copy the link it DMs you',
                 '​3. use the `/import` command and paste the link to the `file_url` parameter']),
             inline=False)
