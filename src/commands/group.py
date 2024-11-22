@@ -421,7 +421,7 @@ async def slash_group_set_avatar(
     response = f'group `{group.name}` now has the avatar `{avatar.filename}`'
 
     if group.avatar.extension == ImageExtension.GIF:
-        response += '\n\n**note:** gif avatars are not animated'
+        response += '\n\n**note:** gif avatars are not animated (unless in a userproxy)'
 
     await interaction.followup.send(
         embeds=[Embed.success(response)]
