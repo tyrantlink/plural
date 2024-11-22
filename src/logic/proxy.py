@@ -440,11 +440,16 @@ async def process_proxy(
     member: ProxyMember | None = None,
 ) -> tuple[bool, list[Emoji] | None, str, DBMessage | None]:
     assert message.author is not None
-    assert message.channel is not None
+
     if debug_log is None:
         # ? if debug_log is given by debug command, it will have DebugMessage.ENABLER, being a truthy value
         # ? if it's not given, we set it to an empty list here and never append to it
         debug_log = []
+
+    if message.channel is None:
+        if debug_log:
+            debug_log.append(DebugMessage.PERM_VIEW_CHANNEL)
+        return False, None, project.bot_token, None
 
     token = project.bot_token
 
