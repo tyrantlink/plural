@@ -83,12 +83,17 @@ __all__ = (
     # emoji.py
     'Emoji',
     # event.py
+    'ApplicationAuthorizedEvent',
+    'EventType',
     'GatewayEvent',
     'GatewayEventName',
     'GatewayOpCode',
     'MessageCreateEvent',
     'MessageReactionAddEvent',
     'MessageUpdateEvent',
+    'WebhookEvent',
+    'WebhookEventBody',
+    'WebhookEventType',
     # guild.py
     'DefaultMessageNotificationLevel',
     'ExplicitContentFilterLevel',

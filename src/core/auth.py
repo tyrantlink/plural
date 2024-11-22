@@ -1,15 +1,17 @@
-from src.discord.models import Interaction, ApplicationIntegrationType
+from src.discord.models import Interaction, ApplicationIntegrationType, WebhookEvent
 from fastapi import Security, HTTPException, Request, Header
 from fastapi.security.api_key import APIKeyHeader
 from concurrent.futures import ThreadPoolExecutor
 from src.db import ApiKey, ProxyMember, ApiToken
 from nacl.exceptions import BadSignatureError
+from pydantic_core import ValidationError
 from typing import NamedTuple, Annotated
 from nacl.signing import VerifyKey
 from asyncio import get_event_loop
 from src.models import project
 from re import match, escape
 from bcrypt import checkpw
+from orjson import loads
 
 
 TOKEN_EPOCH = 1727988244890
@@ -91,16 +93,31 @@ async def discord_key_validator(
 ) -> bool:
     try:
         request_body = (await request.body()).decode()
-        interaction = Interaction.model_validate_json(request_body)
+    except Exception:
+        raise HTTPException(400, 'Invalid request body')
+
+    verify_key = VerifyKey(bytes.fromhex(project.gateway_key))
+
+    try:
+        verify_key.verify(
+            f'{x_signature_timestamp}{request_body}'.encode(),
+            bytes.fromhex(x_signature_ed25519))
+    except BadSignatureError:
+        pass
+    else:
+        return True
+
+    try:
+        application_id = int(loads(request_body)['application_id'])
     except Exception:
         raise HTTPException(400, 'Invalid request body')
 
     member = None
-    match interaction.application_id:
+    match application_id:
         case project.application_id:
             verify_key = VerifyKey(bytes.fromhex(project.bot_public_key))
         case _:
-            member = await ProxyMember.find_one({'userproxy.bot_id': interaction.application_id})
+            member = await ProxyMember.find_one({'userproxy.bot_id': application_id})
 
             if member is None or member.userproxy is None:
                 raise HTTPException(400, 'Invalid application id')
@@ -110,10 +127,20 @@ async def discord_key_validator(
     try:
         verify_key.verify(
             f'{x_signature_timestamp}{request_body}'.encode(),
-            bytes.fromhex(x_signature_ed25519)
-        )
+            bytes.fromhex(x_signature_ed25519))
     except BadSignatureError:
         raise HTTPException(401, 'Invalid request signature')
+
+    try:
+        WebhookEvent.model_validate_json(request_body)
+        return True
+    except ValidationError:
+        pass
+
+    try:
+        interaction = Interaction.model_validate_json(request_body)
+    except ValidationError:
+        raise HTTPException(400, 'Invalid interaction or webhook event')
 
     if (  # ? always accept pings and interactions directed at the main bot
         interaction.type.value == 1 or
@@ -133,28 +160,5 @@ async def discord_key_validator(
 
     if user_id is None or user_id not in (await member.get_group()).accounts:
         raise HTTPException(401, 'Invalid user id')
-
-    return True
-
-
-async def gateway_key_validator(
-    request: Request,
-    x_signature_ed25519: Annotated[str, Header()],
-    x_signature_timestamp: Annotated[str, Header()],
-) -> bool:
-    try:
-        request_body = (await request.body()).decode()
-    except Exception:
-        raise HTTPException(400, 'Invalid request body')
-
-    verify_key = VerifyKey(bytes.fromhex(project.gateway_key))
-
-    try:
-        verify_key.verify(
-            f'{x_signature_timestamp}{request_body}'.encode(),
-            bytes.fromhex(x_signature_ed25519)
-        )
-    except BadSignatureError:
-        raise HTTPException(401, 'Invalid request signature')
 
     return True

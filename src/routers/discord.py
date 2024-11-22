@@ -1,5 +1,5 @@
-from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent, Interaction, InteractionType
-from src.core.auth import discord_key_validator, gateway_key_validator
+from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent, Interaction, InteractionType, WebhookEvent, WebhookEventType
+from src.core.auth import discord_key_validator
 from fastapi import APIRouter, HTTPException, Depends
 from src.discord.http import _get_mime_type_for_image
 from fastapi.responses import Response, JSONResponse
@@ -43,13 +43,7 @@ async def post__interaction(
     return Response(status_code=202)
 
 
-@router.post(
-    '/event',
-    include_in_schema=False,
-    dependencies=[Depends(gateway_key_validator)])
-async def post__event(
-    event: GatewayEvent
-) -> Response:
+async def _handle_gateway_event(event: GatewayEvent) -> Response:
     if event.name not in ACCEPTED_EVENTS:
         return Response(event.name, status_code=200)
 
@@ -83,6 +77,35 @@ async def post__event(
     create_task(task)
 
     return Response(event.name, status_code=200)
+
+
+async def _handle_webhook_event(event: WebhookEvent) -> Response:
+    # ? immediately pong for pings
+    if event.type == WebhookEventType.PING:
+        return Response(status_code=204)
+
+    if not event.event:
+        return Response(status_code=200)
+
+    create_task(emit(
+        ListenerType.WEBHOOK_EVENT,
+        event
+    ))
+
+    return Response(status_code=200)
+
+
+@router.post(
+    '/event',
+    include_in_schema=False,
+    dependencies=[Depends(discord_key_validator)])
+async def post__event(
+    event: GatewayEvent | WebhookEvent
+) -> Response:
+    if isinstance(event, GatewayEvent):
+        return await _handle_gateway_event(event)
+
+    return await _handle_webhook_event(event)
 
 
 @router.get(

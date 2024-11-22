@@ -1,4 +1,4 @@
-from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, Interaction, ApplicationCommandInteractionData, MessageComponentInteractionData, ModalSubmitInteractionData, ApplicationCommandOptionType, Snowflake, ApplicationCommandType, ActionRow, TextInput, CustomIdExtraType, User, Message, InteractionType, ApplicationCommandInteractionDataOption, ComponentType
+from src.discord import MessageCreateEvent, MessageUpdateEvent, MessageReactionAddEvent, Channel, MessageType, Interaction, ApplicationCommandInteractionData, MessageComponentInteractionData, ModalSubmitInteractionData, ApplicationCommandOptionType, Snowflake, ApplicationCommandType, ActionRow, TextInput, CustomIdExtraType, User, Message, InteractionType, ApplicationCommandInteractionDataOption, ComponentType, ApplicationAuthorizedEvent, WebhookEvent, EventType, ApplicationIntegrationType
 from src.discord.commands import commands, ApplicationCommandScope
 from src.db import Message as DBMessage, ProxyMember, Group
 from src.discord.models.modal import CustomIdExtraTypeType
@@ -329,3 +329,41 @@ async def on_interaction(interaction: Interaction) -> None:
             await _on_modal_submit(interaction)
         case InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE:
             await on_autocomplete(interaction)
+
+
+async def _on_application_authorization(
+    application_id: Snowflake,
+    event: ApplicationAuthorizedEvent
+) -> None:
+    if (
+        event.integration_type != ApplicationIntegrationType.GUILD_INSTALL or
+        not event.guild
+    ):
+        return
+
+    member = await ProxyMember.find_one(
+        {'userproxy.bot_id': application_id}
+    )
+
+    if member is None or member.userproxy is None:
+        return
+
+    member.userproxy.guilds.append(event.guild.id)
+
+    member.userproxy.guilds = list(set(member.userproxy.guilds))
+
+    await member.save()
+
+
+@listen(ListenerType.WEBHOOK_EVENT)
+async def on_webhook_event(event: WebhookEvent) -> None:
+    if not event.event:
+        return
+
+    match event.event.type:
+        case EventType.APPLICATION_AUTHORIZED:
+            assert isinstance(event.event.data, ApplicationAuthorizedEvent)
+            await _on_application_authorization(
+                event.application_id,
+                event.event.data)
+        # ? will implement more when needed

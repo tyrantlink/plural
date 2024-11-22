@@ -1,4 +1,4 @@
-from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, COMMAND_NAME_PATTERN
+from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, COMMAND_NAME_PATTERN, EventType
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT, LEGACY_FOOTER
 from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
 from src.discord.commands import sync_commands, _put_all_commands
@@ -66,7 +66,9 @@ async def _userproxy_sync(
 
     bot_id = _get_bot_id(bot_token)
     app_patch: dict = {
-        'interactions_endpoint_url': f'{project.api_url}/discord/interaction'}
+        'interactions_endpoint_url': f'{project.api_url}/discord/interaction',
+        'event_webhooks_url': f'{project.api_url}/discord/event',
+        'event_webhooks_types': [EventType.APPLICATION_AUTHORIZED.value]}
     bot_patch: dict = {}
 
     try:

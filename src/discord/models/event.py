@@ -1,11 +1,14 @@
 from __future__ import annotations
-from .enums import GatewayOpCode, GatewayEventName, ReactionType
-from src.discord.types import Snowflake
+from .enums import GatewayOpCode, GatewayEventName, ReactionType, WebhookEventType, EventType, ApplicationIntegrationType
+from src.discord.types import Snowflake, MissingOr, MISSING
 from .base import RawBaseModel
+from datetime import datetime
 from .message import Message
 from pydantic import Field
 from .member import Member
+from .guild import Guild
 from .emoji import Emoji
+from .user import User
 
 
 class GatewayEvent(RawBaseModel):
@@ -44,3 +47,23 @@ class MessageCreateEvent(Message, RawBaseModel):
 
 class MessageUpdateEvent(MessageCreateEvent):
     ...
+
+
+class ApplicationAuthorizedEvent(RawBaseModel):
+    integration_type: MissingOr[ApplicationIntegrationType] = MISSING
+    user: User
+    scopes: list[str]
+    guild: MissingOr[Guild] = MISSING
+
+
+class WebhookEventBody(RawBaseModel):
+    type: EventType
+    timestamp: datetime
+    data: MissingOr[ApplicationAuthorizedEvent] = MISSING
+
+
+class WebhookEvent(RawBaseModel):
+    version: int
+    application_id: Snowflake
+    type: WebhookEventType
+    event: MissingOr[WebhookEventBody] = MISSING
