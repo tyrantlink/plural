@@ -3,7 +3,6 @@ from regex import match as regex_match, sub, error as RegexError, IGNORECASE, es
 from src.components.userproxy import umodal_send, umodal_edit
 from src.errors import InteractionError, NotFound
 from src.db import Reply, UserProxyInteraction
-from beanie import SortDirection
 from src.models import project
 from asyncio import gather
 
@@ -34,19 +33,18 @@ async def _sed_edit(
             case _:  # ? should never happen as it doesn't match the pattern
                 raise InteractionError(f'invalid flag: {flag}')
 
-    userproxy_interaction = await UserProxyInteraction.find(
+    userproxy_interaction = await UserProxyInteraction.find_one(
         {
-            'application_id': interaction.application_id,
+            'author_id': interaction.author_id,
             'channel_id': interaction.channel_id
         },
+        sort=[('ts', -1)],
         ignore_cache=True
-    ).sort(('ts', SortDirection.DESCENDING)).limit(1).to_list()
+    )
 
-    if not userproxy_interaction:
+    if userproxy_interaction is None:
         raise InteractionError(
             'no message found; messages older than 15 minutes cannot be edited')
-
-    userproxy_interaction = userproxy_interaction[0]
 
     webhook = Webhook.from_proxy_interaction(
         userproxy_interaction
@@ -155,6 +153,7 @@ async def uslash_proxy(
         )
 
         await UserProxyInteraction(
+            author_id=interaction.author_id,
             application_id=interaction.application_id,
             message_id=sent_message.id,
             channel_id=sent_message.channel_id,
@@ -238,6 +237,7 @@ async def umessage_reply(
     await reply.delete()
 
     await UserProxyInteraction(
+        author_id=interaction.author_id,
         application_id=interaction.application_id,
         message_id=sent_message.id,
         channel_id=sent_message.channel_id,

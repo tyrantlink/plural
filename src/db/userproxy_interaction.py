@@ -26,12 +26,14 @@ class UserProxyInteraction(Document):
 
     id: PydanticObjectId = Field(  # type: ignore
         default_factory=PydanticObjectId)
+    author_id: int = Field(
+        0,  # ! default during migration
+        description='the id of the author')
     application_id: int = Field(
         description='the id of the application')
     message_id: int = Field(
         description='the original id of the message')
     channel_id: int = Field(
-        0,  # ! temp default for migration
         description='the channel id of the message')
     token: str = Field(description='the token of the interaction')
     ts: datetime = Field(

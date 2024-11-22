@@ -431,6 +431,7 @@ async def guild_userproxy(
         original_id=message.id or None,
         proxy_id=responses[1].id,
         author_id=message.author.id,
+        channel_id=message.channel.id,
         reason='guild userproxy'
     ).save()
 
@@ -672,6 +673,7 @@ async def process_proxy(
         original_id=message.id or None,
         proxy_id=responses[1].id,
         author_id=message.author.id,
+        channel_id=message.channel.id,
         reason=reason or 'none given'
     ).save()
 

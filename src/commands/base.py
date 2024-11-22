@@ -1,30 +1,61 @@
-from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File, ActionRow
+from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File, ActionRow, Webhook
 from src.components import modal_plural_edit, umodal_edit, button_api_key, help_components, button_delete_all_data
 from src.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport, LogMessage
+from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction
 from src.errors import InteractionError, Forbidden, PluralException
 from src.logic.proxy import get_proxy_webhook, process_proxy
 from src.version import VERSION, LAST_TEN_COMMITS
+from src.models import DebugMessage, project
 from src.discord.http import get_from_cdn
 from pydantic_core import ValidationError
-from src.models import DebugMessage
-from src.models import project
 from asyncio import gather
 from orjson import loads
 from io import BytesIO
 from time import time
 
 
-@slash_command(
-    name='ping', description='check the bot\'s latency',
-    contexts=InteractionContextType.ALL(),
-    integration_types=ApplicationIntegrationType.ALL())
-async def slash_ping(interaction: Interaction) -> None:
-    timestamp = (interaction.id >> 22) + 1420070400000
+SED_PATTERN = r'^s/(.*?)/(.*?)/?([gi]*)$'
 
-    await interaction.response.send_message(
-        f'pong! ({round((time()*1000-timestamp))}ms)'
+
+async def _sed_edit(
+    message: Message,
+    sed: str
+) -> tuple[str, Embed]:
+    match = regex_match(SED_PATTERN, sed)
+
+    if not match:
+        raise InteractionError('invalid sed expression')
+
+    expression, replacement, _raw_flags = match.groups()
+
+    flags = 0
+    count = 1
+
+    for flag in _raw_flags:
+        match flag:
+            case 'g':
+                count = 0
+            case 'i':
+                flags |= IGNORECASE
+            case _:  # ? should never happen as it doesn't match the pattern
+                raise InteractionError(f'invalid flag: {flag}')
+
+    try:
+        edited_content = sub(
+            escape(expression), replacement, message.content, count=count, flags=flags)
+    except RegexError:
+        raise InteractionError('invalid regular expression')
+
+    embed = (
+        Embed.success('message edited')
+        if edited_content != message.content else
+        Embed.warning('no changes were made')
     )
+
+    embed.set_footer(text=f'message id: {message.id}')
+
+    return edited_content, embed
 
 
 async def _userproxy_edit(interaction: Interaction, message: Message) -> bool:
@@ -62,6 +93,18 @@ async def _userproxy_edit(interaction: Interaction, message: Message) -> bool:
             message.author.id
         ))
     return True
+
+
+@slash_command(
+    name='ping', description='check the bot\'s latency',
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_ping(interaction: Interaction) -> None:
+    timestamp = (interaction.id >> 22) + 1420070400000
+
+    await interaction.response.send_message(
+        f'pong! ({round((time()*1000-timestamp))}ms)'
+    )
 
 
 @message_command(
@@ -239,7 +282,7 @@ async def slash_switch(
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_delete_all_data(interaction: Interaction) -> None:
     await interaction.response.send_message(
-        embeds=[Embed(  # ! implement components, probably make view class
+        embeds=[Embed(
             title='are you sure?',
             description='this will delete all of your data, including groups, members, avatars, latches, and messages\n\nthis action is irreversible',
             color=0xff6969
@@ -569,4 +612,91 @@ async def slash_version(interaction: Interaction) -> None:
             description='\n'.join(LAST_TEN_COMMITS),
             color=0x69ff69
         )]
+    )
+
+
+@slash_command(
+    name='edit',
+    description='edit your last message (edit others by right clicking the message > Apps > /plu/ral edit)',
+    options=[
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='sed',
+            description='skip the pop up and use sed editing (s/match/replace)',
+            required=False)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_edit(
+    interaction: Interaction,
+    sed: str | None = None
+) -> None:
+    userproxy_interaction, db_message = await UserProxyInteraction.find_one({
+        'author_id': interaction.author_id,
+        'channel_id': interaction.channel_id},
+        sort=[('ts', -1)],
+        ignore_cache=True
+    ), await DBMessage.find_one(
+        {
+            'author_id': interaction.author_id,
+            'channel_id': interaction.channel_id
+        },
+        sort=[('ts', -1)],
+        ignore_cache=True
+    )
+
+    if userproxy_interaction is None and db_message is None:
+        raise InteractionError('no messages found')
+
+    if userproxy_interaction and db_message:
+        obj = (
+            userproxy_interaction
+            if userproxy_interaction.ts > db_message.ts else
+            db_message
+        )
+    else:
+        obj = userproxy_interaction or db_message
+        assert obj is not None
+
+    match obj:
+        case UserProxyInteraction():
+            webhook = Webhook.from_proxy_interaction(obj)
+            message = await webhook.fetch_message('@original', True)
+
+            if not sed:
+                assert message.author is not None
+
+                await interaction.response.send_modal(
+                    modal=umodal_edit.with_title(
+                        'edit message'
+                    ).with_text_kwargs(
+                        0, value=message.content
+                    ).with_extra(
+                        message.id,
+                        message.author.id
+                    ))
+                return
+
+            content, embed = await _sed_edit(message, sed)
+
+        case DBMessage():
+            if interaction.channel is None:
+                raise InteractionError('channel not found')
+
+            message = await interaction.channel.fetch_message(obj.proxy_id)
+            assert message.channel is not None
+
+            if not sed:
+                assert message_plural_edit.callback is not None
+                await message_plural_edit.callback(interaction, message)
+                return
+
+            webhook = await get_proxy_webhook(message.channel)
+            content, embed = await _sed_edit(message, sed)
+
+    await gather(
+        interaction.response.send_message(embeds=[embed]),
+        webhook.edit_message(
+            message.id,
+            content=content
+        )
     )

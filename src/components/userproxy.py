@@ -30,6 +30,7 @@ async def umodal_send(
             flags=MessageFlag.NONE
         )
         await UserProxyInteraction(
+            author_id=interaction.author_id,
             application_id=interaction.application_id,
             message_id=sent_message.id,
             channel_id=sent_message.channel_id,
