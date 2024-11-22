@@ -141,12 +141,7 @@ async def get_proxy_for_message(
                     DebugMessage.GROUP_CHANNEL_RESTRICTED.format(group.name))
             continue
 
-        for member_id in group.members.copy():
-            member = await ProxyMember.get(member_id)
-
-            if member is None:
-                continue
-
+        for member in await group.get_members():
             if latch and latch.enabled and latch.member == member.id:
                 # ? putting this here, if there are proxy tags given, prioritize them
                 # ? also having this check here ensures that channels are still checked
