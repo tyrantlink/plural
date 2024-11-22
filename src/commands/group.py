@@ -316,7 +316,7 @@ async def slash_group_set_tag(
         members_over_length = [
             member
             for member in members
-            if len(f'{member} {tag}') > (
+            if len(f'{member.name} {tag}') > (
                 32 if member.userproxy and member.userproxy.include_group_tag else 80
             )
         ]
