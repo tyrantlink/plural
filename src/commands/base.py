@@ -684,6 +684,7 @@ async def slash_edit(
 
             message = await interaction.channel.fetch_message(obj.proxy_id)
             assert message.channel is not None
+            assert message.author is not None
 
             if not sed:
                 assert message_plural_edit.callback is not None
@@ -692,6 +693,17 @@ async def slash_edit(
 
             webhook = await get_proxy_webhook(message.channel)
             content, embed = await _sed_edit(message, sed)
+
+            if (
+                message.webhook_id is None and
+                (member := await ProxyMember.find_one({'userproxy.bot_id': message.author.id})) and
+                member.userproxy is not None and
+                member.userproxy.token is not None
+            ):
+                await gather(
+                    interaction.response.send_message(embeds=[embed]),
+                    message.edit(content=content, token=member.userproxy.token))
+                return
 
     await gather(
         interaction.response.send_message(embeds=[embed]),
