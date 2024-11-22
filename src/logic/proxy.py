@@ -415,7 +415,9 @@ async def guild_userproxy(
                             user.id for user in message.mentions
                         ])),
                 poll=message.poll,
-                flags=MessageFlag.SUPPRESS_NOTIFICATIONS,
+                flags=(
+                    message.flags ^ MessageFlag.SUPPRESS_NOTIFICATIONS
+                ) & MessageFlag.SUPPRESS_NOTIFICATIONS,
                 token=member.userproxy.token
             )
         )
