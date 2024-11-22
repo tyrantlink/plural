@@ -90,8 +90,7 @@ class PluralExport(BaseExport):
                 if len(tag.prefix) > 50 or len(tag.suffix) > 50:
                     self.logs.append(
                         LogMessage.TAG_TOO_LONG.format(
-                            member_name=member.name, prefix=tag.prefix, suffix=tag.suffix
-                        ))
+                            member_name=member.name, prefix=tag.prefix, suffix=tag.suffix))
                     continue
 
                 if not tag.prefix and not tag.suffix:
@@ -357,7 +356,7 @@ class PluralExport(BaseExport):
             case 'cdn.discordapp.com' | 'media.discordapp.net':
                 url = await self._refresh_discord_image(object_type, object_name, url)
             case 'cdn.plural.gg' | 'cdn.pluralkit.me' | 'cdn.tupperbox.app':
-                url = 'pass'
+                pass
             case _:  # ? might restrict avatar sources later
                 pass
 
@@ -365,10 +364,6 @@ class PluralExport(BaseExport):
             self.logs.append(
                 LogMessage.AVATAR_FAILED.format(
                     object_type=object_type, object_name=object_name))
-            return None
-
-        if url == 'pass':
-            await object.save()
             return None
 
         # ? set_avatar calls a save at the end

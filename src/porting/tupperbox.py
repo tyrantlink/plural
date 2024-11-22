@@ -50,9 +50,8 @@ class TupperboxExport(BaseExport):
             group.id: StandardExport.Group(
                 id=self.groups.index(group),
                 name=group.name,
-                avatar_url=(  # ! fix auto formatter
-                    f'https://cdn.tupperbox.app/group-pfp/{
-                        user_id}/{group.avatar}.webp'
+                avatar_url=(
+                    f'https://cdn.tupperbox.app/group-pfp/{user_id}/{group.avatar}.webp'
                     if group.avatar is not None and user_id is not None
                     else None),
                 channels=[],
