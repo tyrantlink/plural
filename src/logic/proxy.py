@@ -1,4 +1,4 @@
-from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag
+from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType
 from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage
@@ -398,6 +398,10 @@ async def guild_userproxy(
     ):
         return False, None, token, None
 
+    if debug_log:
+        debug_log.append(DebugMessage.SUCCESS)
+        return True, [], token, None
+
     app_emojis, proxy_content = await process_emoji(proxy_content, token)
 
     try:
@@ -406,7 +410,7 @@ async def guild_userproxy(
             message.channel.send(
                 proxy_content,
                 attachments=attachments,
-                reference=message.referenced_message,
+                reference=message.message_reference,
                 allowed_mentions=AllowedMentions(
                     replied_user=(
                         message.referenced_message is not None and
@@ -459,7 +463,12 @@ async def process_proxy(
     token = project.bot_token
 
     valid_content = bool(
-        message.content or message.attachments or message.sticker_items or message.poll)
+        message.content or
+        message.attachments or
+        message.sticker_items or
+        message.poll or
+        message.message_reference
+    )
 
     if (
         message.author.bot or
@@ -562,6 +571,15 @@ async def process_proxy(
             gather(*[emoji.delete(token) for emoji in app_emojis])
 
         token = project.bot_token
+
+    if (
+        message.message_reference and
+        message.message_reference.type == MessageReferenceType.FORWARD
+    ):
+        if debug_log:
+            debug_log.append(DebugMessage.NO_CONTENT)
+
+        return False, None, token, None
 
     webhook = await get_proxy_webhook(message.channel)
 
