@@ -1,4 +1,4 @@
-from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType
+from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference
 from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage
@@ -116,8 +116,6 @@ async def get_proxy_for_message(
             return None, None, None, None
 
     channel_ids.discard(None)
-
-    debug_reason = []
 
     # ? get global latch if it exists
     latch = await Latch.find_one({'user': message.author.id, 'guild': None})
@@ -390,6 +388,8 @@ async def guild_userproxy(
 
     bot_permissions = await message.channel.fetch_permissions_for(member.userproxy.bot_id)
 
+    real_forward = False
+
     if (
         message.message_reference and
         message.message_reference.type == MessageReferenceType.FORWARD and
@@ -401,10 +401,9 @@ async def guild_userproxy(
                 message.message_reference.channel_id,
                 message.message_reference.message_id,
                 False)
+            real_forward = True
         except Forbidden:
-            if debug_log:
-                debug_log.append(DebugMessage.NOT_IN_REFERENCE_CHANNEL)
-            return False, None, token, None
+            pass
 
     if not (
         bot_permissions & (
@@ -426,7 +425,19 @@ async def guild_userproxy(
             message.channel.send(
                 proxy_content,
                 attachments=attachments,
-                reference=message.message_reference,
+                reference=(
+                    MessageReference(
+                        type=MessageReferenceType.FORWARD,
+                        message_id=message.id,
+                        channel_id=message.channel.id,
+                        guild_id=message.guild.id
+                    ) if (
+                        message.guild is not None and
+                        message.message_reference and
+                        message.message_reference.type == MessageReferenceType.FORWARD and
+                        not real_forward
+                    ) else message.message_reference
+                ),
                 allowed_mentions=AllowedMentions(
                     replied_user=(
                         message.referenced_message is not None and
