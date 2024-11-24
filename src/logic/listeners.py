@@ -34,7 +34,12 @@ async def on_message(message: MessageCreateEvent):
 
 @listen(ListenerType.MESSAGE_UPDATE)
 async def on_message_edit(message: MessageUpdateEvent):
-    if message.channel is None:
+    if (
+        not message.author or
+        message.author.bot or
+        message.channel is None or
+        message.type == MessageType.THREAD_CREATED
+    ):
         return
 
     if await message.channel.fetch_messages(limit=1) != [message]:
