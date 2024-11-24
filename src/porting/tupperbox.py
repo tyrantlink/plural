@@ -44,7 +44,10 @@ class TupperboxExport(BaseExport):
 
         for tupper in self.tuppers:
             if tupper.avatar_url is not None:
-                user_id = tupper.avatar_url.split('/')[4]
+                try:
+                    user_id = tupper.avatar_url.split('/')[4]
+                except IndexError:
+                    pass
 
         groups = {
             group.id: StandardExport.Group(
