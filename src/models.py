@@ -66,6 +66,7 @@ class DebugMessage(StrEnum):
     MATCHED_FROM_TAGS = 'matched from member proxy tags:\n{}text{}'
     MATCHED_FROM_LATCH_GUILD = 'matched from server autoproxy'
     MATCHED_FROM_LATCH_GLOBAL = 'matched from global autoproxy'
+    NOT_IN_REFERENCE_CHANNEL = 'the bot does not have permission to view the channel of the forwarded message, unable to proxy'
 
 
 class APIResponse(StrEnum):

@@ -390,6 +390,22 @@ async def guild_userproxy(
 
     bot_permissions = await message.channel.fetch_permissions_for(member.userproxy.bot_id)
 
+    if (
+        message.message_reference and
+        message.message_reference.type == MessageReferenceType.FORWARD and
+        message.message_reference.channel_id is not None and
+        message.message_reference.message_id is not None
+    ):
+        try:
+            await Message.fetch(
+                message.message_reference.channel_id,
+                message.message_reference.message_id,
+                False)
+        except Forbidden:
+            if debug_log:
+                debug_log.append(DebugMessage.NOT_IN_REFERENCE_CHANNEL)
+            return False, None, token, None
+
     if not (
         bot_permissions & (
             Permission.SEND_MESSAGES |
