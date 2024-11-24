@@ -331,7 +331,7 @@ async def slash_member_set_group(
     )
 
 
-@member_set.command(  # ! remember userproxy auto syncing
+@member_set.command(
     name='avatar',
     description='set a member\'s avatar',
     options=[
@@ -379,7 +379,7 @@ async def slash_member_set_avatar(
     await member.set_avatar(avatar.url)
     assert member.avatar is not None
 
-    response = f'group `{member.name}` now has the avatar `{avatar.filename}`'
+    response = f'member `{member.name}` of group `{(await member.get_group()).name}` now has the avatar `{avatar.filename}`'
 
     if member.avatar.extension == ImageExtension.GIF:
         response += '\n\n**note:** gif avatars are not animated (unless in a userproxy)'
