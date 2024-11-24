@@ -43,7 +43,10 @@ class TupperboxExport(BaseExport):
         user_id = None
 
         for tupper in self.tuppers:
-            if tupper.avatar_url is not None:
+            if (
+                tupper.avatar_url is not None and
+                tupper.avatar_url.startswith('https://cdn.tupperbox.app/pfp/')
+            ):
                 try:
                     user_id = tupper.avatar_url.split('/')[4]
                 except IndexError:
