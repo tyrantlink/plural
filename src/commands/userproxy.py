@@ -169,7 +169,7 @@ async def uslash_proxy(
             Reply.Attachment(
                 url=attachment.url,
                 filename=attachment.filename,
-                description=attachment.description
+                description=attachment.description or None
             ) if attachment
             else None
         )
