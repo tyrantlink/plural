@@ -582,11 +582,11 @@ async def slash_member_tags_add(
 
     existing_members: set[str] = set()
     async for group in Group.find({'accounts': interaction.author_id}):
-        for member in await group.get_members():
-            if member.id != member.id:
+        for existing_member in await group.get_members():
+            if existing_member.id == member.id:
                 continue
 
-            for tag in member.proxy_tags:
+            for tag in existing_member.proxy_tags:
                 if tag == proxy_tag:
                     existing_members.add(f'`[{group.name}] {member.name}`')
 
