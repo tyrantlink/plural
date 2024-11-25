@@ -585,19 +585,39 @@ async def slash_import(
         if log.startswith('E: ')
     ]
 
+    formatted_logs = f'```{'\n'.join(logs)}```'
+
+    embed_message = (
+        formatted_logs
+        if len(formatted_logs) <= 4096 else
+        'too many logs, sending as a file'
+    )
+
     await interaction.followup.send(
         embeds=(
             [Embed.error(
                 title='import failed',
-                message=f'```{'\n'.join(logs)}```')]
+                message=embed_message)]
             if LogMessage.NOTHING_IMPORTED.lstrip('E: ') in logs else
             [Embed.warning(
                 title='import successful, but with errors',
-                message=f'```{'\n'.join(logs)}```')]
+                message=embed_message)]
             if logs else
             [Embed.success('import successful; no errors')]
         )
     )
+
+    if len(formatted_logs) > 4096:
+        message = await interaction.followup.send(
+            content='import logs',
+            attachments=[File(
+                BytesIO(formatted_logs.encode()),
+                'import_logs.txt'
+            )]
+        )
+        await interaction.followup.send(
+            message.attachments[0].url
+        )
 
 
 @slash_command(
