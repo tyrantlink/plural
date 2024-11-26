@@ -1,4 +1,4 @@
-from src.discord import Message, Resolved, Snowflake, MessageType, MessageFlag, User, Guild, GuildFeature, Permission, Member, Channel
+from src.discord import Message, Resolved, Snowflake, MessageType, MessageFlag, User, Guild, GuildFeature, Permission, Member, Channel, MessageReference
 from src.core.auth import api_key_validator, TokenData, Security
 from src.core.models import MessageResponse, MessageSend
 from src.db import Message as DBMessage, ProxyMember
@@ -6,6 +6,7 @@ from fastapi import HTTPException, Query, APIRouter
 from fastapi.responses import JSONResponse
 from src.logic.proxy import process_proxy
 from src.docs import message as docs
+from src.models import DebugMessage
 from datetime import datetime, UTC
 from asyncio import sleep
 
@@ -45,7 +46,11 @@ class FakeMessage(Message):
             resolved=Resolved(messages={}),
             author=author,
             referenced_message=referenced_message,
-            **kwargs
+            message_reference=MessageReference(
+                message_id=referenced_message.id,
+                channel_id=referenced_message.channel_id,
+            ) if referenced_message is not None else None,
+            ** kwargs
         )
 
     async def delete(
@@ -176,7 +181,16 @@ async def post__message(
     )
 
     if db_message is None:
-        raise HTTPException(500, 'failed to send message')
+        debug_log: list[DebugMessage | str] = [DebugMessage.ENABLER]
+
+        await process_proxy(fake_message, debug_log, member=member)
+
+        debug_log.remove(DebugMessage.ENABLER)
+
+        raise HTTPException(500, {
+            'reason': 'failed to send message',
+            'debug': [str(log) for log in debug_log]
+        })
 
     return JSONResponse(
         content=db_message.model_dump_json(exclude={'id'})
