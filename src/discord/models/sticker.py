@@ -3,12 +3,13 @@ from warnings import catch_warnings, simplefilter
 from .enums import StickerType, StickerFormatType
 from src.discord.http import get_from_cdn, File
 from src.discord.types import Snowflake
+from src.errors import NotFound
 from src.models import project
 from .base import RawBaseModel
 from asyncio import to_thread
 from logfire import span
-from io import BytesIO
 from .user import User
+from io import BytesIO
 
 
 class StickerItem(RawBaseModel):
@@ -52,8 +53,12 @@ class StickerItem(RawBaseModel):
         if self.format_type == StickerFormatType.LOTTIE:
             raise ValueError('Lottie stickers are not supported')
 
-        data = await get_from_cdn(
-            f'https://cdn.discordapp.com/stickers/{self.id}.{self.format_type.file_extension}')
+        try:
+            data = await get_from_cdn(
+                f'https://cdn.discordapp.com/stickers/{self.id}.{self.format_type.file_extension}')
+        except NotFound:
+            data = await get_from_cdn(
+                f'https://media.discordapp.net/stickers/{self.id}.{self.format_type.file_extension}')
 
         if self.format_type != StickerFormatType.APNG:
             return data
