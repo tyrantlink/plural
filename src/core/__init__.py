@@ -86,9 +86,10 @@ if project.logfire_token:
         scrubbing=False if project.dev_environment else None,
         console=False
     )
-    logfire.instrument_pymongo(
-        capture_statement=True
-    )
+    # ? disabled because pymongo makes a lot of logs and you can't self host logfire yet
+    # logfire.instrument_pymongo(
+    #     capture_statement=True
+    # )
     logfire.instrument_aiohttp_client()
     logfire.instrument_system_metrics()
     logfire.instrument_fastapi(
