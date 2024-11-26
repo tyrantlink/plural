@@ -599,6 +599,19 @@ async def process_proxy(
 
         token = project.bot_token
 
+    # ? run this check again after guild_userproxy fails
+    # ? as webhooks cannot forward
+    if not bool(
+        message.content or
+        message.attachments or
+        message.sticker_items or
+        message.poll
+    ):
+        if debug_log:
+            debug_log.append(DebugMessage.NO_CONTENT)
+
+        return False, None, token, None
+
     if (
         message.message_reference and
         message.message_reference.type == MessageReferenceType.FORWARD
