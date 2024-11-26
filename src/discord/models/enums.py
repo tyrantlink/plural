@@ -338,6 +338,14 @@ class StickerFormatType(Enum):
             case _:
                 raise ValueError('Invalid sticker format type')
 
+    @property
+    def endpoint(self) -> str:
+        return (
+            'media.discordapp.net'
+            if self == StickerFormatType.GIF else
+            'cdn.discordapp.com'
+        )
+
 
 class Permission(IntFlag):
     NONE = 0

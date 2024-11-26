@@ -22,6 +22,10 @@ class StickerItem(RawBaseModel):
         ext = self.format_type.file_extension if self.format_type != StickerFormatType.APNG else 'gif'
         return f'{self.name}.{ext}'
 
+    @property
+    def url(self) -> str:
+        return f'https://{self.format_type.endpoint}/stickers/{self.id}.{self.format_type.file_extension}'
+
     def _apng_to_gif(self, data: bytes) -> bytes:
         output = BytesIO()
 
@@ -53,12 +57,7 @@ class StickerItem(RawBaseModel):
         if self.format_type == StickerFormatType.LOTTIE:
             raise ValueError('Lottie stickers are not supported')
 
-        try:
-            data = await get_from_cdn(
-                f'https://cdn.discordapp.com/stickers/{self.id}.{self.format_type.file_extension}')
-        except NotFound:
-            data = await get_from_cdn(
-                f'https://media.discordapp.net/stickers/{self.id}.{self.format_type.file_extension}')
+        data = await get_from_cdn(self.url)
 
         if self.format_type != StickerFormatType.APNG:
             return data
