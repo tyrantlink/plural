@@ -184,7 +184,7 @@ async def slash_member_new(
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='group',
-            description='group to list members for (default: default)',
+            description='restrict to a single group',
             required=False,
             autocomplete=True)],
     contexts=InteractionContextType.ALL(),
@@ -193,23 +193,70 @@ async def slash_member_list(
     interaction: Interaction,
     group: Group | None = None
 ) -> None:
-    group = group or await Group.get_or_create_default(interaction.author_id)
+    groups = [group] if group is not None else await Group.find(
+        {'accounts': interaction.author_id}).to_list()
 
-    await interaction.response.send_message(
-        embeds=[
-            Embed.success(
-                title=f'members in group {group.name}',
-                message='\n'.join([
-                    (
-                        member.name
-                        if member.userproxy is None else
-                        f'[{member.name}](https://discord.com/oauth2/authorize?client_id={member.userproxy.bot_id}&integration_type=1&scope=applications.commands)'
-                    )
-                    for member in await group.get_members()
-                ]) or 'this group has no members'
+    if not groups:
+        await interaction.response.send_message(
+            embeds=[Embed.success(
+                title='members',
+                message='you have no members'
+            )])
+        return
+
+    group_padding = max(
+        len(group.name)
+        for group in groups
+        if group.members
+    ) + 3
+
+    message = (
+        '\n'.join([
+            (
+                member.name
+                if member.userproxy is None else
+                f'[{member.name}](https://discord.com/oauth2/authorize?client_id={member.userproxy.bot_id}&integration_type=1&scope=applications.commands)'
             )
-        ]
+            for member in await group.get_members()
+        ])
+        if group is not None else
+        f'\n'.join([  # ? discord strips duplicate spaces, so i have to do the stupid
+            f'[{group.name}]'.ljust(group_padding).replace('  ', ' ​ ').replace('  ', ' ​ ') +
+            (
+                member.name
+                if member.userproxy is None else
+                f'[{member.name}](https://discord.com/oauth2/authorize?client_id={member.userproxy.bot_id}&integration_type=1&scope=applications.commands)'
+            )
+            for group in groups
+            for member in await group.get_members()
+        ])
     )
+
+    pagination_required = False
+
+    if len(message) > 4096:
+        out = ''
+        for line in message.split('\n'):
+            if len(out) + len(line) > 4092:  # ? 4096 - 4 for '...'
+                message = f'{out}\n...'
+                pagination_required = True
+                break
+
+            out += line + '\n'
+
+    embed = Embed.success(
+        title=(
+            f'members in group {group.name}'
+            if group is not None else
+            'members'),
+        message=message or 'this group has no members'
+    )
+
+    if pagination_required:
+        embed.set_footer(
+            'character limit reached (pagination coming soon)')
+
+    await interaction.response.send_message(embeds=[embed])
 
 
 @member.command(
