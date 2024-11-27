@@ -92,7 +92,7 @@ def dyno(event: MessageCreateEvent) -> LogExtract | None:
     )
 
     match = search(
-        r'\*\*Message sent by <@(?P<author>\d+)> Deleted in <#(?P<channel>\d+)>\*\*(?:\n(?P<content>[\s\S]+))?',
+        r'\*\*(?:Message|Image) sent by <@(?P<author>\d+)> Deleted in <#(?P<channel>\d+)>\*\*(?:\n(?P<content>[\s\S]+))?',
         event.embeds[0].description,
     )
 
@@ -121,7 +121,7 @@ def carlbot(event: MessageCreateEvent) -> LogExtract | None:
         return None
 
     match = search(
-        r'(?P<content>[\s\S]+)\n\nMessage ID: (?P<message>\d+)',
+        r'(?:(?P<content>[\s\S]+)\n\n)?Message ID: (?P<message>\d+)',
         event.embeds[0].description,
     )
 
@@ -183,7 +183,7 @@ def catalogger(event: MessageCreateEvent) -> LogExtract | None:
         event.embeds[0].author is None or
         event.embeds[0].description is None or
         event.embeds[0].fields is None or
-        len(event.embeds[0].fields) != 2 or
+        len(event.embeds[0].fields) not in {2, 3} or
         event.embeds[0].title is None or
         event.embeds[0].title != 'Message deleted'
     ):
@@ -227,7 +227,7 @@ def catalogger(event: MessageCreateEvent) -> LogExtract | None:
     extract.message_id = int(match.group('message'))
 
     match = search(
-        r'(?P<content>[\s\S]+)',
+        r'(?P<content>[\s\S]+)|None',
         event.embeds[0].description
     )
 
