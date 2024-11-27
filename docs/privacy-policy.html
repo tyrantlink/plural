@@ -19,8 +19,28 @@
 
     <h2>1. Data Collection</h2>
     <p>
-        /plu/ral only collects data that users explicitly provide using interactions with the bot, as well as the message IDs of any proxied messages.
-        The only exception is the UserProxy bot /proxy "queue for reply" option, which stores message content and attachment urls until the reply command is used, or five minutes have passed, whichever is shorter.
+        /plu/ral collects data that users explicitly provide using interactions with the bot.
+    </p>
+    <p>
+        When a message is proxied, the following data is stored for one day:<br>
+        - Original Message ID<br>
+        - Proxied Message ID<br>
+        - Channel ID<br>
+        - User ID
+    </p>
+    <p>
+        When using the userproxy proxy command with the "queue_for_reply" option, the following data is stored for five minutes:<br>
+        - Channel ID<br>
+        - Queued Message Content<br>
+        - Queued Attachments
+    </p>
+    <p>
+        When a message is proxied in a server with the "logclean" option enabled, the following data is stored for one minute:<br>
+        - Message Content<br>
+        - Original Message ID<br>
+        - User ID<br>
+        - Channel ID<br>
+        - Author Username
     </p>
 
     <h2>2. Use of Data</h2>
