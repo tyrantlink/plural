@@ -1,9 +1,9 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, overload, Literal
 from src.discord.http import Route, request, File
+from .enums import WebhookType, MessageFlag
 from src.discord.types import Snowflake
 from src.db import UserProxyInteraction
-from .enums import WebhookType
 from .base import RawBaseModel
 from .channel import Channel
 from .guild import Guild
@@ -216,6 +216,9 @@ class Webhook(RawBaseModel):
             for index, attachment in enumerate(attachments):
                 json_attachments.append(attachment.as_payload_dict(index))
                 form.append(attachment.as_form_dict(index))
+                if attachment.is_voice_message:
+                    json['flags'] = json.get(
+                        'flags', 0) | MessageFlag.IS_VOICE_MESSAGE
 
             json['attachments'] = json_attachments
             form.insert(0, {
@@ -312,6 +315,9 @@ class Webhook(RawBaseModel):
             for index, attachment in enumerate(attachments):
                 json_attachments.append(attachment.as_payload_dict(index))
                 form.append(attachment.as_form_dict(index))
+                if attachment.is_voice_message:
+                    json['flags'] = json.get(
+                        'flags', 0) | MessageFlag.IS_VOICE_MESSAGE
 
             json['attachments'] = json_attachments
             form.insert(0, {

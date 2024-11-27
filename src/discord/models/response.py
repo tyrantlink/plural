@@ -183,6 +183,9 @@ class InteractionResponse(PydanticArbitraryType):
             for index, attachment in enumerate(attachments):
                 json_attachments.append(attachment.as_payload_dict(index))
                 form.append(attachment.as_form_dict(index))
+                if attachment.is_voice_message:
+                    json['flags'] = json.get(
+                        'flags', 0) | MessageFlag.IS_VOICE_MESSAGE
 
             json['attachments'] = json_attachments
 

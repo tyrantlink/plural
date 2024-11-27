@@ -139,10 +139,14 @@ class File:
         filename: str | None = None,
         description: str | None = None,
         spoiler: bool = False,
+        duration_secs: float | None = None,
+        waveform: str | None = None,
     ):
         self.data = data
         self._original_pos = data.tell()
         self.filename = filename
+        self.duration_secs = duration_secs
+        self.waveform = waveform
 
         self._closer = self.data.close
         self.data.close = lambda: None
@@ -159,6 +163,10 @@ class File:
         )
         self.description = description
 
+    @property
+    def is_voice_message(self) -> bool:
+        return self.duration_secs is not None and self.waveform is not None
+
     def reset(self, *, seek: int | bool = True) -> None:
         if seek:
             self.data.seek(self._original_pos)
@@ -171,6 +179,8 @@ class File:
             'id': index,
             'filename': self.filename,
             'description': self.description,
+            'duration_secs': self.duration_secs,
+            'waveform': self.waveform,
         }
 
     def as_form_dict(self, index: int) -> dict[str, Any]:
@@ -178,7 +188,11 @@ class File:
             'name': f'files[{index}]',
             'value': self.data,
             'filename': self.filename,
-            'content_type': 'application/octet-stream',
+            'content_type': (
+                'audio/ogg'
+                if self.is_voice_message else
+                'application/octet-stream'
+            ),
         }
 
 

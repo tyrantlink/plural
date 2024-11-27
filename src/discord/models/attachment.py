@@ -33,5 +33,7 @@ class Attachment(RawBaseModel):
             BytesIO(await self.read()),
             filename=self.filename,
             description=self.description or None,
-            spoiler=self.spoiler
+            spoiler=self.spoiler,
+            duration_secs=self.duration_secs or None,
+            waveform=self.waveform or None
         )
