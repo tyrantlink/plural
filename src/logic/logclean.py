@@ -13,7 +13,7 @@ class LogExtract:
     channel_id: int | None = None
     content: str | None = None
 
-    def as_query(self) -> dict[str, str | int]:
+    def as_full_query(self) -> dict[str, str | int]:
         return {
             key: value
             for key, value in self.__dict__.items()
@@ -21,6 +21,15 @@ class LogExtract:
         } or {
             'id': 0
         }  # ? never return an empty query
+
+    def as_query(self) -> dict[str, str | int]:
+        return (
+            self.as_full_query()
+            if self.message_id is None
+            else {
+                'message_id': self.message_id
+            }
+        )
 
 
 @listen(ListenerType.MESSAGE_CREATE)
@@ -38,7 +47,10 @@ async def on_message_create(event: MessageCreateEvent):
         return
 
     for matcher in [
-        dyno
+        dyno,
+        carlbot,
+        probot,
+        catalogger,
     ]:
         extract = matcher(event)
         if extract is None:
@@ -58,9 +70,8 @@ def dyno(event: MessageCreateEvent) -> LogExtract | None:
 
     if (
         event.embeds is None or
-        len(event.embeds) == 0 or
+        len(event.embeds) != 1 or
         event.embeds[0].footer is None or
-        event.embeds[0].color != 16729871 or
         event.embeds[0].author is None or
         event.embeds[0].description is None
     ):
@@ -92,6 +103,137 @@ def dyno(event: MessageCreateEvent) -> LogExtract | None:
         return None
 
     extract.channel_id = int(match.group('channel'))
+    extract.content = match.group('content')
+
+    return extract
+
+
+def carlbot(event: MessageCreateEvent) -> LogExtract | None:
+    assert event.author is not None
+
+    if (
+        event.embeds is None or
+        len(event.embeds) != 1 or
+        event.embeds[0].footer is None or
+        event.embeds[0].author is None or
+        event.embeds[0].description is None
+    ):
+        return None
+
+    match = search(
+        r'(?P<content>[\s\S]+)\n\nMessage ID: (?P<message>\d+)',
+        event.embeds[0].description,
+    )
+
+    if match is None:
+        return None
+
+    extract = LogExtract(
+        author_name=event.embeds[0].author.name,
+        content=match.group('content'),
+        message_id=int(match.group('message')),
+    )
+
+    match = search(
+        r'ID: (?P<author>\d+)',
+        event.embeds[0].footer.text,
+    )
+
+    if match is None:
+        return None
+
+    extract.author_id = int(match.group('author'))
+
+    return extract
+
+
+def probot(event: MessageCreateEvent) -> LogExtract | None:
+    assert event.author is not None
+
+    if (
+        event.embeds is None or
+        len(event.embeds) != 1 or
+        event.embeds[0].author is None or
+        event.embeds[0].description is None
+    ):
+        return None
+
+    match = search(
+        r':wastebasket: \*\*Message sent by <@(?P<author>\d+)> deleted in <#(?P<channel>\d+)>.\*\*\n(?P<content>[\s\S]+)',
+        event.embeds[0].description,
+    )
+
+    if match is None:
+        return None
+
+    return LogExtract(
+        author_id=int(match.group('author')),
+        channel_id=int(match.group('channel')),
+        content=match.group('content'),
+    )
+
+
+def catalogger(event: MessageCreateEvent) -> LogExtract | None:
+    assert event.author is not None
+
+    if (
+        event.embeds is None or
+        len(event.embeds) != 1 or
+        event.embeds[0].footer is None or
+        event.embeds[0].author is None or
+        event.embeds[0].description is None or
+        event.embeds[0].fields is None or
+        len(event.embeds[0].fields) != 2 or
+        event.embeds[0].title is None or
+        event.embeds[0].title != 'Message deleted'
+    ):
+        return None
+
+    match = search(
+        r'<#(?P<channel1>\d+)>\nID: (?P<channel2>\d+)',
+        event.embeds[0].fields[0].value
+    )
+
+    if match is None or match.group('channel1') != match.group('channel2'):
+        return None
+
+    extract = LogExtract(
+        author_name=event.embeds[0].author.name,
+        channel_id=int(match.group('channel1'))
+    )
+
+    match = search(
+        r'<@(?P<author1>\d+)>\n(?P<author_name>.{2,32})\nID: (?P<author2>\d+)',
+        event.embeds[0].fields[1].value
+    )
+
+    if (
+        match is None or
+        match.group('author1') != match.group('author2') or
+        extract.author_name != match.group('author_name')
+    ):
+        return None
+
+    extract.author_id = int(match.group('author1'))
+
+    match = search(
+        r'ID: (?P<message>\d+)',
+        event.embeds[0].footer.text
+    )
+
+    if match is None:
+        return None
+
+    extract.message_id = int(match.group('message'))
+
+    match = search(
+        r'(?P<content>[\s\S]+)',
+        event.embeds[0].description
+    )
+
+    if match is None:
+        return None
+
     extract.content = match.group('content')
 
     return extract
