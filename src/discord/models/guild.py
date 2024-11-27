@@ -47,7 +47,7 @@ class Guild(RawBaseModel):
     explicit_content_filter: ExplicitContentFilterLevel | None = None
     roles: list[Role] | None = None
     emojis: list[Emoji] | None = None
-    features: list[GuildFeature]
+    features: list[GuildFeature] | None = None
     mfa_level: MFALevel | None = None
     application_id: Snowflake | None = None
     system_channel_id: Snowflake | None = None
@@ -58,7 +58,7 @@ class Guild(RawBaseModel):
     vanity_url_code: str | None = None
     description: str | None = None
     banner: str | None = None
-    premium_tier: PremiumTier
+    premium_tier: PremiumTier | None = None
     premium_subscription_count: int | None = None
     preferred_locale: str | None = None
     public_updates_channel_id: Snowflake | None = None
@@ -111,6 +111,9 @@ class Guild(RawBaseModel):
 
     @property
     def filesize_limit(self) -> int:
+        if self.premium_tier is None:
+            return 26_214_400
+
         return self.premium_tier.filesize_limit
 
     @classmethod
