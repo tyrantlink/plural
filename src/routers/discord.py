@@ -51,8 +51,7 @@ async def _handle_gateway_event(event: GatewayEvent) -> Response:
         case GatewayEventName.INTERACTION_CREATE:
             task = emit(
                 ListenerType.INTERACTION,
-                Interaction.validate_and_populate(event.data)
-            )
+                await Interaction.validate_and_populate(event.data))
         case GatewayEventName.MESSAGE_CREATE:
             task = emit(
                 ListenerType.MESSAGE_CREATE,
