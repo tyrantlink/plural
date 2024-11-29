@@ -50,7 +50,7 @@ class MessageComponentInteractionData(RawBaseModel):
 
 class ModalSubmitInteractionData(RawBaseModel):
     custom_id: str
-    # ! i think this is always a list of ActionRow
+    # ? i think this is always a list of ActionRow
     components: list[ActionRow] | None = None
 
 

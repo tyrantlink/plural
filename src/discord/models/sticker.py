@@ -3,7 +3,6 @@ from warnings import catch_warnings, simplefilter
 from .enums import StickerType, StickerFormatType
 from src.discord.http import get_from_cdn, File
 from src.discord.types import Snowflake
-from src.errors import NotFound
 from src.models import project
 from .base import RawBaseModel
 from asyncio import to_thread
@@ -17,7 +16,7 @@ class StickerItem(RawBaseModel):
     name: str
     format_type: StickerFormatType
 
-    @property  # ! reconsider this
+    @property
     def filename(self) -> str:
         ext = self.format_type.file_extension if self.format_type != StickerFormatType.APNG else 'gif'
         return f'{self.name}.{ext}'

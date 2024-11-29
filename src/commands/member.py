@@ -285,7 +285,7 @@ async def slash_member_remove(
     )
 
 
-@member_set.command(  # ! remember userproxy auto syncing
+@member_set.command(
     name='name',
     description='set a member\'s name',
     options=[
