@@ -68,7 +68,9 @@ async def _userproxy_sync(
     app_patch: dict = {
         'interactions_endpoint_url': f'{project.api_url}/discord/interaction',
         'event_webhooks_url': f'{project.api_url}/discord/event',
-        'event_webhooks_types': [EventType.APPLICATION_AUTHORIZED.value]}
+        'event_webhooks_types': [EventType.APPLICATION_AUTHORIZED.value],
+        'integration_types_config': {'0': {}, '1': {}},
+        'install_params': None}
     bot_patch: dict = {}
 
     try:
