@@ -1,5 +1,5 @@
 from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference
-from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache
+from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache, Log, Config
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage
 from src.errors import Forbidden, NotFound
@@ -362,8 +362,9 @@ async def guild_userproxy(
 ) -> tuple[bool, list[Emoji] | None, str, DBMessage | None]:
     assert member.userproxy is not None
     assert member.userproxy.token is not None
-    assert message.author is not None
     assert message.channel is not None
+    assert message.author is not None
+    assert message.guild is not None
 
     token = member.userproxy.token
 
@@ -418,6 +419,18 @@ async def guild_userproxy(
         return True, [], token, None
 
     app_emojis, proxy_content = await process_emoji(proxy_content, token)
+
+    if (
+        (guild_config := await Config.get(message.guild.id)) is not None and
+        guild_config.logclean
+    ):
+        await Log(
+            author_id=message.author.id,
+            message_id=message.id,
+            author_name=message.author.username,
+            channel_id=message.channel.id,
+            content=message.content
+        ).save()
 
     try:
         responses = await gather(
@@ -673,6 +686,18 @@ async def process_proxy(
             await sticker.as_file()
             for sticker in message.sticker_items
         ]
+
+    if (
+        (guild_config := await Config.get(message.guild.id)) is not None and
+        guild_config.logclean
+    ):
+        await Log(
+            author_id=message.author.id,
+            message_id=message.id,
+            author_name=message.author.username,
+            channel_id=message.channel.id,
+            content=message.content
+        ).save()
 
     group = await member.get_group()
 

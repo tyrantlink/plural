@@ -1,8 +1,8 @@
-from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File, ActionRow, Webhook
+from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, EmbedField, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File, ActionRow, Webhook
 from src.components import modal_plural_edit, umodal_edit, button_api_key, help_components, button_delete_all_data
 from src.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport, LogMessage
+from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, Config
 from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape
-from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction
 from src.errors import InteractionError, Forbidden, PluralException
 from src.logic.proxy import get_proxy_webhook, process_proxy
 from src.version import VERSION, LAST_TEN_COMMITS
@@ -731,4 +731,61 @@ async def slash_edit(
             message.id,
             content=content
         )
+    )
+
+
+@slash_command(
+    name='config',
+    description='configure /plu/ral\'s server settings',
+    options=[
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='logclean',
+            description='whether to enable log cleaning',
+            required=False)],
+    contexts=[InteractionContextType.GUILD],
+    integration_types=[ApplicationIntegrationType.GUILD_INSTALL],
+    default_member_permissions=Permission.MANAGE_GUILD)
+async def slash_config(
+    interaction: Interaction,
+    logclean: bool | None = None
+) -> None:
+    #! make this more versatile if you add more config
+    assert interaction.guild_id is not None
+
+    config = await Config.get(interaction.guild_id)
+
+    if config is None:
+        config = await Config(
+            id=interaction.guild_id
+        ).save()
+
+    if all(
+        option is None
+        for option in {logclean}
+    ):
+        await interaction.response.send_message(
+            embeds=[Embed(
+                title='server configuration',
+                description='please select a setting to configure',
+                color=0x69ff69,
+                fields=[
+                    EmbedField(
+                        name='log cleaning',
+                        value='enabled' if config.logclean else 'disabled',
+                        inline=False
+                    )
+                ])
+            ])
+        return
+
+    if logclean is not None:
+        config.logclean = logclean
+
+    await config.save_changes()
+
+    await interaction.response.send_message(
+        embeds=[Embed.success(
+            f'log cleaning is now {'enabled' if config.logclean else 'disabled'}'
+        )]
     )
