@@ -1,12 +1,13 @@
 from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent, Interaction, InteractionType, WebhookEvent, WebhookEventType
-from src.core.auth import discord_key_validator
+from src.db import HTTPCache, CFCDNProxy, GatewayEvent as DBGatewayEvent
 from fastapi import APIRouter, HTTPException, Depends
 from src.discord.http import _get_mime_type_for_image
 from fastapi.responses import Response, JSONResponse
-from src.discord.types import ListenerType
-from src.db import HTTPCache, CFCDNProxy
+from src.discord.types import ListenerType, MISSING
+from src.core.auth import discord_key_validator
 from src.discord.listeners import emit
 from asyncio import create_task
+from hashlib import sha256
 
 router = APIRouter(prefix='/discord', tags=['Discord'])
 PONG = JSONResponse({'type': 1})
@@ -44,6 +45,16 @@ async def post__interaction(
 
 
 async def _handle_gateway_event(event: GatewayEvent) -> Response:
+    request_hash = sha256(str(event.data).encode()).hexdigest()
+
+    if await DBGatewayEvent.get(request_hash) is not None:
+        return Response('DUPLICATE_EVENT', status_code=200)
+
+    await DBGatewayEvent(
+        id=request_hash,
+        instance=str(id(MISSING))
+    ).save()
+
     if event.name not in ACCEPTED_EVENTS:
         return Response(event.name, status_code=200)
 

@@ -1,17 +1,15 @@
 from src.discord.models import Interaction, ApplicationIntegrationType, WebhookEvent
-from src.db import ApiKey, ProxyMember, ApiToken, GatewayEvent
 from fastapi import Security, HTTPException, Request, Header
 from fastapi.security.api_key import APIKeyHeader
 from concurrent.futures import ThreadPoolExecutor
+from src.db import ApiKey, ProxyMember, ApiToken
 from nacl.exceptions import BadSignatureError
-from src.errors import DuplicateEventError
 from pydantic_core import ValidationError
 from typing import NamedTuple, Annotated
 from nacl.signing import VerifyKey
 from asyncio import get_event_loop
 from src.models import project
 from re import match, escape
-from hashlib import sha256
 from bcrypt import checkpw
 from orjson import loads
 
@@ -107,15 +105,6 @@ async def discord_key_validator(
     except BadSignatureError:
         pass
     else:
-        request_hash = sha256(request_body.encode()).hexdigest()
-
-        if await GatewayEvent.get(request_hash) is not None:
-            raise DuplicateEventError
-
-        await GatewayEvent(
-            id=request_hash
-        ).save()
-
         return True
 
     try:

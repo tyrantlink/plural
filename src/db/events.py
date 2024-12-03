@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from pymongo import IndexModel
 from beanie import Document
 from pydantic import Field
@@ -22,3 +22,8 @@ class GatewayEvent(Document):
 
     id: str = Field(  # type: ignore
         description='the hash of the event body')
+    instance: str = Field(
+        description='the api instance (id of the MISSING variable)')
+    ts: datetime = Field(
+        default_factory=datetime.utcnow,
+        description='the timestamp of the event')

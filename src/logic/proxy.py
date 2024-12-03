@@ -1,11 +1,13 @@
 from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference
-from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache, Log, Config
+from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache, Log, Config, GatewayEvent
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage
 from src.errors import Forbidden, NotFound
 from src.discord.http import get_from_cdn
+from src.discord.types import MISSING
 from dataclasses import dataclass
 from asyncio import gather
+from hashlib import sha256
 from random import randint
 
 
@@ -635,6 +637,13 @@ async def process_proxy(
         return False, None, token, None
 
     webhook = await get_proxy_webhook(message.channel)
+
+    # ? final deduplication check
+    if await GatewayEvent.find_one({
+        'id': sha256(str(message._raw).encode()).hexdigest(),
+        'instance': {'$ne': str(id(MISSING))}
+    }) is not None:
+        return False, None, token, None
 
     # ? don't actually clone emotes if we're debugging
     app_emojis = list()
