@@ -48,19 +48,31 @@ async def _sync_user(event: GatewayEvent, from_member: bool = True) -> Coroutine
 
 
 async def _message_create(event: GatewayEvent) -> Coroutine:
+    content_strip: dict = {'content': ''}
+
+    if event.data.get('referenced_message', None) is not None:
+        content_strip['referenced_message'] = {'content': ''}
+
     return DiscordObject(
         id=event.data['id'],
         data=event.data
+    ).merge(
+        content_strip
     ).save()
 
 
 async def _message_update(event: GatewayEvent) -> Coroutine:
+    content_strip: dict = {'content': ''}
+
+    if event.data.get('referenced_message', None) is not None:
+        content_strip['referenced_message'] = {'content': ''}
+
     original = await DiscordObject.get(
         event.data['id']
     ) or DiscordObject(
         id=event.data['id'],
         data={})
-    return original.merge(event.data).save()
+    return original.merge(event.data).merge(content_strip).save()
 
 
 async def _message_delete(event: GatewayEvent) -> Coroutine | None:
@@ -244,7 +256,7 @@ async def _guild_create(event: GatewayEvent) -> Coroutine:
     async with BulkWriter() as writer:
         for obj in objects:
             await obj.find_one(
-                {'id': obj.id},
+                {'_id': obj.id},
                 upsert=True
             ).replace_one(obj, bulk_writer=writer)
 
@@ -274,7 +286,7 @@ async def _guild_update(event: GatewayEvent) -> Coroutine:
     async with BulkWriter() as writer:
         for obj in objects:
             await obj.find_one(
-                {'id': obj.id},
+                {'_id': obj.id},
                 upsert=True
             ).replace_one(obj, bulk_writer=writer)
 
