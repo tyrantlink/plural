@@ -602,6 +602,13 @@ async def process_proxy(
 
         return False, None, token, None
 
+    # ? final deduplication check
+    if await GatewayEvent.find_one({
+        'id': sha256(str(message._raw).encode()).hexdigest(),
+        'instance': {'$ne': str(id(MISSING))}
+    }) is not None:
+        return False, None, token, None
+
     if member.userproxy and message.guild.id in member.userproxy.guilds:
         success, app_emojis, token, db_message = await guild_userproxy(
             message, proxy_content, member, debug_log)
