@@ -58,6 +58,10 @@ class InteractionError(BasePluralException):
     ...
 
 
+class DuplicateEventError(BasePluralException):
+    ...
+
+
 async def on_interaction_error(interaction: Interaction, error: BaseException) -> None:
     from src.discord import InteractionType, Embed, Webhook, User, File
 

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Response, Request, WebSocket
 from logging import getLogger, Filter, LogRecord
+from src.errors import DuplicateEventError
 from contextlib import asynccontextmanager
 from src.docs import root as docs
 from src.version import VERSION
@@ -108,6 +109,11 @@ async def set_client_ip(request: Request, call_next):
         request.scope['client'] = (client_ip, request.scope['client'][1])
 
     return await call_next(request)
+
+
+@app.exception_handler(DuplicateEventError)
+def handle_duplicate_event_error(request: Request, exc: DuplicateEventError):
+    return Response('DUPLICATE_EVENT', 200)
 
 
 @app.get(

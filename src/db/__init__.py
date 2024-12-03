@@ -1,9 +1,10 @@
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from .userproxy_interaction import UserProxyInteraction
+from pymongo import AsyncMongoClient
 from .group_share import GroupShare
 from .helpers import ImageExtension
 from .cfcdnproxy import CFCDNProxy
 from .httpcache import HTTPCache
+from .events import GatewayEvent
 from .api_token import ApiToken
 from .member import ProxyMember
 from src.models import project
@@ -21,14 +22,18 @@ from .log import Log
 
 class MongoDatabase:
     def __init__(self, mongo_uri: str) -> None:
-        self._client: AsyncIOMotorDatabase = AsyncIOMotorClient(
-            mongo_uri, serverSelectionTimeoutMS=5000)['plural']
+        self._client = AsyncMongoClient(
+            mongo_uri,
+            serverSelectionTimeoutMS=5000,
+            readPreference='nearest',
+        )['plural']
 
     async def _init_beanie(self) -> None:
         await init_beanie(
-            self._client,
+            self._client,  # type: ignore #? beanie still based on motor
             document_models=[
                 UserProxyInteraction,
+                GatewayEvent,
                 ProxyMember,
                 CFCDNProxy,
                 GroupShare,
