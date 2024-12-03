@@ -1,12 +1,15 @@
 from src.discord import GatewayEvent, GatewayEventName, MessageReactionAddEvent, MessageCreateEvent, MessageUpdateEvent, Interaction, InteractionType, WebhookEvent, WebhookEventType
-from src.db import HTTPCache, CFCDNProxy, GatewayEvent as DBGatewayEvent
+from src.db import CFCDNProxy, GatewayEvent as DBGatewayEvent
 from fastapi import APIRouter, HTTPException, Depends
 from src.discord.http import _get_mime_type_for_image
 from fastapi.responses import Response, JSONResponse
 from src.discord.types import ListenerType, MISSING
 from src.core.auth import discord_key_validator
+from pymongo.errors import DuplicateKeyError
+from src.logic import discord_object_sync
 from src.discord.listeners import emit
 from asyncio import create_task
+from src.models import project
 from hashlib import sha256
 
 router = APIRouter(prefix='/discord', tags=['Discord'])
@@ -15,45 +18,30 @@ PONG = JSONResponse({'type': 1})
 ACCEPTED_EVENTS = {
     GatewayEventName.MESSAGE_CREATE,
     GatewayEventName.MESSAGE_UPDATE,
-    GatewayEventName.MESSAGE_REACTION_ADD,
-    GatewayEventName.GUILD_UPDATE,
-    GatewayEventName.CHANNEL_UPDATE,
-    GatewayEventName.GUILD_ROLE_UPDATE,
     GatewayEventName.INTERACTION_CREATE,
+    GatewayEventName.MESSAGE_REACTION_ADD,
 }
 
 
-@router.post(
-    '/interaction',
-    include_in_schema=False,
-    dependencies=[Depends(discord_key_validator)])
-async def post__interaction(
-    interaction: Interaction
-) -> Response:
-    # ? immediately pong for pings
-    if interaction.type == InteractionType.PING:
-        return PONG
-
-    await interaction.populate()
-
-    create_task(emit(
-        ListenerType.INTERACTION,
-        interaction
-    ))
-
-    return Response(status_code=202)
-
-
 async def _handle_gateway_event(event: GatewayEvent) -> Response:
-    request_hash = sha256(str(event.data).encode()).hexdigest()
+    if not project.dev_environment:
+        request_hash = sha256(str(event.data).encode()).hexdigest()
 
-    if await DBGatewayEvent.get(request_hash) is not None:
-        return Response('DUPLICATE_EVENT', status_code=200)
+        if await DBGatewayEvent.get(request_hash) is not None:
+            return Response('DUPLICATE_EVENT', status_code=200)
 
-    await DBGatewayEvent(
-        id=request_hash,
-        instance=str(id(MISSING))
-    ).save()
+        try:
+            await DBGatewayEvent(
+                id=request_hash,
+                instance=str(id(MISSING))
+            ).insert()
+        except DuplicateKeyError:
+            return Response('DUPLICATE_EVENT', status_code=200)
+
+    try:  # ? temp try/except while work in progress
+        await discord_object_sync(event)
+    except Exception as e:
+        print(e)
 
     if event.name not in ACCEPTED_EVENTS:
         return Response(event.name, status_code=200)
@@ -75,12 +63,6 @@ async def _handle_gateway_event(event: GatewayEvent) -> Response:
             task = emit(
                 ListenerType.MESSAGE_REACTION_ADD,
                 await MessageReactionAddEvent.validate_and_populate(event.data))
-        case GatewayEventName.GUILD_UPDATE:
-            task = HTTPCache.invalidate(f'/guilds/{event.data['id']}')
-        case GatewayEventName.CHANNEL_UPDATE:
-            task = HTTPCache.invalidate(f'/channels/{event.data['id']}')
-        case GatewayEventName.GUILD_ROLE_UPDATE:
-            task = HTTPCache.invalidate(f'/guilds/{event.data['guild_id']}')
         case _:
             raise HTTPException(500, 'event accepted but not handled')
 
@@ -103,6 +85,27 @@ async def _handle_webhook_event(event: WebhookEvent) -> Response:
     ))
 
     return Response(status_code=200)
+
+
+@router.post(
+    '/interaction',
+    include_in_schema=False,
+    dependencies=[Depends(discord_key_validator)])
+async def post__interaction(
+    interaction: Interaction
+) -> Response:
+    # ? immediately pong for pings
+    if interaction.type == InteractionType.PING:
+        return PONG
+
+    await interaction.populate()
+
+    create_task(emit(
+        ListenerType.INTERACTION,
+        interaction
+    ))
+
+    return Response(status_code=202)
 
 
 @router.post(
