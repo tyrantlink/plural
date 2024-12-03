@@ -147,7 +147,7 @@ async def post__message(
 
     required_permissions = (
         Permission.MANAGE_GUILD
-        if GuildFeature.AUTO_MODERATION in guild.features else
+        if guild.features and GuildFeature.AUTO_MODERATION not in guild.features else
         Permission.SEND_MESSAGES | Permission.VIEW_CHANNEL
     )
 
