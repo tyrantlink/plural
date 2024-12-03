@@ -645,13 +645,6 @@ async def process_proxy(
 
     webhook = await get_proxy_webhook(message.channel)
 
-    # ? final deduplication check
-    if await GatewayEvent.find_one({
-        'id': sha256(str(message._raw).encode()).hexdigest(),
-        'instance': {'$ne': str(id(MISSING))}
-    }) is not None:
-        return False, None, token, None
-
     # ? don't actually clone emotes if we're debugging
     app_emojis = list()
     if webhook.application_id == project.application_id and not debug_log:
