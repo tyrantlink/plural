@@ -305,6 +305,14 @@ class Message(RawBaseModel):
 
         if allowed_mentions:
             json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')
+        else:
+            json['allowed_mentions'] = AllowedMentions(
+                replied_user=(
+                    self.referenced_message is not None and
+                    self.referenced_message.author is not None and
+                    self.referenced_message.author.id in [
+                        user.id for user in self.mentions])
+            ).model_dump(mode='json')
 
         form = None
         if attachments:

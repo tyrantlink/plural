@@ -297,6 +297,14 @@ class Webhook(RawBaseModel):
 
         if allowed_mentions:
             json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')
+        elif (og_message := await self.fetch_message(message_id)):
+            json['allowed_mentions'] = AllowedMentions(
+                replied_user=(
+                    og_message.referenced_message is not None and
+                    og_message.referenced_message.author is not None and
+                    og_message.referenced_message.author.id in [
+                        user.id for user in og_message.mentions])
+            ).model_dump(mode='json')
 
         if flags:
             json['flags'] = flags
