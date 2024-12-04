@@ -48,32 +48,39 @@ async def _sync_user(event: GatewayEvent, from_member: bool = True) -> Coroutine
     return user.merge(user_data).save()
 
 
-async def _message_create(event: GatewayEvent) -> Coroutine:
-    content_strip: dict = {'content': ''}
+def _content_strip(data: dict) -> dict:
+    content_strip = {
+        'content': '',
+        'attachments': []
+    }
 
-    if event.data.get('referenced_message', None) is not None:
+    if data.get('referenced_message', None) is not None:
         content_strip['referenced_message'] = {'content': ''}
 
+    return content_strip
+
+
+async def _message_create(event: GatewayEvent) -> Coroutine:
     return DiscordObject(
         id=event.data['id'],
         data=event.data
     ).merge(
-        content_strip
+        _content_strip(event.data)
     ).save()
 
 
 async def _message_update(event: GatewayEvent) -> Coroutine:
-    content_strip: dict = {'content': ''}
-
-    if event.data.get('referenced_message', None) is not None:
-        content_strip['referenced_message'] = {'content': ''}
-
     original = await DiscordObject.get(
         event.data['id']
     ) or DiscordObject(
         id=event.data['id'],
         data={})
-    return original.merge(event.data).merge(content_strip).save()
+
+    return original.merge(
+        event.data
+    ).merge(
+        _content_strip(event.data)
+    ).save()
 
 
 async def _message_delete(event: GatewayEvent) -> Coroutine | None:

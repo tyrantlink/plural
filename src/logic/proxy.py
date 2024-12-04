@@ -431,7 +431,7 @@ async def guild_userproxy(
             message_id=message.id,
             author_name=message.author.username,
             channel_id=message.channel.id,
-            content=message.content
+            content=sha256(message.content.encode()).hexdigest()
         ).save()
 
     try:
@@ -705,7 +705,7 @@ async def process_proxy(
             message_id=message.id,
             author_name=message.author.username,
             channel_id=message.channel.id,
-            content=message.content
+            content=sha256(message.content.encode()).hexdigest()
         ).save()
 
     group = await member.get_group()

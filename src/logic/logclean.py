@@ -2,6 +2,7 @@ from src.discord.listeners import listen, ListenerType
 from src.discord import MessageCreateEvent
 from dataclasses import dataclass
 from src.db import Log, Config
+from hashlib import sha256
 from regex import search
 
 
@@ -15,7 +16,10 @@ class LogExtract:
 
     def as_full_query(self) -> dict[str, str | int]:
         return {
-            key: value
+            key: (
+                sha256(str(value).encode()).hexdigest()
+                if key == 'content'
+                else value)
             for key, value in self.__dict__.items()
             if value is not None
         } or {
