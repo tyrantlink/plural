@@ -3,6 +3,7 @@ from src.db import DiscordObject
 from beanie import BulkWriter
 from typing import Coroutine
 from asyncio import gather
+from copy import deepcopy
 
 # ? this entire file is mildly gross, please do not look at it
 
@@ -294,6 +295,9 @@ async def _guild_update(event: GatewayEvent) -> Coroutine:
 
 
 async def discord_object_sync(event: GatewayEvent) -> None:
+    # ? data is removed from the event in processing
+    event = deepcopy(event)
+
     match event.name:
         case GatewayEventName.INTERACTION_CREATE:
             return None
