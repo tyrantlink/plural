@@ -276,7 +276,7 @@ class Webhook(RawBaseModel):
         allowed_mentions: AllowedMentions | None = None,
         flags: int | None = None,
     ) -> Message:
-        from .message import Message
+        from .message import Message, AllowedMentions
         json = {}
         params = {}
 
