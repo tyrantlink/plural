@@ -1,4 +1,4 @@
-from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference
+from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference, AllowedMentionType
 from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache, Log, Config, GatewayEvent
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage
@@ -451,15 +451,13 @@ async def guild_userproxy(
                         message.message_reference and
                         message.message_reference.type == MessageReferenceType.FORWARD and
                         not real_forward
-                    ) else message.message_reference
-                ),
+                    ) else message.message_reference),
                 allowed_mentions=AllowedMentions(
                     replied_user=(
                         message.referenced_message is not None and
                         message.referenced_message.author is not None and
                         message.referenced_message.author.id in [
-                            user.id for user in message.mentions
-                        ])),
+                            user.id for user in message.mentions])),
                 poll=message.poll,
                 flags=(
                     MessageFlag.SUPPRESS_NOTIFICATIONS
@@ -573,8 +571,7 @@ async def process_proxy(
             'i cannot proxy message over 1980 characters',
             reference=message,
             allowed_mentions=AllowedMentions(
-                replied_user=False
-            ),
+                replied_user=False),
             delete_after=10
         )
 
@@ -592,8 +589,7 @@ async def process_proxy(
             'attachments are above the file size limit',
             reference=message,
             allowed_mentions=AllowedMentions(
-                replied_user=False
-            ),
+                replied_user=False),
             delete_after=10
         )
 
@@ -655,8 +651,7 @@ async def process_proxy(
             'this message was over 2000 characters after processing emotes. proxy failed',
             reference=message,
             allowed_mentions=AllowedMentions(
-                replied_user=False
-            ),
+                replied_user=False),
             delete_after=10
         )
         return False, app_emojis, token, None
@@ -710,6 +705,23 @@ async def process_proxy(
 
     group = await member.get_group()
 
+    mentions = AllowedMentions(
+        parse=[
+            AllowedMentionType.EVERYONE,
+            AllowedMentionType.ROLES
+        ],
+        users=[
+            user.id
+            for user in message.mentions
+        ]
+    )
+
+    mentions.replied_user = (
+        message.referenced_message is not None and
+        message.referenced_message.author is not None and
+        message.referenced_message.author.id in (mentions.users or [])
+    )
+
     responses = await gather(
         message.delete(reason='/plu/ral proxy'),
         webhook.execute(
@@ -724,13 +736,12 @@ async def process_proxy(
             avatar_url=member.avatar_url or group.avatar_url,
             embeds=[embed] if embed is not None else [],
             attachments=attachments,
-            allowed_mentions=AllowedMentions(
-                replied_user=(
-                    message.referenced_message is not None and
-                    message.referenced_message.author is not None and
-                    message.referenced_message.author.id in [
-                        user.id for user in message.mentions
-                    ])),
+            allowed_mentions=mentions,
+            flags=(
+                MessageFlag.SUPPRESS_NOTIFICATIONS
+                & message.flags ^
+                MessageFlag.SUPPRESS_NOTIFICATIONS
+            ) if message.mentions else None,
             poll=message.poll),
         return_exceptions=True
     )
@@ -748,13 +759,12 @@ async def process_proxy(
             avatar_url=member.avatar_url or group.avatar_url,
             embeds=[embed] if embed is not None else [],
             attachments=attachments,
-            allowed_mentions=AllowedMentions(
-                replied_user=(
-                    message.referenced_message is not None and
-                    message.referenced_message.author is not None and
-                    message.referenced_message.author.id in [
-                        user.id for user in message.mentions
-                    ])),
+            allowed_mentions=mentions,
+            flags=(
+                MessageFlag.SUPPRESS_NOTIFICATIONS
+                & message.flags ^
+                MessageFlag.SUPPRESS_NOTIFICATIONS
+            ) if message.mentions else None,
             poll=message.poll)
 
     if isinstance(responses[1], BaseException):
