@@ -13,9 +13,7 @@ class GatewayEvent(Document):
 
     class Settings:
         name = 'gateway_events'
-        use_cache = True
         validate_on_save = True
-        cache_expiration_time = timedelta(seconds=30)
         indexes = [
             IndexModel('ts', expireAfterSeconds=30)
         ]

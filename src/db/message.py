@@ -13,9 +13,7 @@ class Message(Document):
 
     class Settings:
         name = 'messages'
-        use_cache = True
         validate_on_save = True
-        cache_expiration_time = timedelta(minutes=1)
         indexes = [
             'original_id',
             'proxy_id',

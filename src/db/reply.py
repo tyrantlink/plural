@@ -15,10 +15,8 @@ class Reply(Document):
 
     class Settings:
         name = 'replies'
-        use_cache = True
         validate_on_save = True
         use_state_management = True
-        cache_expiration_time = timedelta(seconds=300)
         indexes = [
             ('bot_id', 'channel'),  # ? compound index
             IndexModel('ts', expireAfterSeconds=300)

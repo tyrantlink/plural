@@ -13,10 +13,8 @@ class Log(Document):
 
     class Settings:
         name = 'logs'
-        use_cache = True
         validate_on_save = True
         use_state_management = True
-        cache_expiration_time = timedelta(seconds=60)
         indexes = [
             IndexModel('ts', expireAfterSeconds=60)
         ]

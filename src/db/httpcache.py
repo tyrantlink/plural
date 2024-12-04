@@ -14,9 +14,7 @@ class HTTPCache(Document):
 
     class Settings:
         name = 'httpcache'
-        use_cache = True
         validate_on_save = True
-        cache_expiration_time = timedelta(minutes=1)
         indexes = [  # ? 30 minute cache
             IndexModel('ts', expireAfterSeconds=60*30)
         ]

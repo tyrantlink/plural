@@ -13,9 +13,7 @@ class UserProxyInteraction(Document):
 
     class Settings:
         name = 'userproxy_interaction'
-        use_cache = True
         validate_on_save = True
-        cache_expiration_time = timedelta(minutes=15)
         indexes = [
             'message_id',
             'application_id',

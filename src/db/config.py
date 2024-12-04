@@ -12,10 +12,8 @@ class Config(Document):
 
     class Settings:
         name = 'config'
-        use_cache = True
         validate_on_save = True
         use_state_management = True
-        cache_expiration_time = timedelta(seconds=30)
 
     id: int = Field(  # type: ignore
         description='either guild id or user id; currently always guild id')

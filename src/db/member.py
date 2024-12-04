@@ -40,10 +40,8 @@ class ProxyMember(Document):
 
     class Settings:
         name = 'members'
-        use_cache = True
         validate_on_save = True
         use_state_management = True
-        cache_expiration_time = timedelta(seconds=5)
         indexes = ['userproxy.bot_id']
         bson_encoders = {ImageId: bytes}
 
