@@ -38,6 +38,10 @@ async def modal_plural_member_bio(
     if bio == app.description:
         raise InteractionError('no changes were made')
 
+    if len(bio) > 400:
+        raise InteractionError(
+            'bio over character limit, this shouldn\'t happen')
+
     await gather(
         app.patch(
             token=member.userproxy.token,

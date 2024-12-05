@@ -492,10 +492,8 @@ async def slash_member_set_bio(
     # ? attempt to strip legacy footer
     current_bio = app.description.removesuffix(
         LEGACY_FOOTER.format(username=interaction.author_name)
-    ).strip()
-
-    current_bio = app.description.removesuffix(
-        USERPROXY_FOOTER.format(username=interaction.author_name)
+    ).strip().removesuffix(
+        USERPROXY_FOOTER.format(username=interaction.author_name)[2:]
     ).strip()
 
     await interaction.response.send_modal(
