@@ -215,9 +215,10 @@ def guild_create_update(event: GatewayEvent) -> Coroutine:
                     'data': {
                         '$mergeObjects': [
                             {'$ifNull': ['$data', {}]},
-                            data, (
-                                {'guild_id': event.data['guild_id']}
-                                if cache_type == CacheType.CHANNEL else
+                            data, ({
+                                'id': str(event.data['id']),
+                                'guild_id': event.data['guild_id']
+                            } if cache_type == CacheType.CHANNEL else
                                 {}
                             )
                         ]}})],
@@ -298,7 +299,10 @@ def channel_thread_create_update(event: GatewayEvent) -> Coroutine:
                 '$mergeObjects': [
                     {'$ifNull': ['$data', {}]},
                     event.data,
-                    {'guild_id': event.data['guild_id']}
+                    {
+                        'id': str(event.data['id']),
+                        'guild_id': event.data['guild_id']
+                    }
                 ]}})],
         upsert=True
     )
@@ -329,7 +333,10 @@ def thread_list_sync(event: GatewayEvent) -> Coroutine:
                         '$mergeObjects': [
                             {'$ifNull': ['$data', {}]},
                             data,
-                            {'guild_id': event.data['guild_id']}
+                            {
+                                'id': str(snowflake),
+                                'guild_id': event.data['guild_id']
+                            }
                         ]}})],
                 upsert=True)
             for snowflake, data, guild_id in (
@@ -361,6 +368,8 @@ async def webhooks_update(event: GatewayEvent) -> None:
         '/channels/{channel_id}/webhooks',
         channel_id=int(event.data['channel_id'])
     ))
+
+    print(f'{webhooks=}')
 
     if not webhooks:
         return None

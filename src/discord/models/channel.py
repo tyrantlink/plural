@@ -1,9 +1,9 @@
 from __future__ import annotations
 from .enums import ChannelType, OverwriteType, VideoQualityMode, ChannelFlag, Permission, MessageFlag
+from src.errors import HTTPException, NotFound, Forbidden, Unauthorized
 from src.discord.http import Route, request, File
 from src.db import DiscordCache, CacheType
 from src.discord.types import Snowflake
-from src.errors import HTTPException
 from typing import TYPE_CHECKING
 from src.models import project
 from .base import RawBaseModel
@@ -95,8 +95,19 @@ class Channel(RawBaseModel):
     async def fetch(cls, channel_id: Snowflake | int) -> Channel:
         cached = await DiscordCache.get(channel_id)
 
-        if cached is not None and not cached.deleted and not cached.error:
+        if cached is not None and not cached.deleted:
             return cls(**cached.data)
+
+        if cached is not None and cached.error:
+            match cached.error:
+                case 404:
+                    raise NotFound(f'channel {channel_id} not found')
+                case 403:
+                    raise Forbidden(f'channel {channel_id} is forbidden')
+                case 401:
+                    raise Unauthorized(f'channel {channel_id} is unauthorized')
+                case _:
+                    raise HTTPException(cached.error)
 
         try:
             data = await request(Route(
@@ -193,6 +204,8 @@ class Channel(RawBaseModel):
                 guild_id=self.guild_id,
                 kwargs={'data.channel_id': str(self.id)}
             )
+
+            print(f'{cached=}')
 
             if cached:
                 return [
