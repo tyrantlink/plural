@@ -680,7 +680,7 @@ async def slash_edit(
     match obj:
         case UserProxyInteraction():
             webhook = Webhook.from_proxy_interaction(obj)
-            message = await webhook.fetch_message('@original', True)
+            message = await webhook.fetch_message('@original', ignore_cache=True)
 
             if not sed:
                 assert message.author is not None
