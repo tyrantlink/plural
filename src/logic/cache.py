@@ -356,6 +356,9 @@ async def webhooks_update(event: GatewayEvent) -> None:
         channel_id=int(event.data['channel_id'])
     ))
 
+    if not webhooks:
+        return None
+
     await DiscordCache.get_motor_collection().bulk_write([
         UpdateOne(
             {'snowflake': int(webhook['id'])},
