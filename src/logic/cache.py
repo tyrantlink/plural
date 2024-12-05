@@ -1,4 +1,5 @@
 from src.discord import GatewayEvent, GatewayEventName, GatewayOpCode
+from pymongo.errors import InvalidOperation
 from src.db import DiscordCache, CacheType
 from datetime import datetime, UTC
 from pymongo import UpdateOne
@@ -340,11 +341,14 @@ def guild_emojis_update(event: GatewayEvent) -> Coroutine:
 async def webhooks_update(event: GatewayEvent) -> None:
     from src.discord.http import request, Route
 
-    await DiscordCache.get_motor_collection().delete_many({
-        'guild_id': int(event.data['guild_id']),
-        'data.channel_id': event.data['channel_id'],
-        'type': CacheType.WEBHOOK.value
-    })
+    try:
+        await DiscordCache.get_motor_collection().delete_many({
+            'guild_id': int(event.data['guild_id']),
+            'data.channel_id': event.data['channel_id'],
+            'type': CacheType.WEBHOOK.value
+        })
+    except InvalidOperation:
+        pass
 
     webhooks = await request(Route(
         'GET',
