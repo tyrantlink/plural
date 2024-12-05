@@ -8,7 +8,7 @@ from bson.errors import InvalidId
 def _try_object_id(value: str) -> PydanticObjectId | None:
     try:
         return PydanticObjectId(value)
-    except ValueError:
+    except InvalidId:
         return None
 
 
@@ -17,10 +17,7 @@ async def member_converter(
     options: dict[str, ApplicationCommandInteractionDataOption],
     value: str
 ) -> ProxyMember:
-    try:
-        parsed_value = PydanticObjectId(value)
-    except InvalidId:
-        parsed_value = None
+    parsed_value = _try_object_id(value)
 
     member, group = None, None
 
@@ -54,10 +51,7 @@ async def group_converter(
     options: dict[str, ApplicationCommandInteractionDataOption],
     value: str
 ) -> Group:
-    try:
-        parsed_value = PydanticObjectId(value)
-    except InvalidId:
-        parsed_value = None
+    parsed_value = _try_object_id(value)
 
     group = None
 
