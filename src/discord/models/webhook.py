@@ -248,9 +248,15 @@ class Webhook(RawBaseModel):
     async def fetch_message(
         self,
         message_id: Snowflake | int | Literal['@original'],
+        thread_id: Snowflake | None = None,
         ignore_cache: bool = False
     ) -> Message:
         from .message import Message
+        params = {}
+
+        if thread_id is not None:
+            params['thread_id'] = thread_id
+
         return Message(
             **await request(
                 Route(
@@ -260,7 +266,8 @@ class Webhook(RawBaseModel):
                     webhook_token=self.token,
                     message_id=message_id
                 ),
-                ignore_cache=ignore_cache
+                ignore_cache=ignore_cache,
+                params=params
             )
         )
 
@@ -297,7 +304,7 @@ class Webhook(RawBaseModel):
 
         if allowed_mentions:
             json['allowed_mentions'] = allowed_mentions.model_dump(mode='json')
-        elif (og_message := await self.fetch_message(message_id)):
+        elif (og_message := await self.fetch_message(message_id, thread_id)):
             json['allowed_mentions'] = AllowedMentions(
                 replied_user=(
                     og_message.referenced_message is not None and
