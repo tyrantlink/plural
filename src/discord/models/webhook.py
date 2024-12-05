@@ -377,3 +377,16 @@ class Webhook(RawBaseModel):
             ),
             params={'thread_id': thread_id} if thread_id else None
         )
+
+    async def delete(self) -> None:
+        if self.token is None:
+            raise ValueError('Cannot delete a webhook without a token.')
+
+        await request(
+            Route(
+                'DELETE',
+                '/webhooks/{webhook_id}/{webhook_token}',
+                webhook_id=self.id,
+                webhook_token=self.token
+            )
+        )

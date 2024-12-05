@@ -37,7 +37,10 @@ class DiscordCache(Document):
     deleted: bool = Field(
         default=False,
         description='whether the object has been deleted')
-    ts: datetime = Field(
+    error: int | None = Field(
+        default=None,
+        description='the http status code, if response was an error')
+    ts: datetime | None = Field(
         default_factory=datetime.utcnow,
         description='timestamp for ttl index')
 
@@ -93,7 +96,7 @@ class DiscordCache(Document):
             case CacheType.EMOJI:
                 name = GatewayEventName.GUILD_EMOJIS_UPDATE
             case CacheType.WEBHOOK:
-                raise ValueError('webhooks are cached automatically')
+                name = GatewayEventName.WEBHOOKS_UPDATE
             case CacheType.MESSAGE:
                 name = GatewayEventName.MESSAGE_CREATE
             case CacheType.USER:
@@ -104,13 +107,31 @@ class DiscordCache(Document):
 
                 return await member_update(data, guild_id)
 
-        await discord_cache(
-            GatewayEvent(
-                op=GatewayOpCode.DISPATCH, s=0,
-                t=name,
-                d=data
-            )
-        )
+        await discord_cache(GatewayEvent(
+            op=GatewayOpCode.DISPATCH,
+            t=name,
+            d=data,
+            s=0
+        ))
+
+    @classmethod
+    async def http4xx(
+        cls,
+        status_code: int,
+        type: CacheType,
+        snowflake: int,
+        guild_id: int | None = None
+    ) -> None:
+        if status_code < 400 or status_code >= 500:
+            raise ValueError('status code must be 4xx')
+
+        await cls(
+            snowflake=snowflake,
+            guild_id=guild_id,
+            error=status_code,
+            type=type,
+            data={},
+        ).save()
 
     @classmethod
     async def get_guild(

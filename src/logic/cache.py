@@ -23,7 +23,6 @@ def Set(
     missing_keys = {'snowflake', 'data', 'type'} - dict.keys()
 
     if missing_keys and not skip_missing_check:
-        print(dict)
         raise ValueError(f'missing required keys: {missing_keys}')
 
     if isinstance(dict.get('type'), CacheType):
@@ -45,7 +44,7 @@ def Set(
     }
 
 
-def _member_update(event: GatewayEvent) -> UpdateOne | None:
+async def _member_update(event: GatewayEvent) -> list[UpdateOne] | None:
     if event.data.get('webhook_id', None) is not None:
         return None
 
@@ -63,7 +62,7 @@ def _member_update(event: GatewayEvent) -> UpdateOne | None:
         )
     )
 
-    return UpdateOne(
+    update = [UpdateOne(
         {'snowflake': int(user_id), 'guild_id': int(event.data['guild_id'])},
         [Set({
             'snowflake': int(user_id),
@@ -75,7 +74,58 @@ def _member_update(event: GatewayEvent) -> UpdateOne | None:
                     member_data
                 ]}})],
         upsert=True
-    )
+    )]
+
+    existing_roles = {
+        role['snowflake']
+        for role in await (
+            await DiscordCache.get_motor_collection().aggregate([
+                {  # type: ignore # ? using async pymongo, not motor
+                    '$match': {
+                        'snowflake': {'$in': [
+                            int(role_id)
+                            for role_id in
+                            member_data['roles']]},
+                        'type': CacheType.ROLE.value
+                    }
+                }, {
+                    '$project': {
+                        '_id': 0,
+                        'snowflake': 1
+                    }
+                }
+            ])
+        ).to_list()
+    }
+
+    missing_roles = set(member_data['roles']) - existing_roles
+
+    if not missing_roles:
+        return update
+
+    from src.discord.http import request, Route
+
+    roles = await request(Route(
+        'GET',
+        '/guilds/{guild_id}/roles',
+        guild_id=int(event.data['guild_id'])
+    ))
+
+    return update.extend([
+        UpdateOne(
+            {'snowflake': int(role['id'])},
+            [Set({
+                'snowflake': int(role['id']),
+                'guild_id': int(event.data['guild_id']),
+                'type': CacheType.ROLE,
+                'data': {
+                    '$mergeObjects': [
+                        {'$ifNull': ['$data', {}]},
+                        role
+                    ]}})],
+            upsert=True)
+        for role in roles
+    ])
 
 
 async def member_update(dict: dict, guild_id: int) -> None:
@@ -87,10 +137,10 @@ async def member_update(dict: dict, guild_id: int) -> None:
 
     request = [_user_update(event)]
 
-    update = _member_update(event)
+    update = await _member_update(event)
 
     if update is not None:
-        request.append(update)
+        request.extend(update)
 
     await DiscordCache.get_motor_collection().bulk_write(
         request
@@ -313,13 +363,14 @@ async def webhooks_update(event: GatewayEvent) -> None:
                     '$mergeObjects': [
                         {'$ifNull': ['$data', {}]},
                         webhook
-                    ]}})],
+                    ]},
+                'ts': None})],
             upsert=True)
         for webhook in webhooks
     ])
 
 
-def message_create_update(event: GatewayEvent) -> Coroutine:
+async def message_create_update(event: GatewayEvent) -> Coroutine:
     requests = [
         UpdateOne(
             {'snowflake': int(event.data['id'])},
@@ -353,10 +404,10 @@ def message_create_update(event: GatewayEvent) -> Coroutine:
         _user_update(event)
     ]
 
-    member = _member_update(event)
+    member = await _member_update(event)
 
     if member is not None:
-        requests.append(member)
+        requests.extend(member)
 
     if event.name == GatewayEventName.MESSAGE_CREATE:
         requests.append(UpdateOne({
@@ -403,14 +454,14 @@ def message_delete_bulk(event: GatewayEvent) -> Coroutine:
     )
 
 
-def message_reaction_add(event: GatewayEvent) -> Coroutine:
+async def message_reaction_add(event: GatewayEvent) -> Coroutine:
     # ? i don't actually care about the reaction, just update member data
     requests = []
 
     if 'user' in event.data['member']:
         requests.append(_user_update(event))
 
-    member = _member_update(event)
+    member = await _member_update(event)
 
     if member is not None:
         requests.append(member)
@@ -423,9 +474,6 @@ def message_reaction_add(event: GatewayEvent) -> Coroutine:
 async def discord_cache(event: GatewayEvent) -> None:
     # ? data is removed from the event in processing
     event = deepcopy(event)
-
-    # from orjson import dumps
-    # print(event.name, dumps(event.data))
 
     match event.name:
         case GatewayEventName.GUILD_CREATE | GatewayEventName.GUILD_UPDATE:
@@ -450,13 +498,13 @@ async def discord_cache(event: GatewayEvent) -> None:
         case GatewayEventName.WEBHOOKS_UPDATE:
             task = webhooks_update(event)
         case GatewayEventName.MESSAGE_CREATE | GatewayEventName.MESSAGE_UPDATE:
-            task = message_create_update(event)
+            task = await message_create_update(event)
         case GatewayEventName.MESSAGE_DELETE:
             task = message_delete(event)
         case GatewayEventName.MESSAGE_DELETE_BULK:
             task = message_delete_bulk(event)
         case GatewayEventName.MESSAGE_REACTION_ADD:
-            task = message_reaction_add(event)
+            task = await message_reaction_add(event)
         case _:
             return None
 

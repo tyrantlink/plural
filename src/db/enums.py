@@ -18,3 +18,4 @@ class CacheType(Enum):
     MESSAGE = 5
     USER = 6
     MEMBER = 7
+    ERROR = 8

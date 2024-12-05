@@ -31,22 +31,27 @@ class PluralException(BasePluralException):
 
 
 class HTTPException(BasePluralException):
+    status_code: int = 0
     ...
 
 
-class Unauthorized(BasePluralException):
+class Unauthorized(HTTPException):
+    status_code: int = 401
     ...
 
 
-class Forbidden(BasePluralException):
+class Forbidden(HTTPException):
+    status_code: int = 403
     ...
 
 
-class NotFound(BasePluralException):
+class NotFound(HTTPException):
+    status_code: int = 404
     ...
 
 
-class ServerError(BasePluralException):
+class ServerError(HTTPException):
+    status_code: int = 500
     ...
 
 

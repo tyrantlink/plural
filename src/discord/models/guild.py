@@ -118,6 +118,12 @@ class Guild(RawBaseModel):
 
         return self.premium_tier.filesize_limit
 
+    async def populate(self) -> None:
+        await super().populate()
+
+        if not self.roles:
+            self.roles = await self.fetch_roles()
+
     @classmethod
     async def fetch(cls, guild_id: Snowflake | int) -> Guild:
         cached = await DiscordCache.get_guild(guild_id)
@@ -187,3 +193,11 @@ class Guild(RawBaseModel):
                 token=token
             )
         )
+
+    async def fetch_roles(self) -> list[Role]:
+        return [
+            Role(**role.data)
+            for role in
+            await DiscordCache.get_many(CacheType.ROLE, self.id)
+            if not role.deleted
+        ]

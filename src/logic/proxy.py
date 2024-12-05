@@ -227,19 +227,50 @@ async def permission_check(
     return True
 
 
-async def get_proxy_webhook(channel: Channel) -> Webhook:
+async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook:
     if channel.is_thread:
         if channel.parent_id is None:
             raise ValueError('thread channel has no parent')
 
         channel = await channel.fetch(channel.parent_id)
 
-    if channel.guild_id is None:
-        raise ValueError('resolved channel is not a guild channel')
+    webhooks = await channel.fetch_webhooks(use_cache)
 
-    for webhook in await channel.fetch_webhooks():
+    # remove duplicate /plu/ral proxy webhooks
+    found = None
+    for webhook in webhooks:
         if webhook.name == '/plu/ral proxy':
-            return webhook
+            if not found:
+                found = webhook
+                continue
+
+            await webhook.delete()
+
+    if found:
+        return found
+
+    # for webhook in webhooks:
+    #     if webhook.name == '/plu/ral proxy':
+    #         return webhook
+
+    webhooks = await channel.fetch_webhooks(False)
+
+    # remove duplicate /plu/ral proxy webhooks
+    found = None
+    for webhook in webhooks:
+        if webhook.name == '/plu/ral proxy':
+            if not found:
+                found = webhook
+                continue
+
+            await webhook.delete()
+
+    if found:
+        return found
+
+    # for webhook in webhooks:
+    #     if webhook.name == '/plu/ral proxy':
+    #         return webhook
 
     webhook = await channel.create_webhook(
         name='/plu/ral proxy',
@@ -710,7 +741,7 @@ async def process_proxy(
         return_exceptions=True
     )
     if isinstance(responses[1], NotFound):
-        webhook = await get_proxy_webhook(message.channel)
+        webhook = await get_proxy_webhook(message.channel, False)
         responses = responses[0], await webhook.execute(
             content=proxy_content,
             thread_id=(

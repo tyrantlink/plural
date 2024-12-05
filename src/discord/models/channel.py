@@ -3,6 +3,7 @@ from .enums import ChannelType, OverwriteType, VideoQualityMode, ChannelFlag, Pe
 from src.discord.http import Route, request, File
 from src.db import DiscordCache, CacheType
 from src.discord.types import Snowflake
+from src.errors import HTTPException
 from typing import TYPE_CHECKING
 from src.models import project
 from .base import RawBaseModel
@@ -97,11 +98,18 @@ class Channel(RawBaseModel):
         if cached is not None and not cached.deleted:
             return cls(**cached.data)
 
-        data = await request(Route(
-            'GET',
-            '/channels/{channel_id}',
-            channel_id=channel_id
-        ))
+        try:
+            data = await request(Route(
+                'GET',
+                '/channels/{channel_id}',
+                channel_id=channel_id))
+        except HTTPException as e:
+            if 400 <= e.status_code < 500:
+                await DiscordCache.http4xx(
+                    e.status_code,
+                    CacheType.CHANNEL,
+                    channel_id)
+            raise
 
         await DiscordCache.add(
             CacheType.CHANNEL,
@@ -174,16 +182,31 @@ class Channel(RawBaseModel):
 
         return await Message.fetch(self.id, message_id, populate, include_content)
 
-    async def fetch_webhooks(self) -> list[Webhook]:
+    async def fetch_webhooks(self, use_cache: bool = True) -> list[Webhook]:
         from .webhook import Webhook
 
         if self.guild_id is None:
             raise ValueError('channel is not in a guild')
+        if use_cache:
+            cached = await DiscordCache.get_many(
+                CacheType.WEBHOOK,
+                guild_id=self.guild_id
+            )
+
+            if cached:
+                return [
+                    Webhook(**cached.data)
+                    for cached in cached
+                ]
+
+        await DiscordCache.add(
+            CacheType.WEBHOOK,
+            {'channel_id': str(self.id), 'guild_id': str(self.guild_id)}
+        )
 
         return [
             Webhook(**cached.data)
-            for cached in
-            await DiscordCache.get_many(
+            for cached in await DiscordCache.get_many(
                 CacheType.WEBHOOK,
                 guild_id=self.guild_id
             )
