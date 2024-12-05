@@ -215,7 +215,11 @@ def guild_create_update(event: GatewayEvent) -> Coroutine:
                     'data': {
                         '$mergeObjects': [
                             {'$ifNull': ['$data', {}]},
-                            data
+                            data, (
+                                {'guild_id': event.data['guild_id']}
+                                if cache_type == CacheType.CHANNEL else
+                                {}
+                            )
                         ]}})],
                 upsert=True)
             for snowflake, data, guild_id, cache_type in (
@@ -293,7 +297,8 @@ def channel_thread_create_update(event: GatewayEvent) -> Coroutine:
             'data': {
                 '$mergeObjects': [
                     {'$ifNull': ['$data', {}]},
-                    event.data
+                    event.data,
+                    {'guild_id': event.data['guild_id']}
                 ]}})],
         upsert=True
     )
@@ -323,7 +328,8 @@ def thread_list_sync(event: GatewayEvent) -> Coroutine:
                     'data': {
                         '$mergeObjects': [
                             {'$ifNull': ['$data', {}]},
-                            data
+                            data,
+                            {'guild_id': event.data['guild_id']}
                         ]}})],
                 upsert=True)
             for snowflake, data, guild_id in (
