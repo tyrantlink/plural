@@ -1,8 +1,8 @@
 from src.discord.http import File, get_from_cdn
 from beanie import Document, PydanticObjectId
-from datetime import datetime, timedelta
 from pydantic import Field, BaseModel
 from pymongo import IndexModel
+from datetime import datetime
 from io import BytesIO
 
 

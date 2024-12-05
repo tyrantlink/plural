@@ -1,12 +1,11 @@
 from __future__ import annotations
 from .enums import MessageFlag, InteractionCallbackType, InteractionContextType
 from src.discord.models.base import PydanticArbitraryType
-from src.discord.types import MissingNoneOr, MISSING
+from src.models import project, MISSING, MissingNoneOr
 from src.discord.http import File, Route, request
 from .message import Message, AllowedMentions
 from .component import Component
 from typing import TYPE_CHECKING
-from src.models import project
 from .webhook import Webhook
 from .modal import Modal
 from .embed import Embed

@@ -3,13 +3,13 @@ from src.db import CFCDNProxy, GatewayEvent as DBGatewayEvent
 from fastapi import APIRouter, HTTPException, Depends
 from src.discord.http import _get_mime_type_for_image
 from fastapi.responses import Response, JSONResponse
-from src.discord.types import ListenerType, MISSING
 from src.core.auth import discord_key_validator
 from pymongo.errors import DuplicateKeyError
+from src.discord.types import ListenerType
+from src.models import project, MISSING
 from src.discord.listeners import emit
 from src.logic import discord_cache
 from asyncio import create_task
-from src.models import project
 from hashlib import sha256
 
 router = APIRouter(prefix='/discord', tags=['Discord'])
@@ -36,6 +36,7 @@ async def _handle_gateway_event(event: GatewayEvent) -> Response:
                 instance=str(id(MISSING))
             ).insert()
         except DuplicateKeyError:
+            # ? event was inserted by another node between the check and insert attempt
             return Response('DUPLICATE_EVENT', status_code=200)
 
     try:  # ? temp try/except while work in progress

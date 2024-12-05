@@ -3,7 +3,6 @@ from .helpers import avatar_getter, avatar_setter, avatar_deleter, ImageId
 from pydantic import Field, model_validator, BaseModel
 from typing import Annotated, TYPE_CHECKING, Any
 from beanie import Document, PydanticObjectId
-from datetime import timedelta
 from re import sub, IGNORECASE
 
 

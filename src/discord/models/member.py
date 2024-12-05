@@ -2,10 +2,12 @@ from __future__ import annotations
 from .avatar_decoration import AvatarDecorationData
 from .enums import GuildMemberFlag, Permission
 from src.discord.http import Route, request
+from src.db import DiscordCache, CacheType
 from src.discord.types import Snowflake
 from datetime import datetime, timezone
 from .base import RawBaseModel
 from .channel import Channel
+from asyncio import gather
 from .guild import Guild
 from .user import User
 
@@ -35,16 +37,27 @@ class Member(RawBaseModel):
 
     @classmethod
     async def fetch(cls, guild_id: Snowflake | int, user_id: Snowflake | int) -> Member:
-        return cls(
-            **await request(
-                Route(
-                    'GET',
-                    '/guilds/{guild_id}/members/{user_id}',
-                    guild_id=guild_id,
-                    user_id=user_id
-                )
-            )
+        cached = await DiscordCache.get_member(user_id, guild_id)
+
+        if cached is not None and not cached.deleted:
+            return cls(**cached.data)
+
+        data = await request(Route(
+            'GET',
+            '/guilds/{guild_id}/members/{user_id}',
+            guild_id=guild_id,
+            user_id=user_id
+        ))
+
+        member = cls(**data)
+
+        await DiscordCache.add(
+            type=CacheType.MEMBER,
+            data=data,
+            guild_id=guild_id
         )
+
+        return member
 
     async def fetch_permissions_for(
         self,

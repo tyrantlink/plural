@@ -24,12 +24,11 @@
 from __future__ import annotations
 from src.errors import HTTPException, Forbidden, NotFound, ServerError, Unauthorized, InteractionError
 from aiohttp import __version__ as aiohttp_version, FormData, ClientResponse
-from asyncio import sleep, Lock, Event, get_event_loop, create_task
+from asyncio import sleep, Lock, Event, get_event_loop
 from typing import Any, Iterable, Sequence
 from datetime import datetime, timezone
 from weakref import WeakValueDictionary
 from base64 import b64encode, b64decode
-from src.db.httpcache import HTTPCache
 from src.core.session import session
 from re import match, IGNORECASE
 from src.version import VERSION
@@ -229,22 +228,6 @@ def _get_bot_id(token: str) -> int:
     return int(b64decode(f'{m.group(3)}==').decode())
 
 
-async def cache_response(route: Route, status: int, data: dict | str) -> None:
-    if any((
-        route.method != 'GET',
-        route.token != project.bot_token,
-        isinstance(data, str),
-        not route.discord
-    )):
-        return
-
-    await HTTPCache(
-        id=route.url,
-        status=status,
-        data=data
-    ).save()
-
-
 async def request(
     route: Route,
     *,
@@ -255,27 +238,9 @@ async def request(
     reason: str | None = None,
     locale: str | None = None,
     token: str | None = project.bot_token,
-    ignore_cache: bool = False,
     **kwargs,
 ) -> Any:
     route.token = token
-
-    if (
-        not ignore_cache and
-        token == project.bot_token and
-        route.method == 'GET'
-    ):
-        cached = await HTTPCache.get(route.url)
-        if cached is not None:
-            match cached.status:
-                case 401:
-                    raise Unauthorized(cached.data)
-                case 403:
-                    raise Forbidden(cached.data)
-                case 404:
-                    raise NotFound(cached.data)
-                case _:
-                    return cached.data
 
     lock = __locks.get(route.bucket)
 
@@ -352,10 +317,6 @@ async def request(
                             ).total_seconds(),
                             lock.release
                         )
-
-                    if response.status < 500 and response.status != 429:
-                        create_task(cache_response(
-                            route, response.status, resp_data))
 
                     if 300 > response.status >= 200:
                         return resp_data

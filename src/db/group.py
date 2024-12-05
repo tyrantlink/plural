@@ -3,7 +3,6 @@ from .helpers import avatar_getter, avatar_setter, avatar_deleter, ImageId
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
 from src.db.member import ProxyMember
-from datetime import timedelta
 from re import sub, IGNORECASE
 from asyncio import gather
 from typing import Any

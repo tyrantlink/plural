@@ -38,8 +38,7 @@ async def _sed_edit(
             'author_id': interaction.author_id,
             'channel_id': interaction.channel_id
         },
-        sort=[('ts', -1)],
-        ignore_cache=True
+        sort=[('ts', -1)]
     )
 
     if userproxy_interaction is None:
@@ -51,9 +50,7 @@ async def _sed_edit(
     )
 
     try:
-        original_message = await webhook.fetch_message(
-            '@original',
-            ignore_cache=True)
+        original_message = await webhook.fetch_message('@original')
     except NotFound:
         raise InteractionError(
             'original message not found; message may have been deleted')

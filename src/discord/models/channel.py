@@ -1,11 +1,13 @@
 from __future__ import annotations
 from .enums import ChannelType, OverwriteType, VideoQualityMode, ChannelFlag, Permission, MessageFlag
 from src.discord.http import Route, request, File
+from src.db import DiscordCache, CacheType
 from src.discord.types import Snowflake
 from typing import TYPE_CHECKING
 from src.models import project
 from .base import RawBaseModel
 from datetime import datetime
+from asyncio import gather
 from .user import User
 
 if TYPE_CHECKING:
@@ -90,15 +92,23 @@ class Channel(RawBaseModel):
 
     @classmethod
     async def fetch(cls, channel_id: Snowflake | int) -> Channel:
-        return cls(
-            **await request(
-                Route(
-                    'GET',
-                    '/channels/{channel_id}',
-                    channel_id=channel_id
-                )
-            )
+        cached = await DiscordCache.get(channel_id)
+
+        if cached is not None and not cached.deleted:
+            return cls(**cached.data)
+
+        data = await request(Route(
+            'GET',
+            '/channels/{channel_id}',
+            channel_id=channel_id
+        ))
+
+        await DiscordCache.add(
+            CacheType.CHANNEL,
+            data
         )
+
+        return cls(**data)
 
     @property
     def is_thread(self) -> bool:
@@ -115,7 +125,7 @@ class Channel(RawBaseModel):
         from .member import Member
 
         if self.guild_id is None:
-            raise ValueError('Guild not found')
+            raise ValueError('channel is not in a guild')
 
         member = await Member.fetch(self.guild_id, user_id)
 
@@ -154,24 +164,28 @@ class Channel(RawBaseModel):
             token=token
         )
 
-    async def fetch_message(self, message_id: Snowflake | int) -> Message:
+    async def fetch_message(
+        self,
+        message_id: Snowflake | int,
+        populate: bool = True,
+        include_content: bool = False
+    ) -> Message:
         from .message import Message
 
-        return await Message.fetch(self.id, message_id)
+        return await Message.fetch(self.id, message_id, populate, include_content)
 
-    async def fetch_webhooks(self, use_cache: bool = True) -> list[Webhook]:
+    async def fetch_webhooks(self) -> list[Webhook]:
         from .webhook import Webhook
 
+        if self.guild_id is None:
+            raise ValueError('channel is not in a guild')
+
         return [
-            Webhook(**webhook)
-            for webhook in
-            await request(
-                Route(
-                    'GET',
-                    '/channels/{channel_id}/webhooks',
-                    channel_id=self.id
-                ),
-                ignore_cache=not use_cache
+            Webhook(**cached.data)
+            for cached in
+            await DiscordCache.get_many(
+                CacheType.WEBHOOK,
+                guild_id=self.guild_id
             )
         ]
 
@@ -220,16 +234,25 @@ class Channel(RawBaseModel):
         if around is not None:
             params['around'] = around
 
+        messages = await request(
+            Route(
+                'GET',
+                '/channels/{channel_id}/messages',
+                channel_id=self.id
+            ),
+            params=params
+        )
+
+        await gather(*[
+            DiscordCache.add(
+                CacheType.MESSAGE,
+                message)
+            for message in
+            messages
+        ])
+
         return [
             Message(**message)
             for message in
-            await request(
-                Route(
-                    'GET',
-                    '/channels/{channel_id}/messages',
-                    channel_id=self.id
-                ),
-                params=params,
-                ignore_cache=True
-            )
+            messages
         ]

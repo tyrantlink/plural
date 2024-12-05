@@ -1,6 +1,6 @@
 from beanie import Document, PydanticObjectId
-from datetime import datetime, timedelta
 from pymongo import IndexModel
+from datetime import datetime
 from pydantic import Field
 
 

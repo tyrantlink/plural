@@ -1,4 +1,3 @@
-from datetime import timedelta
 from beanie import Document
 from pydantic import Field
 

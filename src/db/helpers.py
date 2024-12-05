@@ -3,23 +3,15 @@ from pydantic_core import CoreSchema, core_schema
 from pydantic import GetJsonSchemaHandler
 from aiohttp import MultipartWriter
 from beanie import PydanticObjectId
+from .enums import ImageExtension
 from typing import TYPE_CHECKING
 from src.models import project
 from secrets import token_hex
 from typing import Any
-from enum import Enum
 
 if TYPE_CHECKING:
     from src.db.member import ProxyMember
     from src.db.group import Group
-
-
-class ImageExtension(Enum):
-    PNG = 0
-    JPG = 1
-    JPEG = 1
-    GIF = 2
-    WEBP = 3
 
 
 class ImageId:

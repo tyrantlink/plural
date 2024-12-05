@@ -1,6 +1,7 @@
 from __future__ import annotations
 from .enums import GatewayOpCode, GatewayEventName, ReactionType, WebhookEventType, EventType, ApplicationIntegrationType
-from src.discord.types import Snowflake, MissingOr, MISSING
+from src.models import MISSING, MissingOr
+from src.discord.types import Snowflake
 from .base import RawBaseModel
 from datetime import datetime
 from .message import Message

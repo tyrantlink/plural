@@ -1,5 +1,6 @@
-from src.discord.types import Snowflake, MISSING, MissingOr, MissingNoneOr
+from src.models import MISSING, MissingOr, MissingNoneOr
 from src.discord.http import File, get_from_cdn
+from src.discord.types import Snowflake
 from .enums import AttachmentFlag
 from .base import RawBaseModel
 from io import BytesIO

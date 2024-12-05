@@ -14,7 +14,6 @@ from .member import *
 from .message import *
 from .modal import *
 from .poll import *
-from .ratelimit import *
 from .reaction import *
 from .resolved import *
 from .role import *
@@ -142,8 +141,6 @@ __all__ = (
     'PollLayoutType',
     'PollMedia',
     'PollResults',
-    # ratelimit.py
-    'RateLimitResponse',
     # reaction.py
     'CountDetails',
     'Reaction',

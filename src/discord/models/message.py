@@ -4,6 +4,7 @@ from src.discord.http import Route, request, File
 from asyncio import get_event_loop, create_task
 from .channel import ChannelMention, Channel
 from typing import ForwardRef, TYPE_CHECKING
+from src.db import DiscordCache, CacheType
 from .sticker import Sticker, StickerItem
 from src.discord.types import Snowflake
 from .role import RoleSubscriptionData
@@ -138,14 +139,18 @@ class Message(RawBaseModel):
         reason: str | None = None,
         token: str | None = project.bot_token
     ) -> tuple[int, dict] | None:
+        cached = await DiscordCache.get(self.id)
+
+        if cached is not None and cached.deleted:
+            return None
+
         return await request(
             Route(
                 'DELETE',
                 '/channels/{channel_id}/messages/{message_id}',
                 channel_id=self.channel_id,
                 message_id=self.id,
-                token=token
-            ),
+                token=token),
             reason=reason,
             token=token
         )
@@ -155,18 +160,32 @@ class Message(RawBaseModel):
         cls,
         channel_id: Snowflake | int,
         message_id: Snowflake | int,
-        populate: bool = True
+        populate: bool = True,
+        include_content: bool = False
     ) -> Message:
-        message = cls(
-            **await request(
-                Route(
-                    'GET',
-                    '/channels/{channel_id}/messages/{message_id}',
-                    channel_id=channel_id,
-                    message_id=message_id
-                ),
-                ignore_cache=True
-            )
+        if not include_content:
+            cached = await DiscordCache.get(message_id)
+
+            if cached is not None and not cached.deleted:
+                message = cls(**cached.data)
+
+                if populate:
+                    await message.populate()
+
+                return message
+
+        data = await request(Route(
+            'GET',
+            '/channels/{channel_id}/messages/{message_id}',
+            channel_id=channel_id,
+            message_id=message_id
+        ))
+
+        message = cls(**data)
+
+        await DiscordCache.add(
+            CacheType.MESSAGE,
+            data
         )
 
         if populate:
@@ -253,22 +272,17 @@ class Message(RawBaseModel):
         )
 
         self = (
-            cls(
-                **await request(
-                    route,
-                    form=form,
-                    files=attachments,
-                    token=token
-                )
-            )
+            cls(**await request(
+                route,
+                form=form,
+                files=attachments,
+                token=token))
             if attachments else
-            cls(
-                **await request(
-                    route,
-                    json=json,
-                    token=token
-                )
-            )
+            cls(**await request(
+                route,
+                json=json,
+                token=token
+            ))
         )
 
         if delete_after:
@@ -331,32 +345,23 @@ class Message(RawBaseModel):
             })
 
         return (
-            self.__class__(
-                **await request(
-                    Route(
-                        'PATCH',
-                        '/channels/{channel_id}/messages/{message_id}',
-                        channel_id=self.channel_id,
-                        message_id=self.id
-                    ),
-                    ignore_cache=True,
-                    form=form,
-                    files=attachments,
-                    token=token
-                )
-            )
+            self.__class__(**await request(
+                Route(
+                    'PATCH',
+                    '/channels/{channel_id}/messages/{message_id}',
+                    channel_id=self.channel_id,
+                    message_id=self.id),
+                form=form,
+                files=attachments,
+                token=token))
             if attachments else
-            self.__class__(
-                **await request(
-                    Route(
-                        'PATCH',
-                        '/channels/{channel_id}/messages/{message_id}',
-                        channel_id=self.channel_id,
-                        message_id=self.id
-                    ),
-                    ignore_cache=True,
-                    json=json,
-                    token=token
-                )
-            )
+            self.__class__(**await request(
+                Route(
+                    'PATCH',
+                    '/channels/{channel_id}/messages/{message_id}',
+                    channel_id=self.channel_id,
+                    message_id=self.id),
+                json=json,
+                token=token
+            ))
         )

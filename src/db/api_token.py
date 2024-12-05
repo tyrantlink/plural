@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
 from pymongo import IndexModel
+from datetime import datetime
 from beanie import Document
 from pydantic import Field
 

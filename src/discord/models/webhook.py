@@ -1,9 +1,9 @@
 from __future__ import annotations
+from src.db import UserProxyInteraction, DiscordCache, CacheType
 from typing import TYPE_CHECKING, overload, Literal
 from src.discord.http import Route, request, File
 from .enums import WebhookType, MessageFlag
 from src.discord.types import Snowflake
-from src.db import UserProxyInteraction
 from .base import RawBaseModel
 from .channel import Channel
 from .guild import Guild
@@ -37,7 +37,6 @@ class Webhook(RawBaseModel):
     async def from_url(
         cls,
         url: str,
-        use_cache: bool = True,
         with_token: bool = True
     ) -> Webhook:
         match = search(
@@ -56,8 +55,7 @@ class Webhook(RawBaseModel):
                         '/webhooks/{webhook_id}/{webhook_token}',
                         webhook_id=match['id'],
                         webhook_token=match['token']
-                    ),
-                    ignore_cache=not use_cache
+                    )
                 )
             )
 
@@ -67,8 +65,7 @@ class Webhook(RawBaseModel):
                     'GET',
                     '/webhooks/{webhook_id}',
                     webhook_id=match['id']
-                ),
-                ignore_cache=not use_cache
+                )
             )
         )
 
@@ -248,28 +245,37 @@ class Webhook(RawBaseModel):
     async def fetch_message(
         self,
         message_id: Snowflake | int | Literal['@original'],
-        thread_id: Snowflake | None = None,
-        ignore_cache: bool = False
+        thread_id: Snowflake | None = None
     ) -> Message:
         from .message import Message
         params = {}
+        if message_id != '@original':
+            cached = await DiscordCache.get(message_id)
+
+            if cached is not None and not cached.deleted:
+                return Message(**cached.data)
 
         if thread_id is not None:
             params['thread_id'] = thread_id
 
-        return Message(
-            **await request(
-                Route(
-                    'GET',
-                    '/webhooks/{webhook_id}/{webhook_token}/messages/{message_id}',
-                    webhook_id=self.id,
-                    webhook_token=self.token,
-                    message_id=message_id
-                ),
-                ignore_cache=ignore_cache,
-                params=params
-            )
+        data = await request(
+            Route(
+                'GET',
+                '/webhooks/{webhook_id}/{webhook_token}/messages/{message_id}',
+                webhook_id=self.id,
+                webhook_token=self.token,
+                message_id=message_id),
+            params=params
         )
+
+        message = Message(**data)
+
+        await DiscordCache.add(
+            CacheType.MESSAGE,
+            data
+        )
+
+        return message
 
     async def edit_message(
         self,

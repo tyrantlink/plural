@@ -42,7 +42,7 @@ async def on_message_edit(message: MessageUpdateEvent):
     ):
         return
 
-    if await message.channel.fetch_messages(limit=1) != [message]:
+    if message.id != message.channel.last_message_id:
         return None
 
     await on_message(message)
@@ -267,7 +267,8 @@ async def parse_custom_id(
                 args.append(
                     await Message.fetch(
                         *(Snowflake(i) for i in arg[1:].split(':')),
-                        populate=True
+                        populate=True,
+                        include_content=True
                     )
                 )
             case _:

@@ -310,16 +310,14 @@ async def slash_reproxy(
     assert interaction.channel is not None
     assert interaction.app_permissions is not None
 
-    if not interaction.app_permissions & Permission.READ_MESSAGE_HISTORY:
-        raise InteractionError(
-            'bot does not have permission to read message history in this channel')
+    if interaction.channel.last_message_id is None:
+        raise InteractionError('no message found')
 
-    messages = await interaction.channel.fetch_messages(limit=1)
-
-    if not messages:
-        raise InteractionError('message not found')
-
-    message = messages[0]
+    message = await Message.fetch(
+        interaction.channel.id,
+        interaction.channel.last_message_id,
+        include_content=True
+    )
 
     last_proxy_message = await DBMessage.find_one(
         {
@@ -653,15 +651,13 @@ async def slash_edit(
     userproxy_interaction, db_message = await UserProxyInteraction.find_one({
         'author_id': interaction.author_id,
         'channel_id': interaction.channel_id},
-        sort=[('ts', -1)],
-        ignore_cache=True
+        sort=[('ts', -1)]
     ), await DBMessage.find_one(
         {
             'author_id': interaction.author_id,
             'channel_id': interaction.channel_id
         },
-        sort=[('ts', -1)],
-        ignore_cache=True
+        sort=[('ts', -1)]
     )
 
     if userproxy_interaction is None and db_message is None:
@@ -680,7 +676,7 @@ async def slash_edit(
     match obj:
         case UserProxyInteraction():
             webhook = Webhook.from_proxy_interaction(obj)
-            message = await webhook.fetch_message('@original', ignore_cache=True)
+            message = await webhook.fetch_message('@original')
 
             if not sed:
                 assert message.author is not None
@@ -702,7 +698,11 @@ async def slash_edit(
             if interaction.channel is None:
                 raise InteractionError('channel not found')
 
-            message = await interaction.channel.fetch_message(obj.proxy_id)
+            message = await interaction.channel.fetch_message(
+                obj.proxy_id,
+                include_content=True
+            )
+
             assert message.channel is not None
             assert message.author is not None
 

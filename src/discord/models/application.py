@@ -1,8 +1,8 @@
 from __future__ import annotations
-from src.discord.types import Snowflake, MISSING, MissingOr, MissingNoneOr
 from src.discord.http import request, Route, _bytes_to_base64_data
+from src.models import project, MISSING, MissingOr, MissingNoneOr
 from .enums import ApplicationIntegrationType
-from src.models import project
+from src.discord.types import Snowflake
 from .base import RawBaseModel
 from .guild import Guild
 from .user import User
@@ -53,8 +53,7 @@ class Application(RawBaseModel):
             **await request(
                 Route(
                     'GET',
-                    '/applications/@me'
-                ),
+                    '/applications/@me'),
                 token=token
             )
         )
@@ -124,8 +123,7 @@ class Application(RawBaseModel):
             **await request(
                 Route(
                     'PATCH',
-                    '/applications/@me'
-                ),
+                    '/applications/@me'),
                 json=json,
                 token=token
             )

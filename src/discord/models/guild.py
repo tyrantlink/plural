@@ -1,12 +1,14 @@
 from __future__ import annotations
 from .enums import Permission, VerificationLevel, DefaultMessageNotificationLevel, ExplicitContentFilterLevel, GuildFeature, MFALevel, SystemChannelFlag, PremiumTier, NSFWLevel
-from src.discord.types import Snowflake, MissingNoneOr, MISSING
+from src.models import project, MISSING, MissingNoneOr
 from pydantic import model_validator, field_validator
 from src.discord.http import Route, request
+from src.db import DiscordCache, CacheType
+from src.discord.types import Snowflake
 from typing import TYPE_CHECKING
-from src.models import project
 from .base import RawBaseModel
 from .sticker import Sticker
+from asyncio import gather
 from .emoji import Emoji
 from .role import Role
 import logfire
@@ -118,33 +120,48 @@ class Guild(RawBaseModel):
 
     @classmethod
     async def fetch(cls, guild_id: Snowflake | int) -> Guild:
-        return cls(
-            **await request(
-                Route(
-                    'GET',
-                    '/guilds/{guild_id}',
-                    guild_id=guild_id
-                )
-            )
+        cached = await DiscordCache.get_guild(guild_id)
+
+        if cached is not None and not cached.deleted:
+            return cls(**cached.data)
+
+        data = await request(Route(
+            'GET',
+            '/guilds/{guild_id}',
+            guild_id=guild_id
+        ))
+
+        await DiscordCache.add(
+            CacheType.GUILD,
+            data
         )
+
+        return cls(**data)
 
     @classmethod
     async def fetch_user_guilds(
         cls,
-        token: str | None = project.bot_token,
-        ignore_cache: bool = False
+        token: str | None = project.bot_token
     ) -> list[Guild]:
+        data = await request(
+            Route(
+                'GET',
+                '/users/@me/guilds'
+            ),
+            token=token
+        )
+
+        await gather(*[
+            DiscordCache.add(
+                CacheType.GUILD,
+                guild)
+            for guild in data
+        ])
+
         return [
             cls(**guild)
             for guild in
-            await request(
-                Route(
-                    'GET',
-                    '/users/@me/guilds'
-                ),
-                token=token,
-                ignore_cache=ignore_cache
-            )
+            data
         ]
 
     async def modify_current_member(
@@ -165,8 +182,7 @@ class Guild(RawBaseModel):
                     'PATCH',
                     '/guilds/{guild_id}/members/@me',
                     guild_id=self.id,
-                    token=token
-                ),
+                    token=token),
                 json=json,
                 token=token
             )

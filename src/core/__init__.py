@@ -31,6 +31,7 @@ async def lifespan(app: FastAPI):
     from src.models import project
     from src.db import MongoDatabase
     from .session import session
+    import src.discord.types
 
     DB = MongoDatabase(project.mongo_uri)
 

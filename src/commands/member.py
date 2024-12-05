@@ -41,8 +41,8 @@ async def _sync_member_guilds(member: ProxyMember) -> None:
         guild.id
         for guild in
         await Guild.fetch_user_guilds(
-            member.userproxy.token,
-            ignore_cache=True)
+            member.userproxy.token
+        )
     ]
 
     await member.save()

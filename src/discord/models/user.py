@@ -1,6 +1,7 @@
 from __future__ import annotations
-from src.discord.http import request, Route, _bytes_to_base64_data
+from src.discord.http import request, Route, _bytes_to_base64_data, _get_bot_id
 from .avatar_decoration import AvatarDecorationData
+from src.db import DiscordCache, CacheType
 from typing import TYPE_CHECKING, Literal
 from .enums import UserFlag, PremiumType
 from src.discord.types import Snowflake
@@ -66,16 +67,32 @@ class User(RawBaseModel):
         user_id: Snowflake | int | Literal['@me'],
         token: str | None = project.bot_token
     ) -> User:
-        return cls(
-            **await request(
-                Route(
-                    'GET',
-                    '/users/{user_id}',
-                    user_id=user_id
-                ),
-                token=token
-            )
+        if token is not None:
+            cached = await DiscordCache.get((
+                _get_bot_id(token)
+                if isinstance(user_id, str) else
+                user_id
+            ))
+
+            if cached is not None and not cached.deleted:
+                return cls(**cached.data)
+
+        data = await request(
+            Route(
+                'GET',
+                '/users/{user_id}',
+                user_id=user_id),
+            token=token
         )
+
+        user = cls(**data)
+
+        await DiscordCache.add(
+            CacheType.USER,
+            data
+        )
+
+        return user
 
     async def patch(
         self,

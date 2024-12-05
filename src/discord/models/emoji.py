@@ -51,7 +51,6 @@ class Emoji(RawBaseModel):
                 'DELETE',
                 '/applications/{application_id}/emojis/{emoji_id}',
                 emoji_id=self.id,
-                token=token
-            ),
+                token=token),
             token=token
         )

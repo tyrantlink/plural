@@ -1,10 +1,9 @@
 from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference, AllowedMentionType
-from src.db import ProxyMember, Latch, Group, Webhook as DBWebhook, Message as DBMessage, HTTPCache, Log, Config, GatewayEvent
+from src.db import ProxyMember, Latch, Group, Message as DBMessage, Log, Config, GatewayEvent
 from regex import finditer, Match, escape, match, IGNORECASE, sub
-from src.models import project, DebugMessage
+from src.models import project, DebugMessage, MISSING
 from src.errors import Forbidden, NotFound
 from src.discord.http import get_from_cdn
-from src.discord.types import MISSING
 from dataclasses import dataclass
 from asyncio import gather
 from hashlib import sha256
@@ -228,8 +227,7 @@ async def permission_check(
     return True
 
 
-async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook:
-
+async def get_proxy_webhook(channel: Channel) -> Webhook:
     if channel.is_thread:
         if channel.parent_id is None:
             raise ValueError('thread channel has no parent')
@@ -239,45 +237,14 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
     if channel.guild_id is None:
         raise ValueError('resolved channel is not a guild channel')
 
-    webhook = await DBWebhook.get(channel.id)
-
-    if webhook is not None:
-        try:
-            return await Webhook.from_url(
-                webhook.url,
-                use_cache,
-                with_token=False)
-        except NotFound:
-            await gather(
-                webhook.delete(),
-                HTTPCache.invalidate(webhook.url.split('/api')[1]),
-                HTTPCache.invalidate(
-                    webhook.url.split('/api')[1].rsplit('/', 1)[0]),
-                HTTPCache.invalidate(f'/channels/{channel.id}/webhooks')
-            )
-
-    for webhook in await channel.fetch_webhooks(use_cache):
+    for webhook in await channel.fetch_webhooks():
         if webhook.name == '/plu/ral proxy':
-            assert webhook.url is not None  # ? will always exist after fetching it
-            await DBWebhook(
-                id=channel.id,
-                guild=channel.guild_id,
-                url=webhook.url
-            ).save()
             return webhook
 
     webhook = await channel.create_webhook(
         name='/plu/ral proxy',
         reason='required for /plu/ral to function'
     )
-
-    assert webhook.url is not None  # ? will always exist after creating it
-
-    await DBWebhook(
-        id=channel.id,
-        guild=channel.guild_id,
-        url=webhook.url
-    ).save()
 
     return webhook
 
@@ -391,6 +358,11 @@ async def guild_userproxy(
 
     bot_permissions = await message.channel.fetch_permissions_for(member.userproxy.bot_id)
 
+    required_permissions = Permission.SEND_MESSAGES | Permission.VIEW_CHANNEL
+
+    if bot_permissions & required_permissions != required_permissions:
+        return False, None, token, None
+
     real_forward = False
 
     if (
@@ -407,14 +379,6 @@ async def guild_userproxy(
             real_forward = True
         except Forbidden:
             pass
-
-    if not (
-        bot_permissions & (
-            Permission.SEND_MESSAGES |
-            Permission.VIEW_CHANNEL
-        )
-    ):
-        return False, None, token, None
 
     if debug_log:
         debug_log.append(DebugMessage.SUCCESS)
@@ -746,7 +710,7 @@ async def process_proxy(
         return_exceptions=True
     )
     if isinstance(responses[1], NotFound):
-        webhook = await get_proxy_webhook(message.channel, False)
+        webhook = await get_proxy_webhook(message.channel)
         responses = responses[0], await webhook.execute(
             content=proxy_content,
             thread_id=(

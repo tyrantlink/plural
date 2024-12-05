@@ -1,8 +1,9 @@
 from __future__ import annotations
 from .enums import ComponentType, TextInputStyle, ButtonStyle
-from src.discord.types import Snowflake, MissingOr, MISSING
 from typing import Sequence, TYPE_CHECKING, Annotated
 from .base import RawBaseModel, PydanticArbitraryType
+from src.models import MISSING, MissingOr
+from src.discord.types import Snowflake
 from .emoji import Emoji
 
 if TYPE_CHECKING:

@@ -1,9 +1,9 @@
 from __future__ import annotations
 from .models import ApplicationCommand, ApplicationCommandType, ApplicationCommandOption, ApplicationIntegrationType, InteractionContextType, Permission, InteractionCallback, ApplicationCommandScope, ApplicationCommandOptionType
 from src.discord.http import Route, request, _get_bot_id
-from src.db import ProxyMember, HTTPCache
 from collections.abc import Callable
 from src.models import project
+from src.db import ProxyMember
 from typing import Literal
 from copy import deepcopy
 import logfire
@@ -131,9 +131,6 @@ async def _sync_commands(
             command = working_commands.pop('proxy')
             command.name = member.userproxy.command
             working_commands[command.name] = command
-
-    if working_commands != live_commands:
-        await HTTPCache.invalidate(f'/applications/{application_id}/commands')
 
     if working_commands and not live_commands:
         logfire.debug('no commands found on discord, registering all')

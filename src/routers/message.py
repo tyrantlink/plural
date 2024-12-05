@@ -91,7 +91,7 @@ async def get__message(
             break
 
         await sleep(0.5)
-        message = await DBMessage.find_one(_find, ignore_cache=True)
+        message = await DBMessage.find_one(_find)
 
     if only_check_existence:
         return JSONResponse(
@@ -160,7 +160,9 @@ async def post__message(
     if message.reference_id is not None:
         try:
             referenced_message = await Message.fetch(
-                channel.id, message.reference_id)
+                channel.id,
+                message.reference_id,
+                include_content=True)
         except Exception:
             raise HTTPException(404, 'referenced message not found')
 
