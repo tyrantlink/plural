@@ -190,7 +190,8 @@ class Channel(RawBaseModel):
         if use_cache:
             cached = await DiscordCache.get_many(
                 CacheType.WEBHOOK,
-                guild_id=self.guild_id
+                guild_id=self.guild_id,
+                kwargs={'data.channel_id': str(self.id)}
             )
 
             if cached:
