@@ -42,6 +42,7 @@ def _member_update(event: GatewayEvent) -> UpdateOne | None:
     member_data = event.data['member']
 
     member_data.pop('user', None)
+
     user_id = event.data.get(
         'user_id', None
     ) or (
@@ -50,14 +51,14 @@ def _member_update(event: GatewayEvent) -> UpdateOne | None:
 
     return UpdateOne(
         {'snowflake': int(user_id), 'guild_id': int(event.data['guild_id'])},
-        Set({
+        [Set({
             'snowflake': int(user_id),
             'guild_id': int(event.data['guild_id']),
             'data': {
                 '$mergeObjects': [
                     {'$ifNull': ['$data', {}]},
                     member_data
-                ]}}),
+                ]}})],
         upsert=True
     )
 
@@ -73,13 +74,13 @@ def _user_update(event: GatewayEvent) -> UpdateOne:
 
     return UpdateOne(
         {'snowflake': int(user_data['id']), 'guild_id': None},
-        Set({
+        [Set({
             'snowflake': int(user_data['id']),
             'data': {
                 '$mergeObjects': [
                     {'$ifNull': ['$data', {}]},
                     user_data
-                ]}}),
+                ]}})],
         upsert=True
     )
 
@@ -300,94 +301,21 @@ def message_delete_bulk(event: GatewayEvent) -> Coroutine:
     )
 
 
-async def message_reaction_add(event: GatewayEvent) -> Coroutine:
-    #! refactor this with new format
-    #! also this needs to sync member
-    return sleep(0)
-    message = await DiscordCache.find_one(
-        {'snowflake': int(event.data['message_id'])})
+def message_reaction_add(event: GatewayEvent) -> Coroutine:
+    # ? i don't actually care about the reaction, just update member data
+    requests = []
 
-    if message is None:
-        return None
+    if 'user' in event.data['member']:
+        requests.append(_user_update(event))
 
-    message.data['reactions'] = message.data.get('reactions', [])
+    member = _member_update(event)
 
-    existing_reaction = next(
-        (
-            reaction
-            for reaction in message.data['reactions']
-            if reaction['emoji'] == event.data['emoji']
-        ),
-        None
+    if member is not None:
+        requests.append(member)
+
+    return DiscordCache.get_motor_collection().bulk_write(
+        requests
     )
-
-    if existing_reaction is not None:
-        index = message.data['reactions'].index(existing_reaction)
-
-        existing_reaction['count_details'][
-            'burst' if event.data['burst'] else 'normal'] += 1
-
-        existing_reaction['count'] = sum(
-            existing_reaction['count_details'].values())
-
-        existing_reaction['burst_count'] = existing_reaction['count_details']['burst']
-
-        message.data['reactions'][index] = existing_reaction
-        return message.save()
-
-    message.data['reactions'].append({
-        'emoji': event.data['emoji'],
-        'count': 1,
-        'count_details': {
-            'burst': int(event.data['burst']),
-            'normal': int(not event.data['burst'])
-        },
-        'burst_colors': event.data.get('burst_colors', []),
-        'burst_count': int(event.data['burst']),
-        # ? /plu/ral never reads these, and they would be effort to implement
-        # ? so they are hardcoded to False
-        'me': False,
-        'me_burst': False,
-        'burst_me': False
-    })
-
-    return message.save()
-
-
-async def message_reaction_remove(event: GatewayEvent) -> Coroutine:
-    #! refactor this with new format
-    return sleep(0)
-    message = await DiscordCache.find_one(
-        {'snowflake': int(event.data['message_id'])})
-
-    if message is None:
-        return None
-
-    message.data['reactions'] = message.data.get('reactions', [])
-
-    existing_reaction = next(
-        (
-            reaction
-            for reaction in message.data['reactions']
-            if reaction['emoji'] == event.data['emoji']
-        ),
-        None
-    )
-
-    if existing_reaction is None:
-        return None
-
-    if existing_reaction['count'] == 1:
-        message.data['reactions'].remove(existing_reaction)
-        return message.save()
-
-    existing_reaction['count_details'][
-        'burst' if event.data['burst'] else 'normal'] -= 1
-    existing_reaction['count'] = sum(
-        existing_reaction['count_details'].values())
-    existing_reaction['burst_count'] = existing_reaction['count_details']['burst']
-
-    return message.save()
 
 
 async def discord_cache(event: GatewayEvent) -> None:
@@ -399,42 +327,35 @@ async def discord_cache(event: GatewayEvent) -> None:
 
     match event.name:
         case GatewayEventName.GUILD_CREATE | GatewayEventName.GUILD_UPDATE:
-            tasks = [guild_create_update(event)]
+            task = guild_create_update(event)
         case GatewayEventName.GUILD_DELETE:
-            tasks = [guild_delete(event)]
+            task = guild_delete(event)
         case GatewayEventName.GUILD_ROLE_CREATE | GatewayEventName.GUILD_ROLE_UPDATE:
-            tasks = [guild_role_create_update(event)]
+            task = guild_role_create_update(event)
         case GatewayEventName.GUILD_ROLE_DELETE:
-            tasks = [guild_role_delete(event)]
+            task = guild_role_delete(event)
         case (
             GatewayEventName.CHANNEL_CREATE | GatewayEventName.CHANNEL_UPDATE |
             GatewayEventName.THREAD_CREATE | GatewayEventName.THREAD_UPDATE
         ):
-            tasks = [channel_thread_create_update(event)]
+            task = channel_thread_create_update(event)
         case GatewayEventName.CHANNEL_DELETE | GatewayEventName.THREAD_DELETE:
-            tasks = [channel_thread_delete(event)]
+            task = channel_thread_delete(event)
         case GatewayEventName.THREAD_LIST_SYNC:
-            tasks = [thread_list_sync(event)]
+            task = thread_list_sync(event)
         case GatewayEventName.GUILD_EMOJIS_UPDATE:
-            tasks = []  # TODO
+            task = sleep(0)  # TODO
         case GatewayEventName.WEBHOOKS_UPDATE:
-            tasks = []  # TODO
+            task = sleep(0)  # TODO
         case GatewayEventName.MESSAGE_CREATE | GatewayEventName.MESSAGE_UPDATE:
-            tasks = [message_create_update(event)]
+            task = message_create_update(event)
         case GatewayEventName.MESSAGE_DELETE:
-            tasks = [message_delete(event)]
+            task = message_delete(event)
         case GatewayEventName.MESSAGE_DELETE_BULK:
-            tasks = [message_delete_bulk(event)]
-        # ? might not even bother with reaction events, since /plu/ral doesn't read them
+            task = message_delete_bulk(event)
         case GatewayEventName.MESSAGE_REACTION_ADD:
-            tasks = [await message_reaction_add(event)]
-        case GatewayEventName.MESSAGE_REACTION_REMOVE:
-            tasks = [await message_reaction_remove(event)]
-        case GatewayEventName.MESSAGE_REACTION_REMOVE_ALL:
-            tasks = []  # TODO
-        case GatewayEventName.MESSAGE_REACTION_REMOVE_EMOJI:
-            tasks = []  # TODO
+            task = message_reaction_add(event)
         case _:
             return None
 
-    await gather(*tasks)
+    await task

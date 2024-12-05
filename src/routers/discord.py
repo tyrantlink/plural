@@ -38,7 +38,10 @@ async def _handle_gateway_event(event: GatewayEvent) -> Response:
         except DuplicateKeyError:
             return Response('DUPLICATE_EVENT', status_code=200)
 
-    await discord_cache(event)
+    try:  # ? temp try/except while work in progress
+        await discord_cache(event)
+    except Exception as e:
+        print(e)
 
     if event.name not in ACCEPTED_EVENTS:
         return Response(event.name, status_code=200)
