@@ -298,6 +298,8 @@ async def request(
                     headers=headers,
                     **kwargs,
                 ) as response:
+                    if route.method == 'HEAD':
+                        return response.status == 200
                     resp_data = await json_or_text(response)
 
                     if (

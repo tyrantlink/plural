@@ -234,52 +234,46 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
 
         channel = await channel.fetch(channel.parent_id)
 
-    webhooks = await channel.fetch_webhooks(use_cache)
+    for cache in (use_cache, False):
+        webhooks = [
+            webhook
+            for webhook in await channel.fetch_webhooks(cache)
+            if webhook.name == '/plu/ral proxy'
+        ]
 
-    # remove duplicate /plu/ral proxy webhooks
-    found = None
-    for webhook in webhooks:
-        if webhook.name == '/plu/ral proxy':
-            if not found:
-                found = webhook
-                continue
-            try:
-                await webhook.delete()
-            except NotFound:
-                found = None
+        if len(webhooks) == 1:
+            if await webhooks[0].ping():
+                valid_webhook = webhooks[0]
+                break
+            await webhooks[0].delete()
 
-    if found:
-        return found
+        if len(webhooks) > 1:
+            user_webhooks = [
+                webhook
+                for webhook in webhooks
+                if webhook.application_id is None
+            ]
 
-    # for webhook in webhooks:
-    #     if webhook.name == '/plu/ral proxy':
-    #         return webhook
+            for webhook in user_webhooks:
+                if await webhook.ping():
+                    valid_webhook = webhook
+                    break
+            else:
+                valid_webhook = webhooks[0]
 
-    webhooks = await channel.fetch_webhooks(False)
+            webhooks.remove(valid_webhook)
 
-    # remove duplicate /plu/ral proxy webhooks
-    found = None
-    for webhook in webhooks:
-        if webhook.name == '/plu/ral proxy':
-            if not found:
-                found = webhook
-                continue
+            await gather(
+                *[webhook.delete() for webhook in webhooks],
+                return_exceptions=True)
+            break
+    else:
+        valid_webhook = await channel.create_webhook(
+            name='/plu/ral proxy',
+            reason='required for /plu/ral to function'
+        )
 
-            await webhook.delete()
-
-    if found:
-        return found
-
-    # for webhook in webhooks:
-    #     if webhook.name == '/plu/ral proxy':
-    #         return webhook
-
-    webhook = await channel.create_webhook(
-        name='/plu/ral proxy',
-        reason='required for /plu/ral to function'
-    )
-
-    return webhook
+    return valid_webhook
 
 
 def handle_discord_markdown(text: str) -> str:

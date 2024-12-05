@@ -73,9 +73,11 @@ class DiscordCache(Document):
         cls,
         type: CacheType,
         guild_id: int | None = None,
-        **kwargs
+        filter: dict | None = None
     ) -> Sequence[DiscordCache]:
-        return await cls.find({'type': type, 'guild_id': guild_id, **kwargs}).to_list()
+        return await cls.find(
+            {'type': type.value, 'guild_id': guild_id, **(filter or {})}
+        ).to_list()
 
     @classmethod
     async def add(

@@ -369,8 +369,6 @@ async def webhooks_update(event: GatewayEvent) -> None:
         channel_id=int(event.data['channel_id'])
     ))
 
-    print(f'{webhooks=}')
-
     if not webhooks:
         return None
 

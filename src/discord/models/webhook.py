@@ -390,3 +390,14 @@ class Webhook(RawBaseModel):
                 webhook_token=self.token
             )
         )
+
+    async def ping(self) -> bool:
+        if self.token is None:
+            return False
+
+        return await request(Route(
+            'HEAD',
+            '/webhooks/{webhook_id}/{webhook_token}',
+            webhook_id=self.id,
+            webhook_token=self.token
+        ))

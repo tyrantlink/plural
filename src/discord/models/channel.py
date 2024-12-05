@@ -202,10 +202,8 @@ class Channel(RawBaseModel):
             cached = await DiscordCache.get_many(
                 CacheType.WEBHOOK,
                 guild_id=self.guild_id,
-                kwargs={'data.channel_id': str(self.id)}
+                filter={'data.channel_id': str(self.id)}
             )
-
-            print(f'{cached=}')
 
             if cached:
                 return [
@@ -218,13 +216,15 @@ class Channel(RawBaseModel):
             {'channel_id': str(self.id), 'guild_id': str(self.guild_id)}
         )
 
+        many = await DiscordCache.get_many(
+            CacheType.WEBHOOK,
+            guild_id=self.guild_id,
+            filter={'data.channel_id': str(self.id)}
+        )
+
         return [
             Webhook(**cached.data)
-            for cached in await DiscordCache.get_many(
-                CacheType.WEBHOOK,
-                guild_id=self.guild_id,
-                kwargs={'data.channel_id': str(self.id)}
-            )
+            for cached in many
         ]
 
     async def create_webhook(

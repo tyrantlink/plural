@@ -24,7 +24,7 @@ class MongoDatabase:
         self._client = AsyncMongoClient(
             mongo_uri,
             serverSelectionTimeoutMS=5000,
-            readPreference='nearest',
+            readPreference='primaryPreferred',
         )['plural']
 
     async def _init_beanie(self) -> None:
