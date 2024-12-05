@@ -246,7 +246,7 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
             try:
                 await webhook.delete()
             except NotFound:
-                pass
+                found = None
 
     if found:
         return found
