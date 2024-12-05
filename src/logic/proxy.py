@@ -234,6 +234,7 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
 
         channel = await channel.fetch(channel.parent_id)
 
+    webhooks_deleted = False
     for cache in (use_cache, False):
         webhooks = [
             webhook
@@ -246,6 +247,7 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
                 valid_webhook = webhooks[0]
                 break
             await webhooks[0].delete()
+            webhooks_deleted = True
 
         if len(webhooks) > 1:
             user_webhooks = [
@@ -266,12 +268,17 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
             await gather(
                 *[webhook.delete() for webhook in webhooks],
                 return_exceptions=True)
+            webhooks_deleted = True
             break
     else:
         valid_webhook = await channel.create_webhook(
             name='/plu/ral proxy',
             reason='required for /plu/ral to function'
         )
+
+    if webhooks_deleted and cache:
+        # ? refresh cache
+        await channel.fetch_webhooks(False)
 
     return valid_webhook
 
