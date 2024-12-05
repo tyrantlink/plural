@@ -1,24 +1,10 @@
-from datetime import datetime, timedelta
-from collections.abc import Mapping
 from pymongo import IndexModel
-from typing import Any, Self
+from datetime import datetime
 from beanie import Document
 from pydantic import Field
 
 
-def _merge_dicts(*dicts: Mapping[Any, Any]) -> dict:
-    """priority left to right (e.g. _merge_dicts({1: 1}, {1: 2}) -> {1: 2})"""
-    out = {}
-    for d in dicts:
-        for k, v in d.items():
-            if isinstance(v, Mapping):
-                out[k] = _merge_dicts(out.get(k, {}), v)
-            else:
-                out[k] = v
-    return out
-
-
-class DiscordObject(Document):
+class DiscordCache(Document):
     def __eq__(self, other: object) -> bool:
         return isinstance(other, type(self)) and self.id == other.id
 
@@ -26,13 +12,15 @@ class DiscordObject(Document):
         return hash(self.id)
 
     class Settings:
-        name = 'discord_objects'
+        name = 'discord_cache'
         validate_on_save = True
         indexes = [  # ? one hour expiration
-            IndexModel('ts', expireAfterSeconds=60*60)
+            IndexModel('ts', expireAfterSeconds=60*60),
+            'snowflake',
+            IndexModel([('snowflake', 1), ('guild_id', 1)], unique=True)
         ]
 
-    id: int = Field(  # type: ignore
+    snowflake: int = Field(  # type: ignore
         description='snowflake id of the discord object')
     guild_id: int | None = Field(
         default=None,
@@ -45,7 +33,3 @@ class DiscordObject(Document):
     ts: datetime = Field(
         default_factory=datetime.utcnow,
         description='timestamp for ttl index')
-
-    def merge(self, data: dict) -> Self:
-        self.data = _merge_dicts(self.data, data)
-        return self

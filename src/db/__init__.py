@@ -1,5 +1,5 @@
 from .userproxy_interaction import UserProxyInteraction
-from .discord_object import DiscordObject
+from .discord_cache import DiscordCache
 from pymongo import AsyncMongoClient
 from .group_share import GroupShare
 from .helpers import ImageExtension
@@ -34,7 +34,7 @@ class MongoDatabase:
             self._client,  # type: ignore #? beanie still based on motor
             document_models=[
                 UserProxyInteraction,
-                DiscordObject,
+                DiscordCache,
                 GatewayEvent,
                 ProxyMember,
                 CFCDNProxy,
