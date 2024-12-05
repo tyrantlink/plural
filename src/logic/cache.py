@@ -77,7 +77,7 @@ async def _member_update(event: GatewayEvent) -> list[UpdateOne] | None:
     )]
 
     existing_roles = {
-        role['snowflake']
+        str(role['snowflake'])
         for role in await (
             await DiscordCache.get_motor_collection().aggregate([
                 {  # type: ignore # ? using async pymongo, not motor
