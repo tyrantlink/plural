@@ -5,6 +5,7 @@ from src.db import DiscordCache, CacheType
 from typing import TYPE_CHECKING, Literal
 from .enums import UserFlag, PremiumType
 from src.discord.types import Snowflake
+from src.errors import HTTPException
 from src.models import project
 from .base import RawBaseModel
 
@@ -65,25 +66,32 @@ class User(RawBaseModel):
     async def fetch(
         cls,
         user_id: Snowflake | int | Literal['@me'],
-        token: str | None = project.bot_token
+        token: str = project.bot_token
     ) -> User:
-        if token is not None:
-            cached = await DiscordCache.get((
-                _get_bot_id(token)
-                if isinstance(user_id, str) else
-                user_id
-            ))
-
-            if cached is not None and not cached.deleted:
-                return cls(**cached.data)
-
-        data = await request(
-            Route(
-                'GET',
-                '/users/{user_id}',
-                user_id=user_id),
-            token=token
+        user_id = (
+            _get_bot_id(token)
+            if isinstance(user_id, str) else
+            user_id
         )
+
+        cached = await DiscordCache.get(user_id, None)
+
+        if cached is not None and not cached.deleted and not cached.error:
+            return cls(**cached.data)
+
+        try:
+            data = await request(
+                Route(
+                    'GET',
+                    '/users/{user_id}',
+                    user_id=user_id),
+                token=token)
+        except HTTPException as e:
+            await DiscordCache.http4xx(
+                e.status_code,
+                CacheType.USER,
+                user_id)
+            raise
 
         user = cls(**data)
 
