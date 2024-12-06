@@ -3,8 +3,8 @@ Effective: 13 December 2024
 
 ## 1. Perpetual Data Collection
 /plu/ral stores all data explicitly provided via interactions, including but not limited to:
-- Group objects
-- Member objects
+- Group data
+- Member data
 - Config settings
 
 ## 2. Changes to the Privacy Policy
