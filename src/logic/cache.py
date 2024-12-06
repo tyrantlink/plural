@@ -220,8 +220,8 @@ def guild_create_update(event: GatewayEvent) -> Coroutine:
                         '$mergeObjects': [
                             {'$ifNull': ['$data', {}]},
                             data, ({
-                                'id': str(event.data['id']),
-                                'guild_id': event.data['guild_id']
+                                'id': str(snowflake),
+                                'guild_id': event.data['id']
                             } if cache_type == CacheType.CHANNEL else
                                 {}
                             )
