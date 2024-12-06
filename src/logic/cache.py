@@ -484,7 +484,7 @@ async def message_reaction_add(event: GatewayEvent) -> Coroutine:
     member = await _member_update(event)
 
     if member is not None:
-        requests.append(member)
+        requests.extend(member)
 
     return DiscordCache.get_motor_collection().bulk_write(
         requests
