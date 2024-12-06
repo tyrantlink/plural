@@ -1,4 +1,4 @@
-from src.errors import on_interaction_error
+from src.errors import on_interaction_error, on_event_error
 from typing import Callable, Awaitable
 from .types import ListenerType
 from asyncio import gather
@@ -31,4 +31,4 @@ async def emit(event_name: ListenerType, *args, **kwargs):
                     interaction = args[0]
                     await on_interaction_error(interaction, exception)
                 case _:
-                    raise exception
+                    await on_event_error(event_name.name, exception)

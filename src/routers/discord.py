@@ -11,6 +11,7 @@ from src.discord.listeners import emit
 from src.logic import discord_cache
 from asyncio import create_task
 from hashlib import sha256
+import logfire
 
 router = APIRouter(prefix='/discord', tags=['Discord'])
 PONG = JSONResponse({'type': 1})
@@ -42,7 +43,9 @@ async def _handle_gateway_event(event: GatewayEvent) -> Response:
     try:  # ? temp try/except while work in progress
         await discord_cache(event)
     except Exception as e:
-        print(e)
+        logfire.error(
+            'caching error',
+            _exc_info=e.with_traceback(e.__traceback__))
 
     if event.name not in ACCEPTED_EVENTS:
         return Response(event.name, status_code=200)

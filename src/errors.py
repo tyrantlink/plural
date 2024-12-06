@@ -67,6 +67,52 @@ class DuplicateEventError(BasePluralException):
     ...
 
 
+async def on_event_error(event: str, error: BaseException) -> None:
+    from src.discord import Webhook, User, File
+
+    tasks = []
+
+    stack_info = {}
+
+    if isinstance(error, BasePluralException):
+        stack_info = error._stack_info
+
+    if not isinstance(error, BasePluralException) or isinstance(error, PluralException):
+        webhook = await Webhook.from_url(project.error_webhook)
+
+        traceback = ''.join(format_tb(error.__traceback__)) + str(error)
+
+        self_user = await User.fetch('@me')
+
+        if len(traceback)+8 > 2000:
+            tasks.append(webhook.execute(
+                username=self_user.username,
+                avatar_url=self_user.avatar_url,
+                attachments=[
+                    File(
+                        BytesIO(traceback.encode()),
+                        'error.txt'
+                    )
+                ]
+            ))
+        else:
+            tasks.append(webhook.execute(
+                f'```\n{traceback}\n```',
+                username=self_user.username,
+                avatar_url=self_user.avatar_url
+            ))
+
+    if not isinstance(error, (InteractionError, ConversionError)):
+        logfire.error(
+            '{event} event error',
+            event=event,
+            _exc_info=error.with_traceback(error.__traceback__),
+            **stack_info  # type: ignore #? mypy stupid
+        )
+
+    await gather(*tasks)
+
+
 async def on_interaction_error(interaction: Interaction, error: BaseException) -> None:
     from src.discord import InteractionType, Embed, Webhook, User, File
 
@@ -80,6 +126,7 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
     tasks = []
 
     stack_info = {}
+
     if isinstance(error, BasePluralException):
         stack_info = error._stack_info
 
