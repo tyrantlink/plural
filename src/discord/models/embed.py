@@ -108,13 +108,12 @@ class Embed(RawBaseModel):
         return cls(
             author=EmbedAuthor(
                 name=f'{message.author.display_name} ↩️',
-                icon_url=message.author.avatar_url
-            ),
+                icon_url=message.author.avatar_url),
             color=0x7289da,
             description=(
                 f'**[Reply to:]({jump_url})** {fcontent}'
-                if message.content else
-                f'*[(click to see attachment{"" if len(message.attachments)-1 else "s"})]({jump_url})*'
+                if fcontent.strip() else
+                f'*[click to see attachment{"" if len(message.attachments)-1 else "s"}]({jump_url})*'
                 if message.attachments else
                 f'*[click to see message]({jump_url})*'
             )
