@@ -4,3 +4,8 @@ __pycache__
 notes
 venv
 project.toml
+node_modules
+docs/.vuepress/.temp
+docs/.vuepress/.cache
+docs/.vuepress/dist
+pnpm-lock.yaml
