@@ -1,4 +1,4 @@
-from src.discord import modal, TextInput, Interaction, TextInputStyle, Message, ButtonStyle, Embed
+from src.discord import modal, TextInput, Interaction, TextInputStyle, Message, ButtonStyle, Embed, ActionRow, Button
 from src.db import ApiKey, Group, Message as DBMessage, Reply, UserProxyInteraction, Latch
 from src.logic.proxy import get_proxy_webhook
 from src.discord.components import button
@@ -74,12 +74,23 @@ async def button_api_key(
 
 @button(
     custom_id='button_delete_all_data',
-    label='confirm',
+    label='delete all data',
     style=ButtonStyle.RED)
 async def button_delete_all_data(
     interaction: Interaction
 ) -> None:
     assert interaction.author_id is not None
+    assert interaction.message is not None
+    assert interaction.message.components is not None
+    assert isinstance(interaction.message.components[0], ActionRow)
+    assert isinstance(interaction.message.components[0].components[0], Button)
+
+    label = interaction.message.components[0].components[0].label
+
+    if label == 'delete all data':
+        interaction.message.components[0].components[0].label = 'press again to confirm'
+        await interaction.response.update_message(components=interaction.message.components)
+        return
 
     await interaction.response.defer()
 

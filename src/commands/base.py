@@ -286,7 +286,7 @@ async def slash_delete_all_data(interaction: Interaction) -> None:
             title='are you sure?',
             description='this will delete all of your data, including groups, members, avatars, latches, and messages\n\nthis action is irreversible',
             color=0xff6969
-        )],
+        ).set_footer('click Dismiss Message to cancel')],
         components=[ActionRow(components=[button_delete_all_data])]
     )
 
