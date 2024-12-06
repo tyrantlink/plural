@@ -95,7 +95,7 @@ class Channel(RawBaseModel):
     async def fetch(cls, channel_id: Snowflake | int) -> Channel:
         cached = await DiscordCache.get(channel_id)
 
-        if cached is not None and not cached.deleted:
+        if cached is not None and not cached.deleted and cached.error is None:
             return cls(**cached.data)
 
         if cached is not None and cached.error:
