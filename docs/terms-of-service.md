@@ -1,8 +1,6 @@
 # Terms of Service
 Effective: 13 December 2024
 
-Last Updated: 06 December 2024
-
 # 1. Acceptance of Terms
 By using /plu/ral, you agree to the following terms and conditions. If you do not agree to these terms, you may not use /plu/ral.
 
