@@ -14,6 +14,10 @@ def now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+async def no_op() -> None:
+    return None
+
+
 def Set(
     dict: dict,
     set_defaults: bool = True,
@@ -391,6 +395,9 @@ async def webhooks_update(event: GatewayEvent) -> None:
 
 
 async def message_create_update(event: GatewayEvent) -> Coroutine:
+    if event.data.get('type', 0) == 18:
+        return no_op()
+
     requests = [
         UpdateOne(
             {'snowflake': int(event.data['id'])},
