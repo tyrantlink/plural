@@ -98,6 +98,9 @@ class Member(RawBaseModel):
         # ? compute channel overwrites
         channel = await Channel.fetch(channel_id)
 
+        if channel.is_thread and channel.parent_id is not None:
+            channel = await Channel.fetch(channel.parent_id)
+
         overwrites: dict[Snowflake | int, tuple[Permission, Permission]] = {
             overwrite.id: (overwrite.allow, overwrite.deny)
             for overwrite in channel.permission_overwrites or []
