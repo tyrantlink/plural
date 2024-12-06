@@ -303,7 +303,7 @@ def handle_discord_markdown(text: str) -> str:
     ]:
         text = sub(
             r'(?<!\\)' + escape(char),
-            r'\\\1',
+            r'\\' + char,
             text
         )
 
