@@ -7,7 +7,6 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 
 RUN groupadd -g 1000 -o plural
 RUN useradd -m -u 1000 -g 1000 -o -s /bin/bash plural
-USER plural
 
 ENV PATH /home/plural/.local/bin:$PATH
 
@@ -16,6 +15,8 @@ WORKDIR /app
 COPY . .
 
 RUN pnpm i
+
+USER plural
 
 RUN pip install --no-cache-dir -U -r requirements.txt
 
