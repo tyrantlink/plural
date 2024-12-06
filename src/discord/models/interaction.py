@@ -140,7 +140,7 @@ class Interaction(RawBaseModel):
 
         if self.channel_id is not None:
             try:
-                self.channel = await Channel.fetch(self.channel_id)
+                self.channel = await Channel.fetch(self.channel_id, self.guild_id)
             except (Forbidden, NotFound):
                 pass
 

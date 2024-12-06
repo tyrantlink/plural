@@ -92,7 +92,11 @@ class Channel(RawBaseModel):
     default_forum_layout: int | None = None
 
     @classmethod
-    async def fetch(cls, channel_id: Snowflake | int) -> Channel:
+    async def fetch(
+        cls,
+        channel_id: Snowflake | int,
+        guild_id: Snowflake | int | None = None
+    ) -> Channel:
         cached = await DiscordCache.get(channel_id)
 
         if cached is not None and not cached.deleted and cached.error is None:
@@ -122,10 +126,12 @@ class Channel(RawBaseModel):
                     channel_id)
             raise
 
-        await DiscordCache.add(
-            CacheType.CHANNEL,
-            data
-        )
+        if 'guild_id' in data or guild_id is not None:
+            await DiscordCache.add(
+                CacheType.CHANNEL,
+                data,
+                guild_id
+            )
 
         return cls(**data)
 
