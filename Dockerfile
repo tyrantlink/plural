@@ -20,4 +20,4 @@ USER plural
 
 RUN pip install --no-cache-dir -U -r requirements.txt
 
-CMD ["bash", "-c", "pnpm docs:build", "&&", "python3.13 -u main.py"]
+CMD ["bash", "-c", "pnpm docs:build && python3.13 -u main.py"]
