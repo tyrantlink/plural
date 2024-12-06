@@ -1,7 +1,7 @@
 from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, EmbedField, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File, ActionRow, Webhook
+from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, GuildConfig, UserConfig, ReplyFormat
 from src.components import modal_plural_edit, umodal_edit, button_api_key, help_components, button_delete_all_data
 from src.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport, LogMessage
-from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, Config
 from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape
 from src.errors import InteractionError, Forbidden, PluralException
 from src.logic.proxy import get_proxy_webhook, process_proxy
@@ -736,6 +736,92 @@ async def slash_edit(
 
 @slash_command(
     name='config',
+    description='configure your user settings',
+    options=[
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='reply_format',
+            description='the format for your replies (default: inline)',
+            choices=[
+                ApplicationCommandOptionChoice(
+                    name='inline; placed at the top of your message',
+                    value=str(ReplyFormat.INLINE.value)),
+                ApplicationCommandOptionChoice(
+                    name='embed; sent as an embed at the bottom of your message',
+                    value=str(ReplyFormat.EMBED.value))],
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='userproxy_reply_format',
+            description='the format for userproxy replies (default: inline)',
+            choices=[
+                ApplicationCommandOptionChoice(
+                    name='none; reply only included in command (not visible on mobile)',
+                    value=str(ReplyFormat.INLINE.value)),
+                ApplicationCommandOptionChoice(
+                    name='inline; placed at the top of the message',
+                    value=str(ReplyFormat.INLINE.value)),
+                ApplicationCommandOptionChoice(
+                    name='embed; sent as an embed at the bottom of the message',
+                    value=str(ReplyFormat.EMBED.value))],
+            required=False)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_config(
+    interaction: Interaction,
+    reply_format: str | None = None,
+    userproxy_reply_format: str | None = None
+) -> None:
+    config = await UserConfig.get(interaction.author_id)
+
+    if config is None:
+        config = await UserConfig(
+            id=interaction.author_id
+        ).save()
+
+    if all(
+        option is None
+        for option in {reply_format, userproxy_reply_format}
+    ):
+        await interaction.response.send_message(
+            embeds=[Embed(
+                title='user configuration',
+                description='please select a setting to configure',
+                color=0x69ff69,
+                fields=[
+                    EmbedField(
+                        name='reply format',
+                        value=config.reply_format.name.lower(),
+                        inline=False
+                    )
+                ])
+            ])
+        return
+
+    changes = []
+
+    if reply_format is not None:
+        config.reply_format = ReplyFormat(int(reply_format))
+        changes.append(
+            f'reply format is now {config.reply_format.name.lower()}')
+
+    if userproxy_reply_format is not None:
+        config.userproxy_reply_format = ReplyFormat(
+            int(userproxy_reply_format))
+        changes.append(
+            f'userproxy reply format is now {config.userproxy_reply_format.name.lower()}')
+
+    await config.save_changes()
+
+    await interaction.response.send_message(
+        embeds=[Embed.success(
+            '\n'.join(changes)
+        )]
+    )
+
+
+@slash_command(
+    name='serverconfig',
     description='configure /plu/ral\'s server settings',
     options=[
         ApplicationCommandOption(
@@ -746,17 +832,17 @@ async def slash_edit(
     contexts=[InteractionContextType.GUILD],
     integration_types=[ApplicationIntegrationType.GUILD_INSTALL],
     default_member_permissions=Permission.MANAGE_GUILD)
-async def slash_config(
+async def slash_serverconfig(
     interaction: Interaction,
     logclean: bool | None = None
 ) -> None:
     #! make this more versatile if you add more config
     assert interaction.guild_id is not None
 
-    config = await Config.get(interaction.guild_id)
+    config = await GuildConfig.get(interaction.guild_id)
 
     if config is None:
-        config = await Config(
+        config = await GuildConfig(
             id=interaction.guild_id
         ).save()
 

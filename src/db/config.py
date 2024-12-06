@@ -1,3 +1,4 @@
+from .enums import ReplyFormat
 from beanie import Document
 from pydantic import Field
 
@@ -11,11 +12,24 @@ class Config(Document):
 
     class Settings:
         name = 'config'
+        is_root = True
         validate_on_save = True
         use_state_management = True
 
     id: int = Field(  # type: ignore
         description='either guild id or user id; currently always guild id')
+
+
+class GuildConfig(Config):
     logclean: bool = Field(
         default=False,
         description='whether the log cleaning is enabled')
+
+
+class UserConfig(Config):
+    reply_format: ReplyFormat = Field(
+        default=ReplyFormat.INLINE,
+        description='format for message references')
+    userproxy_reply_format: ReplyFormat = Field(
+        default=ReplyFormat.INLINE,
+        description='format for userproxy message references')

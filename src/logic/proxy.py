@@ -1,5 +1,5 @@
 from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference, AllowedMentionType
-from src.db import ProxyMember, Latch, Group, Message as DBMessage, Log, Config, GatewayEvent
+from src.db import ProxyMember, Latch, Group, Message as DBMessage, Log, Config, GatewayEvent, UserConfig, ReplyFormat
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.models import project, DebugMessage, MISSING
 from src.errors import Forbidden, NotFound
@@ -312,8 +312,12 @@ def handle_discord_markdown(text: str) -> str:
 
 def format_reply(
     content: str,
-    reference: Message
+    reference: Message,
+    format: ReplyFormat
 ) -> str | Embed:
+    if format == ReplyFormat.EMBED:
+        return Embed.reply(reference)
+
     assert reference.author is not None
 
     refcontent = reference.content or ''
@@ -659,8 +663,13 @@ async def process_proxy(
         if message.referenced_message.guild is None:
             message.referenced_message.guild = message.guild
 
+        user_config = await UserConfig.get(message.author.id)
+
         proxy_with_reply = format_reply(
-            proxy_content, message.referenced_message)
+            proxy_content,
+            message.referenced_message,
+            ReplyFormat.INLINE if user_config is None else user_config.reply_format
+        )
 
         if isinstance(proxy_with_reply, str):
             proxy_content = proxy_with_reply

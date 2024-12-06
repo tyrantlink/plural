@@ -1,8 +1,9 @@
 from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType, InteractionContextType, Webhook
 from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape
+from src.db import Reply, UserProxyInteraction, ReplyFormat, UserConfig
 from src.components.userproxy import umodal_send, umodal_edit
 from src.errors import InteractionError, NotFound
-from src.db import Reply, UserProxyInteraction
+from src.logic.proxy import format_reply
 from src.models import project
 from asyncio import gather
 
@@ -225,10 +226,32 @@ async def umessage_reply(
     if attachment:
         await interaction.response.defer(MessageFlag.NONE)
 
+    proxy_content = reply.content
+
+    user_config = await UserConfig.get(interaction.author_id)
+
+    reply_format = ReplyFormat.INLINE if user_config is None else user_config.userproxy_reply_format
+
+    proxy_with_reply = format_reply(
+        reply.content or '',
+        message,
+        reply_format
+    )
+
+    if isinstance(proxy_with_reply, str):
+        proxy_content = proxy_with_reply
+    else:
+        embed = proxy_with_reply
+
     sent_message = await sender(
-        content=reply.content,
+        content=proxy_content or None,
         attachments=[attachment] if attachment else None,
-        flags=MessageFlag.NONE
+        embeds=[embed] if isinstance(proxy_with_reply, Embed) else None,
+        flags=(
+            MessageFlag.SUPPRESS_NOTIFICATIONS
+            if reply_format == ReplyFormat.INLINE else
+            MessageFlag.NONE
+        )
     )
 
     await reply.delete()

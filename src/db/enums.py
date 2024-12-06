@@ -1,6 +1,13 @@
 from enum import Enum
 
 
+__all__ = (
+    'ImageExtension',
+    'CacheType',
+    'ReplyFormat',
+)
+
+
 class ImageExtension(Enum):
     PNG = 0
     JPG = 1
@@ -19,3 +26,9 @@ class CacheType(Enum):
     USER = 6
     MEMBER = 7
     ERROR = 8
+
+
+class ReplyFormat(Enum):
+    NONE = 0
+    INLINE = 1
+    EMBED = 2
