@@ -111,7 +111,7 @@ class Embed(RawBaseModel):
                 icon_url=message.author.avatar_url),
             color=0x7289da,
             description=(
-                f'**[Reply to:]({jump_url})** {fcontent}'
+                f'{'✉️ ' if message.attachments else ''}**[Reply to:]({jump_url})** {fcontent}'
                 if fcontent.strip() else
                 f'*[click to see attachment{"" if len(message.attachments)-1 else "s"}]({jump_url})*'
                 if message.attachments else
