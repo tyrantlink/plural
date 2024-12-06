@@ -11,7 +11,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devDependencies": {
+  "dependencies": {
+    "vuepress-plugin-remove-html-extension": "^1.15.0",
     "@vuepress/bundler-vite": "2.0.0-rc.18",
     "@vuepress/plugin-back-to-top": "2.0.0-rc.62",
     "@vuepress/plugin-git": "2.0.0-rc.62",
@@ -21,8 +22,5 @@
     "sass-embedded": "^1.82.0",
     "vue": "^3.5.13",
     "vuepress": "2.0.0-rc.18"
-  },
-  "dependencies": {
-    "vuepress-plugin-remove-html-extension": "^1.15.0"
   }
 }
