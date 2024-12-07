@@ -450,7 +450,11 @@ async def message_create_update(event: GatewayEvent) -> Coroutine:
     if member is not None:
         requests.extend(member)
 
-    if event.name == GatewayEventName.MESSAGE_CREATE:
+    if (
+        event.name == GatewayEventName.MESSAGE_CREATE and
+        'channel_id' in event.data and
+        'guild_id' in event.data
+    ):
         requests.append(UpdateOne(
             Filter(int(event.data['channel_id']), int(event.data['guild_id'])), {
                 '$max': {
