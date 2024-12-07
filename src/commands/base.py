@@ -764,13 +764,19 @@ async def slash_edit(
                 ApplicationCommandOptionChoice(
                     name='embed; sent as an embed at the bottom of the message',
                     value=str(ReplyFormat.EMBED.value))],
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='userproxy_ping_replies',
+            description='whether to ping when you reply to someone (only supports inline format) (default: False)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_config(
     interaction: Interaction,
     reply_format: str | None = None,
-    userproxy_reply_format: str | None = None
+    userproxy_reply_format: str | None = None,
+    userproxy_ping_replies: bool | None = None
 ) -> None:
     config = await UserConfig.get(interaction.author_id)
 
@@ -781,7 +787,8 @@ async def slash_config(
 
     if all(
         option is None
-        for option in {reply_format, userproxy_reply_format}
+        for option in {
+            reply_format, userproxy_reply_format, userproxy_ping_replies}
     ):
         await interaction.response.send_message(
             embeds=[Embed(
@@ -810,6 +817,11 @@ async def slash_config(
             int(userproxy_reply_format))
         changes.append(
             f'userproxy reply format is now {config.userproxy_reply_format.name.lower()}')
+
+    if userproxy_ping_replies is not None:
+        config.userproxy_ping_replies = userproxy_ping_replies
+        changes.append(
+            f'ping replies is now {"enabled" if config.userproxy_ping_replies else "disabled"}')
 
     await config.save_changes()
 

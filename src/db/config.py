@@ -33,3 +33,6 @@ class UserConfig(Config):
     userproxy_reply_format: ReplyFormat = Field(
         default=ReplyFormat.INLINE,
         description='format for userproxy message references')
+    userproxy_ping_replies: bool = Field(
+        default=True,
+        description='whether to ping when you reply to someone')
