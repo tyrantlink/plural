@@ -1,8 +1,8 @@
-from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference, AllowedMentionType
+from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference, AllowedMentionType, File
 from src.db import ProxyMember, Latch, Group, Message as DBMessage, Log, Config, GatewayEvent, UserConfig, ReplyFormat
 from regex import finditer, Match, escape, match, IGNORECASE, sub
+from src.errors import Forbidden, NotFound, PluralException
 from src.models import project, DebugMessage, MISSING
-from src.errors import Forbidden, NotFound
 from src.discord.http import get_from_cdn
 from dataclasses import dataclass
 from asyncio import gather
@@ -361,9 +361,28 @@ def format_reply(
     return Embed.reply(reference)
 
 
+async def fetch_attachments(message: Message) -> list[File]:
+    attachments = [
+        await attachment.as_file()
+        for attachment in message.attachments
+    ]
+    if message.sticker_items and not attachments:
+        if any(
+            sticker.format_type == StickerFormatType.LOTTIE
+            for sticker in message.sticker_items
+        ):
+            raise PluralException('incompatible stickers')
+        attachments = [
+            await sticker.as_file()
+            for sticker in message.sticker_items
+        ]
+    return attachments
+
+
 async def guild_userproxy(
     message: MessageCreateEvent | Message,
     proxy_content: str,
+    attachments: list[File],
     member: ProxyMember,
     debug_log: list[DebugMessage | str] | None = None
 ) -> tuple[bool, list[Emoji] | None, str, DBMessage | None]:
@@ -374,25 +393,6 @@ async def guild_userproxy(
     assert message.guild is not None
 
     token = member.userproxy.token
-
-    attachments = [
-        await attachment.as_file()
-        for attachment in message.attachments
-    ]
-
-    if message.sticker_items and not attachments:
-        if any(
-            sticker.format_type == StickerFormatType.LOTTIE
-            for sticker in message.sticker_items
-        ):
-            if debug_log:
-                debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
-            return False, None, token, None
-
-        attachments = [
-            await sticker.as_file()
-            for sticker in message.sticker_items
-        ]
 
     bot_permissions = await message.channel.fetch_permissions_for(member.userproxy.bot_id)
 
@@ -607,9 +607,16 @@ async def process_proxy(
     }) is not None:
         return False, None, token, None
 
+    try:
+        attachments = await fetch_attachments(message)
+    except PluralException:
+        if debug_log:
+            debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
+        return False, None, token, None
+
     if member.userproxy and message.guild.id in member.userproxy.guilds:
         success, app_emojis, token, db_message = await guild_userproxy(
-            message, proxy_content, member, debug_log)
+            message, proxy_content, attachments, member, debug_log)
 
         if success:
             return True, app_emojis, token, db_message
@@ -679,24 +686,6 @@ async def process_proxy(
     if debug_log:
         debug_log.append(DebugMessage.SUCCESS)
         return True, app_emojis, token, None
-
-    attachments = [
-        await attachment.as_file()
-        for attachment in message.attachments
-    ]
-    if message.sticker_items and not attachments:
-        if any(
-            sticker.format_type == StickerFormatType.LOTTIE
-            for sticker in message.sticker_items
-        ):
-            if debug_log:
-                debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
-            return False, app_emojis, token, None
-
-        attachments = [
-            await sticker.as_file()
-            for sticker in message.sticker_items
-        ]
 
     if (
         (guild_config := await Config.get(message.guild.id)) is not None and

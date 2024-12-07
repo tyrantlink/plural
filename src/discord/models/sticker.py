@@ -1,8 +1,8 @@
-from PIL.Image import Image, Resampling, open as pil_open
-from warnings import catch_warnings, simplefilter
+from PIL.Image import Image, Resampling, open as pil_open, new as pil_new
 from .enums import StickerType, StickerFormatType
 from src.discord.http import get_from_cdn, File
 from src.discord.types import Snowflake
+from warnings import catch_warnings
 from src.models import project
 from .base import RawBaseModel
 from asyncio import to_thread
@@ -39,9 +39,9 @@ class StickerItem(RawBaseModel):
                         resample=Resampling.LANCZOS
                     )
                 )
-            with catch_warnings():
-                # ? because of palleting nonsense, PIL warns "Couldn't allocate palette entry for transparency"
-                simplefilter('ignore')
+
+            # ? PIL warns "Couldn't allocate palette entry for transparency"
+            with catch_warnings(action='ignore'):
                 resized_frames[0].save(
                     fp=output,
                     format='gif',
@@ -52,6 +52,28 @@ class StickerItem(RawBaseModel):
 
         return output.getvalue()
 
+    def _resize(self, data: bytes) -> bytes:
+        output = BytesIO()
+
+        with pil_open(BytesIO(data)) as img:
+            resize_ratio = 160 / max(img.size)
+
+            img = img.resize(
+                (int(img.size[0] * resize_ratio),
+                 int(img.size[1] * resize_ratio)),
+                resample=Resampling.BILINEAR
+            )
+
+            if img.size[0] != img.size[1]:
+                new_img = pil_new('RGBA', (160, 160), (0, 0, 0, 0))
+                new_img.paste(
+                    img, (int((160-img.size[0])/2), int((160-img.size[1])/2)))
+                img = new_img
+
+            img.save(output, format='png')
+
+        return output.getvalue()
+
     async def read(self) -> bytes:
         if self.format_type == StickerFormatType.LOTTIE:
             raise ValueError('Lottie stickers are not supported')
@@ -59,7 +81,7 @@ class StickerItem(RawBaseModel):
         data = await get_from_cdn(self.url)
 
         if self.format_type != StickerFormatType.APNG:
-            return data
+            return await to_thread(self._resize, data)
 
         if project.logfire_token:
             with span('Converting apng to gif', token=project.logfire_token):
