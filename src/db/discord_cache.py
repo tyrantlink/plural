@@ -134,6 +134,7 @@ class DiscordCache(Document):
                 '$set': {
                     'snowflake': snowflake,
                     'guild_id': guild_id,
+                    'error': status_code,
                     'deleted': False,
                     'type': type.value,
                     'data': {},
