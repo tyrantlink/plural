@@ -365,7 +365,7 @@ def thread_list_sync(event: GatewayEvent) -> Coroutine:
 
 
 def guild_emojis_update(event: GatewayEvent) -> Coroutine:
-    ...  # TODO
+    return no_op()  # TODO
 
 
 async def webhooks_update(event: GatewayEvent) -> None:
