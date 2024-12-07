@@ -230,12 +230,10 @@ async def umessage_reply(
 
     user_config = await UserConfig.get(interaction.author_id) or UserConfig()
 
-    reply_format = ReplyFormat.INLINE if user_config is None else user_config.userproxy_reply_format
-
     proxy_with_reply = format_reply(
         reply.content or '',
         message,
-        reply_format
+        user_config.userproxy_reply_format
     )
 
     if isinstance(proxy_with_reply, str):
@@ -249,7 +247,10 @@ async def umessage_reply(
         embeds=[embed] if isinstance(proxy_with_reply, Embed) else None,
         flags=(
             MessageFlag.SUPPRESS_NOTIFICATIONS
-            if reply_format == ReplyFormat.INLINE and not user_config.userproxy_ping_replies else
+            if (
+                user_config.userproxy_reply_format == ReplyFormat.INLINE and
+                not user_config.userproxy_ping_replies
+            ) else
             MessageFlag.NONE
         )
     )
