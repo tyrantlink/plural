@@ -228,7 +228,7 @@ async def umessage_reply(
 
     proxy_content = reply.content
 
-    user_config = await UserConfig.get(interaction.author_id) or UserConfig()
+    user_config = await UserConfig.get(interaction.author_id) or UserConfig.default()
 
     proxy_with_reply = format_reply(
         reply.content or '',

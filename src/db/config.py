@@ -1,6 +1,7 @@
 from .enums import ReplyFormat
 from beanie import Document
 from pydantic import Field
+from typing import Self
 
 
 class Config(Document):
@@ -18,6 +19,10 @@ class Config(Document):
 
     id: int = Field(  # type: ignore
         description='either guild id or user id; currently always guild id')
+
+    @classmethod
+    def default(cls) -> Self:
+        return cls(id=0)
 
 
 class GuildConfig(Config):
