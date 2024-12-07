@@ -84,12 +84,17 @@ class Embed(RawBaseModel):
         )
 
     @classmethod
-    def error(cls, message: str, title: str = 'error!') -> Embed:
-        return cls(
+    def error(cls, message: str, title: str = 'error!', expected: bool = True) -> Embed:
+        embed = cls(
             title=title,
             description=message,
             color=0xff6969
         )
+
+        if not expected:
+            embed.set_footer('this error has been automatically reported')
+
+        return embed
 
     @classmethod
     def reply(cls, message: Message) -> Embed:

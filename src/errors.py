@@ -155,7 +155,9 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
                 avatar_url=self_user.avatar_url
             ))
 
-    if not isinstance(error, (InteractionError, ConversionError)):
+    expected = isinstance(error, (InteractionError, ConversionError))
+
+    if not expected:
         logfire.error(
             'interaction error',
             _exc_info=error.with_traceback(error.__traceback__),
@@ -171,7 +173,7 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
     await gather(
         *tasks,
         send(
-            embeds=[Embed.error(str(error))]
+            embeds=[Embed.error(str(error), expected=expected)]
         )
     )
 
