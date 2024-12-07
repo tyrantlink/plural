@@ -1,7 +1,7 @@
 from __future__ import annotations
 from src.models import MissingNoneOr, MISSING
+from datetime import datetime, UTC
 from pymongo import IndexModel
-from datetime import datetime
 from .enums import CacheType
 from typing import Sequence
 from beanie import Document
@@ -128,13 +128,20 @@ class DiscordCache(Document):
         if status_code < 400 or status_code >= 500:
             raise ValueError('status code must be 4xx')
 
-        await cls(
-            snowflake=snowflake,
-            guild_id=guild_id,
-            error=status_code,
-            type=type,
-            data={},
-        ).save()
+        await cls.get_motor_collection().update_one(
+            {'snowflake': snowflake, 'guild_id': guild_id},
+            {
+                '$set': {
+                    'snowflake': snowflake,
+                    'guild_id': guild_id,
+                    'deleted': False,
+                    'type': type.value,
+                    'data': {},
+                    'ts': datetime.now(UTC).isoformat(),
+                }
+            },
+            upsert=True
+        )
 
     @classmethod
     async def get_channel(
