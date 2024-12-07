@@ -250,7 +250,7 @@ class Webhook(RawBaseModel):
         from .message import Message
         params = {}
         if message_id != '@original':
-            cached = await DiscordCache.get(message_id)
+            cached = await DiscordCache.get(message_id, None)
 
             if cached is not None and not cached.deleted:
                 return Message(**cached.data)

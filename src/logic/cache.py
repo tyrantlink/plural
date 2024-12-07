@@ -1,6 +1,7 @@
 from src.discord import GatewayEvent, GatewayEventName, GatewayOpCode
 from pymongo.errors import InvalidOperation
 from src.db import DiscordCache, CacheType
+from src.errors import HTTPException
 from datetime import datetime, UTC
 from pymongo import UpdateOne
 from typing import Coroutine
@@ -16,6 +17,18 @@ def now() -> str:
 
 async def no_op() -> None:
     return None
+
+
+def Filter(
+    snowflake: int,
+    guild_id: int | None,
+    **kwargs
+):
+    return {
+        'snowflake': snowflake,
+        'guild_id': guild_id,
+        **kwargs
+    }
 
 
 def Set(
@@ -68,7 +81,7 @@ async def _member_update(event: GatewayEvent) -> list[UpdateOne] | None:
     )
 
     update = [UpdateOne(
-        {'snowflake': int(user_id), 'guild_id': int(event.data['guild_id'])},
+        Filter(int(user_id), int(event.data['guild_id'])),
         [Set({
             'snowflake': int(user_id),
             'guild_id': int(event.data['guild_id']),
@@ -118,7 +131,7 @@ async def _member_update(event: GatewayEvent) -> list[UpdateOne] | None:
 
     return update.extend([
         UpdateOne(
-            {'snowflake': int(role['id'])},
+            Filter(int(role['id']), int(event.data['guild_id'])),
             [Set({
                 'snowflake': int(role['id']),
                 'guild_id': int(event.data['guild_id']),
@@ -162,7 +175,7 @@ def _user_update(event: GatewayEvent) -> UpdateOne:
     )
 
     return UpdateOne(
-        {'snowflake': int(user_data['id']), 'guild_id': None},
+        Filter(int(user_data['id']), None),
         [Set({
             'snowflake': int(user_data['id']),
             'type': CacheType.USER,
@@ -211,7 +224,7 @@ def guild_create_update(event: GatewayEvent) -> Coroutine:
     return DiscordCache.get_motor_collection().bulk_write(
         [
             UpdateOne(
-                {'snowflake': int(snowflake), 'guild_id': guild_id},
+                Filter(int(snowflake), guild_id),
                 [Set({
                     'snowflake': int(snowflake),
                     'guild_id': guild_id,
@@ -266,7 +279,7 @@ def guild_delete(event: GatewayEvent) -> Coroutine:
 
 def guild_role_create_update(event: GatewayEvent) -> Coroutine:
     return DiscordCache.get_motor_collection().update_one(
-        {'snowflake': int(event.data['role']['id'])},
+        Filter(int(event.data['role']['id']), int(event.data['guild_id'])),
         [Set({
             'snowflake': int(event.data['role']['id']),
             'guild_id': int(event.data['guild_id']),
@@ -282,7 +295,7 @@ def guild_role_create_update(event: GatewayEvent) -> Coroutine:
 
 def guild_role_delete(event: GatewayEvent) -> Coroutine:
     return DiscordCache.get_motor_collection().update_one(
-        {'snowflake': int(event.data['role_id'])},
+        Filter(int(event.data['role_id']), int(event.data['guild_id'])),
         Set({
             'snowflake': int(event.data['role_id']),
             'deleted': True,
@@ -294,7 +307,7 @@ def guild_role_delete(event: GatewayEvent) -> Coroutine:
 
 def channel_thread_create_update(event: GatewayEvent) -> Coroutine:
     return DiscordCache.get_motor_collection().update_one(
-        {'snowflake': int(event.data['id'])},
+        Filter(int(event.data['id']), int(event.data['guild_id'])),
         [Set({
             'snowflake': int(event.data['id']),
             'guild_id': int(event.data['guild_id']),
@@ -314,7 +327,7 @@ def channel_thread_create_update(event: GatewayEvent) -> Coroutine:
 
 def channel_thread_delete(event: GatewayEvent) -> Coroutine:
     return DiscordCache.get_motor_collection().update_one(
-        {'snowflake': int(event.data['id'])},
+        Filter(int(event.data['id']), int(event.data['guild_id'])),
         Set({
             'snowflake': int(event.data['id']),
             'deleted': True,
@@ -328,7 +341,7 @@ def thread_list_sync(event: GatewayEvent) -> Coroutine:
     return DiscordCache.get_motor_collection().bulk_write(
         [
             UpdateOne(
-                {'snowflake': int(snowflake), 'guild_id': guild_id},
+                Filter(int(snowflake), guild_id),
                 [Set({
                     'snowflake': int(snowflake),
                     'guild_id': guild_id,
@@ -362,23 +375,27 @@ async def webhooks_update(event: GatewayEvent) -> None:
         await DiscordCache.get_motor_collection().delete_many({
             'guild_id': int(event.data['guild_id']),
             'data.channel_id': event.data['channel_id'],
-            'type': CacheType.WEBHOOK.value
-        })
+            'type': CacheType.WEBHOOK.value})
     except InvalidOperation:
         pass
 
-    webhooks = await request(Route(
-        'GET',
-        '/channels/{channel_id}/webhooks',
-        channel_id=int(event.data['channel_id'])
-    ))
+    try:
+        webhooks = await request(Route(
+            'GET',
+            '/channels/{channel_id}/webhooks',
+            channel_id=int(event.data['channel_id'])))
+    except HTTPException as e:
+        if e.status_code in {403, 404}:
+            return None
+
+        raise
 
     if not webhooks:
         return None
 
     await DiscordCache.get_motor_collection().bulk_write([
         UpdateOne(
-            {'snowflake': int(webhook['id'])},
+            Filter(int(webhook['id']), int(event.data['guild_id'])),
             [Set({
                 'snowflake': int(webhook['id']),
                 'guild_id': int(event.data['guild_id']),
@@ -395,12 +412,9 @@ async def webhooks_update(event: GatewayEvent) -> None:
 
 
 async def message_create_update(event: GatewayEvent) -> Coroutine:
-    if event.data.get('type', 0) == 18:
-        return no_op()
-
     requests = [
         UpdateOne(
-            {'snowflake': int(event.data['id'])},
+            Filter(int(event.data['id']), None),
             [Set({
                 'snowflake': int(event.data['id']),
                 'type': CacheType.MESSAGE,
@@ -437,13 +451,13 @@ async def message_create_update(event: GatewayEvent) -> Coroutine:
         requests.extend(member)
 
     if event.name == GatewayEventName.MESSAGE_CREATE:
-        requests.append(UpdateOne({
-            'snowflake': int(event.data['channel_id'])
-        }, {
-            '$max': {
-                'data.last_message_id': event.data['id']
+        requests.append(UpdateOne(
+            Filter(int(event.data['channel_id']), int(event.data['guild_id'])), {
+                '$max': {
+                    'data.last_message_id': event.data['id']
+                }
             }
-        }))
+        ))
 
     return DiscordCache.get_motor_collection().bulk_write(
         requests
@@ -452,7 +466,7 @@ async def message_create_update(event: GatewayEvent) -> Coroutine:
 
 def message_delete(event: GatewayEvent) -> Coroutine:
     return DiscordCache.get_motor_collection().update_one(
-        {'snowflake': int(event.data['id'])},
+        Filter(int(event.data['id']), None),
         Set({
             'snowflake': int(event.data['id']),
             'deleted': True,
@@ -466,7 +480,7 @@ def message_delete_bulk(event: GatewayEvent) -> Coroutine:
     return DiscordCache.get_motor_collection().bulk_write(
         [
             UpdateOne(
-                {'snowflake': int(snowflake)},
+                Filter(int(snowflake), None),
                 Set({
                     'snowflake': int(snowflake),
                     'deleted': True,

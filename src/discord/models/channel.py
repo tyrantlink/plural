@@ -97,7 +97,7 @@ class Channel(RawBaseModel):
         channel_id: Snowflake | int,
         guild_id: Snowflake | int | None = None
     ) -> Channel:
-        cached = await DiscordCache.get(channel_id)
+        cached = await DiscordCache.get_channel(channel_id, guild_id)
 
         if cached is not None and not cached.deleted and cached.error is None:
             return cls(**cached.data)

@@ -137,6 +137,25 @@ class DiscordCache(Document):
         ).save()
 
     @classmethod
+    async def get_channel(
+        cls,
+        channel_id: int,
+        guild_id: int | None = None
+    ) -> DiscordCache | None:
+        channel = await cls.find_one(
+            {
+                'snowflake': channel_id,
+                'guild_id': (
+                    guild_id
+                    if guild_id is not None else
+                    {'$ne': None}
+                )
+            }
+        )
+
+        return channel
+
+    @classmethod
     async def get_guild(
         cls,
         guild_id: int

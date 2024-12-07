@@ -1,6 +1,7 @@
 from __future__ import annotations
 from .enums import MessageType, MessageReferenceType, MessageFlag, AllowedMentionType, InteractionType, ApplicationIntegrationType
 from src.discord.http import Route, request, File
+from src.errors import HTTPException, Forbidden
 from asyncio import get_event_loop, create_task
 from .channel import ChannelMention, Channel
 from typing import ForwardRef, TYPE_CHECKING
@@ -11,7 +12,6 @@ from .role import RoleSubscriptionData
 from .application import Application
 from .attachment import Attachment
 from .component import Component
-from src.errors import Forbidden
 from .reaction import Reaction
 from src.models import project
 from .base import RawBaseModel
@@ -139,7 +139,7 @@ class Message(RawBaseModel):
         reason: str | None = None,
         token: str | None = project.bot_token
     ) -> tuple[int, dict] | None:
-        cached = await DiscordCache.get(self.id)
+        cached = await DiscordCache.get(self.id, None)
 
         if cached is not None and cached.deleted:
             return None
@@ -164,22 +164,28 @@ class Message(RawBaseModel):
         include_content: bool = False
     ) -> Message:
         if not include_content:
-            cached = await DiscordCache.get(message_id)
+            cached = await DiscordCache.get(message_id, None)
 
-            if cached is not None and not cached.deleted:
+            if cached is not None and not cached.deleted and not cached.error:
                 message = cls(**cached.data)
 
                 if populate:
                     await message.populate()
 
                 return message
-
-        data = await request(Route(
-            'GET',
-            '/channels/{channel_id}/messages/{message_id}',
-            channel_id=channel_id,
-            message_id=message_id
-        ))
+        try:
+            data = await request(Route(
+                'GET',
+                '/channels/{channel_id}/messages/{message_id}',
+                channel_id=channel_id,
+                message_id=message_id
+            ))
+        except HTTPException as e:
+            await DiscordCache.http4xx(
+                e.status_code,
+                CacheType.MESSAGE,
+                message_id)
+            raise
 
         message = cls(**data)
 

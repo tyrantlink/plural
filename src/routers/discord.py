@@ -44,7 +44,8 @@ async def _handle_gateway_event(event: GatewayEvent) -> Response:
         await discord_cache(event)
     except Exception as e:
         logfire.error(
-            'caching error',
+            'caching error on {event_name} event',
+            event_name=event.name,
             _exc_info=e.with_traceback(e.__traceback__))
 
     if event.name not in ACCEPTED_EVENTS:
