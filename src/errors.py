@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pydantic_core import ValidationError
 from typing import TYPE_CHECKING
 from traceback import format_tb
 from src.models import project
@@ -107,7 +108,12 @@ async def on_event_error(event: str, error: BaseException) -> None:
             '{event} event error',
             event=event,
             _exc_info=error.with_traceback(error.__traceback__),
-            **stack_info  # type: ignore #? mypy stupid
+            **stack_info,  # type: ignore #? mypy stupid
+            **(
+                error.errors()[0].get('input', 'no input')
+                if isinstance(error, ValidationError) and error.errors()
+                else {}
+            )
         )
 
     await gather(*tasks)
@@ -161,7 +167,12 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
         logfire.error(
             'interaction error',
             _exc_info=error.with_traceback(error.__traceback__),
-            **stack_info  # type: ignore #? mypy stupid
+            **stack_info,  # type: ignore #? mypy stupid
+            **(
+                error.errors()[0].get('input', 'no input')
+                if isinstance(error, ValidationError) and error.errors()
+                else {}
+            )
         )
 
     send = (

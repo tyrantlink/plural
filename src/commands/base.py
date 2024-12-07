@@ -566,7 +566,7 @@ async def slash_import(
         try:
             export = model.model_validate(data)
             break
-        except ValidationError as e:
+        except ValidationError:
             continue
     else:
         raise InteractionError(
