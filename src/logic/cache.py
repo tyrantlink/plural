@@ -445,7 +445,7 @@ async def message_create_update(event: GatewayEvent) -> Coroutine:
         _user_update(event)
     ]
 
-    member = await _member_update(event)
+    member = await _member_update(event) if 'member' in event.data else None
 
     if member is not None:
         requests.extend(member)
