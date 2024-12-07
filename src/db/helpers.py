@@ -5,6 +5,7 @@ from aiohttp import MultipartWriter
 from beanie import PydanticObjectId
 from .enums import ImageExtension
 from typing import TYPE_CHECKING
+from src.errors import NotFound
 from src.models import project
 from secrets import token_hex
 from typing import Any
@@ -93,15 +94,18 @@ async def avatar_deleter(self: ProxyMember | Group) -> None:
     from src.discord.http import Route, request
 
     if self.avatar is not None:
-        await request(
-            Route(
-                'DELETE',
-                'https://api.cloudflare.com/client/v4/accounts/{account_id}/images/v1/{id}',
-                discord=False,
-                account_id=project.images.account_id,
-                id=f'{self.id}_{self.avatar.id}'),
-            token=project.images.token
-        )
+        try:
+            await request(
+                Route(
+                    'DELETE',
+                    'https://api.cloudflare.com/client/v4/accounts/{account_id}/images/v1/{id}',
+                    discord=False,
+                    account_id=project.images.account_id,
+                    id=f'{self.id}_{self.avatar.id}'),
+                token=project.images.token
+            )
+        except NotFound:
+            pass
 
     self.avatar = None
     await self.save()
