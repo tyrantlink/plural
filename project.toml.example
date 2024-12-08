@@ -11,9 +11,6 @@ error_webhook = ''
 gateway_key = ''
 # OPTIONAL https://logfire.pydantic.dev token
 logfire_token = ''
+# /plu/ral cdn api key
+cdn_api_key = ''
 dev_environment = true
-
-[images] # cloudflare images
-base_url = ''
-account_id = ''
-token = ''
