@@ -1,5 +1,5 @@
 from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, COMMAND_NAME_PATTERN, EventType
-from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT, LEGACY_FOOTER
+from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT, LEGACY_FOOTERS
 from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
 from src.discord.commands import sync_commands, _put_all_commands
 from src.db import ProxyMember, Group, ImageExtension
@@ -36,6 +36,9 @@ member_userproxy = member.create_subgroup(
 async def _sync_member_guilds(member: ProxyMember) -> None:
     if member.userproxy is None:
         raise ValueError('member does not have a userproxy')
+
+    if member.userproxy.token is None:
+        raise ValueError('member does not have a bot token stored')
 
     member.userproxy.guilds = [
         guild.id
@@ -490,9 +493,13 @@ async def slash_member_set_bio(
     max_length = USERPROXY_FOOTER_LIMIT if include_attribution else 400
 
     # ? attempt to strip legacy footer
-    current_bio = app.description.removesuffix(
-        LEGACY_FOOTER.format(username=interaction.author_name)
-    ).strip().removesuffix(
+    current_bio = app.description
+
+    for footer in LEGACY_FOOTERS:
+        current_bio = current_bio.removesuffix(
+            footer.format(username=interaction.author_name)).strip()
+
+    current_bio = current_bio.removesuffix(
         USERPROXY_FOOTER.format(username=interaction.author_name)[2:]
     ).strip()
 
