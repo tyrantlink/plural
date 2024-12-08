@@ -51,7 +51,7 @@ When using the userproxy `reply` command, a userproxy reply object is stored for
 | Referenced Message Author ID |
 
 ### 4.1 Data Caching
-Data caching is used to improve performance and reduce the number of API requests made to Discord. Cached data is stored for one (1) day from the last update of the given data.
+Data caching is used to improve performance and reduce the number of API requests made to Discord. Cached data is stored for one (1) day from the last update of the given data, with the exception of messages, which are stored for one (1) hour from the last update of the given data.
 
 Messages have their content and attachments removed before being cached.
 

@@ -1,8 +1,8 @@
 from src.discord import GatewayEvent, GatewayEventName, GatewayOpCode
+from datetime import datetime, timedelta, UTC
 from pymongo.errors import InvalidOperation
 from src.db import DiscordCache, CacheType
 from src.errors import HTTPException
-from datetime import datetime, UTC
 from pymongo import UpdateOne
 from typing import Coroutine
 from copy import deepcopy
@@ -11,8 +11,13 @@ from copy import deepcopy
 # ? this entire file is mildly gross, please do not look at it
 
 
-def now() -> str:
-    return datetime.now(UTC).isoformat()
+def now(message: bool = False) -> str:
+    return (  # ? message ttl is only one hour, others are 24 hours
+        datetime.now(UTC) + (
+            timedelta(hours=23)
+            if message else
+            timedelta())
+    ).isoformat()
 
 
 async def no_op() -> None:
