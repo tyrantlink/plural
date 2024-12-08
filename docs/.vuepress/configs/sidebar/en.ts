@@ -4,7 +4,7 @@ export const sidebarEn: SidebarOptions = {
   '/': [
     {
         text: 'Guide',
-        collapsible: false,
+        collapsible: true,
         children: [
             {
                 text: 'Importing',
@@ -21,12 +21,22 @@ export const sidebarEn: SidebarOptions = {
         ]
     },
     {
-        text: 'Privacy Policy',
-        link: '/privacy-policy',
-    },
-    {
-        text: 'Terms of Service',
-        link: '/terms-of-service'
+        text: 'Information',
+        collapsible: true,
+        children: [
+            {
+                text: 'Privacy Policy',
+                link: '/privacy-policy',
+            },
+            {
+                text: 'Terms of Service',
+                link: '/terms-of-service'
+            },
+            {
+                text: 'Donate',
+                link: '/donate'
+            }
+        ]
     }
   ]
 }

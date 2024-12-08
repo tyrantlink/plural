@@ -8,5 +8,9 @@ export const navbarEn: NavbarOptions = [
     {
         text: 'Support Server',
         link: 'https://discord.gg/4mteVXBDW7'
+    },
+    {
+        text: 'Donate',
+        link: '/donate'
     }
 ] as NavbarOptions
