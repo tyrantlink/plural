@@ -60,7 +60,7 @@ def Set(
     if set_deleted:
         dict.setdefault('deleted', False)
 
-    dict.setdefault('ts', now())
+    dict.setdefault('ts', now(dict.get('type') == CacheType.MESSAGE.value))
 
     return {
         '$set': dict

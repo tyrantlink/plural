@@ -15,6 +15,15 @@ class ImageExtension(Enum):
     GIF = 2
     WEBP = 3
 
+    @property
+    def mime_type(self) -> str:
+        return {
+            ImageExtension.PNG: 'image/png',
+            ImageExtension.JPG: 'image/jpeg',
+            ImageExtension.GIF: 'image/gif',
+            ImageExtension.WEBP: 'image/webp'
+        }[self]
+
 
 class CacheType(Enum):
     GUILD = 0

@@ -113,7 +113,7 @@ class ProxyMember(Document):
         if self.avatar is None:
             return None
 
-        return f'{project.images.base_url}/{self.id}/{self.avatar.id}.{self.avatar.extension.name.lower()}'
+        return f'{project.cdn_url}/images/{self.id}/{self.avatar.id}.{self.avatar.extension.name.lower()}'
 
     async def get_group(self) -> Group:
         from src.db.group import Group

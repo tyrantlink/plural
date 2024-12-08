@@ -97,7 +97,7 @@ class Group(Document):
         if self.avatar is None:
             return None
 
-        return f'{project.images.base_url}/{self.id}/{self.avatar.id}.{self.avatar.extension}'
+        return f'{project.cdn_url}/images/{self.id}/{self.avatar.id}.{self.avatar.extension}'
 
     async def get_members(self) -> list[ProxyMember]:
         return await ProxyMember.find_many(

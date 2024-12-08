@@ -1,9 +1,13 @@
-from src.discord.http import File, get_from_cdn
+from __future__ import annotations
 from beanie import Document, PydanticObjectId
 from pydantic import Field, BaseModel
+from typing import TYPE_CHECKING
 from pymongo import IndexModel
 from datetime import datetime
 from io import BytesIO
+
+if TYPE_CHECKING:
+    from src.discord.http import File
 
 
 class Reply(Document):
@@ -29,6 +33,7 @@ class Reply(Document):
             None, description='the description of the attachment')
 
         async def as_file(self) -> File:
+            from src.discord.http import File, get_from_cdn
             return File(
                 BytesIO(await get_from_cdn(self.url)),
                 filename=self.filename,

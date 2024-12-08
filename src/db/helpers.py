@@ -1,14 +1,12 @@
 from __future__ import annotations
 from pydantic_core import CoreSchema, core_schema
 from pydantic import GetJsonSchemaHandler
-from aiohttp import MultipartWriter
+from typing import Any, TYPE_CHECKING
+from src.core.session import session
 from beanie import PydanticObjectId
 from .enums import ImageExtension
-from typing import TYPE_CHECKING
-from src.errors import NotFound
 from src.models import project
-from secrets import token_hex
-from typing import Any
+import logfire
 
 if TYPE_CHECKING:
     from src.db.member import ProxyMember
@@ -91,49 +89,36 @@ async def _get_image_extension(url: str) -> ImageExtension:
 
 
 async def avatar_deleter(self: ProxyMember | Group) -> None:
-    from src.discord.http import Route, request
-
-    if self.avatar is not None:
-        try:
-            await request(
-                Route(
-                    'DELETE',
-                    'https://api.cloudflare.com/client/v4/accounts/{account_id}/images/v1/{id}',
-                    discord=False,
-                    account_id=project.images.account_id,
-                    id=f'{self.id}_{self.avatar.id}'),
-                token=project.images.token
-            )
-        except NotFound:
-            pass
+    if self.avatar_url is not None:
+        async with session.delete(
+            self.avatar_url,
+            headers={'Authorization': f'Bearer {project.cdn_api_key}'}
+        ) as resp:
+            if resp.status != 204:
+                logfire.error(
+                    'failed to delete avatar {avatar_url} with status {status} and message {message}',
+                    avatar_url=self.avatar_url, status=resp.status, message=await resp.text())
 
     self.avatar = None
     await self.save()
 
 
 async def avatar_setter(self: ProxyMember | Group, url: str) -> None:
-    from src.discord.http import Route, request
-
     avatar = ImageId(await _get_image_extension(url))
-    form = {
-        'url': url,
-        'id': f'{self.id}_{avatar.id}'
-    }
 
-    with MultipartWriter('form-data', f'---{token_hex(8)}') as writer:
-        for key, value in form.items():
-            part = writer.append(value, {'content-type': 'form-data'})
-            part.set_content_disposition('form-data', name=key)
-
-        await request(
-            Route(
-                'POST',
-                'https://api.cloudflare.com/client/v4/accounts/{account_id}/images/v1',
-                discord=False,
-                account_id=project.images.account_id),
-            data=writer,
-            token=project.images.token
-        )
+    async with session.put(
+        f'{project.cdn_url}/images/{self.id}/{avatar.id}.{avatar.extension.name.lower()}',
+        data=await (await session.get(url)).read(),
+        headers={
+            'Authorization': f'Bearer {project.cdn_api_key}',
+            'Content-Type': avatar.extension.mime_type
+        }
+    ) as resp:
+        if resp.status != 204:
+            logfire.error(
+                'failed to upload avatar {avatar_id}.{extension} with status {status} and message {message}',
+                avatar_id=avatar.id, extension=avatar.extension, status=resp.status, message=await resp.text())
+            return None
 
     await avatar_deleter(self)
 
@@ -142,13 +127,8 @@ async def avatar_setter(self: ProxyMember | Group, url: str) -> None:
 
 
 async def avatar_getter(self: ProxyMember | Group) -> bytes | None:
-    from src.discord.http import Route, request
-    from src.core.session import session
-
-    if self.avatar is None:
+    if self.avatar_url is None:
         return None
-
-    assert self.avatar_url is not None
 
     async with session.get(self.avatar_url) as resp:
         return await resp.read()
