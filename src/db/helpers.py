@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pydantic_core import CoreSchema, core_schema
 from pydantic import GetJsonSchemaHandler
+from src.errors import PluralException
 from typing import Any, TYPE_CHECKING
 from src.core.session import session
 from beanie import PydanticObjectId
@@ -106,9 +107,22 @@ async def avatar_deleter(self: ProxyMember | Group) -> None:
 async def avatar_setter(self: ProxyMember | Group, url: str) -> None:
     avatar = ImageId(await _get_image_extension(url))
 
+    image_response = await session.get(url)
+
+    if int(image_response.headers.get('Content-Length', 0)) > 8_388_608:
+        raise PluralException('image must be less than 8MB')
+
+    data = bytearray()
+
+    async for chunk in image_response.content.iter_chunked(8192):
+        data.extend(chunk)
+
+        if len(data) > 8_388_608:
+            raise PluralException('image must be less than 8MB')
+
     async with session.put(
         f'{project.cdn_url}/images/{self.id}/{avatar.id}.{avatar.extension.name.lower()}',
-        data=await (await session.get(url)).read(),
+        data=bytes(data),
         headers={
             'Authorization': f'Bearer {project.cdn_api_key}',
             'Content-Type': avatar.extension.mime_type

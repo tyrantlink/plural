@@ -1,5 +1,6 @@
 from __future__ import annotations
 from src.db import ApiKey, Group, ProxyMember, Message, Latch, Reply, CFCDNProxy
+from src.errors import PluralException
 from src.core.session import session
 from beanie import PydanticObjectId
 from urllib.parse import urlparse
@@ -325,8 +326,9 @@ class PluralExport(BaseExport):
 
         async with session.get(image.url) as resp:
             content_length = resp.headers.get('Content-Length')
-            if content_length and int(content_length) > 10_485_760:
-                self.logs.append(LogMessage.AVATAR_FAILED.format(
+
+            if content_length and int(content_length) > 8_388_608:
+                self.logs.append(LogMessage.AVATAR_TOO_LARGE.format(
                     object_type=object_type, object_name=object_name))
                 return None
 
@@ -335,8 +337,8 @@ class PluralExport(BaseExport):
             async for chunk in resp.content.iter_chunked(8192):
                 data.extend(chunk)
 
-                if len(data) > 10_485_760:
-                    self.logs.append(LogMessage.AVATAR_FAILED.format(
+                if len(data) > 8_388_608:
+                    self.logs.append(LogMessage.AVATAR_TOO_LARGE.format(
                         object_type=object_type, object_name=object_name))
                     return None
 
@@ -369,6 +371,9 @@ class PluralExport(BaseExport):
         # ? set_avatar calls a save at the end
         try:
             await object.set_avatar(url)
+        except PluralException:
+            self.logs.append(LogMessage.AVATAR_TOO_LARGE.format(
+                object_type=object_type, object_name=object_name))
         except Exception:
             self.logs.append(
                 LogMessage.AVATAR_FAILED.format(

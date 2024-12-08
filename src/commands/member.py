@@ -396,7 +396,7 @@ async def slash_member_set_group(
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.ATTACHMENT,
             name='avatar',
-            description='new member avatar (max 10MB)',
+            description='new member avatar (max 8MB)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -416,8 +416,8 @@ async def slash_member_set_avatar(
         )
         return
 
-    if avatar.size > 10_485_760:
-        raise InteractionError('avatars must be less than 10MB')
+    if avatar.size > 8_388_608:
+        raise InteractionError('avatars must be less than 8MB')
 
     if (
         '.' in avatar.filename and

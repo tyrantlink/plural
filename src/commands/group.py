@@ -383,7 +383,7 @@ async def slash_group_set_tag(
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.ATTACHMENT,
             name='avatar',
-            description='new avatar (10MB max) (exclude to remove)',
+            description='new avatar (8MB max) (exclude to remove)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -403,8 +403,8 @@ async def slash_group_set_avatar(
         )
         return
 
-    if avatar.size > 10_485_760:
-        raise InteractionError('avatars must be less than 10MB')
+    if avatar.size > 8_388_608:
+        raise InteractionError('avatars must be less than 8MB')
 
     if (
         '.' in avatar.filename and
