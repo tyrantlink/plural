@@ -2,6 +2,7 @@ from __future__ import annotations
 from .enums import GatewayOpCode, GatewayEventName, ReactionType, WebhookEventType, EventType, ApplicationIntegrationType
 from src.models import MISSING, MissingOr
 from src.discord.types import Snowflake
+from src.errors import NotFound
 from .base import RawBaseModel
 from datetime import datetime
 from .message import Message
@@ -39,11 +40,19 @@ class MessageCreateEvent(Message, RawBaseModel):
     async def populate(self) -> None:
         await super().populate()
 
-        if self.guild_id is not None and self.author is not None and self.webhook_id is None:
+        if not (
+            self.guild_id is not None and
+            self.author is not None and
+            self.webhook_id is None
+        ):
+            return None
+
+        try:
             self.member = await Member.fetch(
                 self.guild_id,
-                self.author.id
-            )
+                self.author.id)
+        except NotFound:
+            return None
 
 
 class MessageUpdateEvent(MessageCreateEvent):
