@@ -11,13 +11,13 @@ from copy import deepcopy
 # ? this entire file is mildly gross, please do not look at it
 
 
-def now(message: bool = False) -> str:
+def now(message: bool = False) -> datetime:
     return (  # ? message ttl is only one hour, others are 24 hours
         datetime.now(UTC) + (
             timedelta(hours=23)
             if message else
             timedelta())
-    ).isoformat()
+    )
 
 
 async def no_op() -> None:
