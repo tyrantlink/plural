@@ -666,7 +666,7 @@ async def process_proxy(
         )
         return False, app_emojis, token, None
 
-    embed = None
+    embed, reply_mentions = None, []
     if message.referenced_message:
         if message.referenced_message.guild is None:
             message.referenced_message.guild = message.guild
