@@ -12,9 +12,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "vuepress-plugin-remove-html-extension": "^1.15.0",
+    "@vuepress-plugin-remove-html-extension": "^1.15.0",
     "@vuepress/bundler-vite": "2.0.0-rc.18",
     "@vuepress/plugin-back-to-top": "2.0.0-rc.62",
+    "@vuepress/plugin-copy-code": "2.0.0-rc.65",
     "@vuepress/plugin-git": "2.0.0-rc.62",
     "@vuepress/plugin-search": "2.0.0-rc.61",
     "@vuepress/plugin-shiki": "2.0.0-rc.62",

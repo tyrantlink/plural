@@ -1,5 +1,6 @@
 import { removeHtmlExtensionPlugin } from 'vuepress-plugin-remove-html-extension'
 import { backToTopPlugin } from '@vuepress/plugin-back-to-top'
+import { copyCodePlugin } from '@vuepress/plugin-copy-code'
 import { searchPlugin } from '@vuepress/plugin-search'
 import { defaultTheme } from '@vuepress/theme-default'
 import { viteBundler } from '@vuepress/bundler-vite'
@@ -39,6 +40,9 @@ export default defineUserConfig({
     removeHtmlExtensionPlugin(),
     searchPlugin(),
     gitPlugin(),
+    copyCodePlugin({
+        'showInMobile': true
+    }),
     shikiPlugin({
       themes: { light: 'github-light', dark: 'github-dark' },
       langs: ['py', 'json'],
