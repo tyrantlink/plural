@@ -34,10 +34,10 @@ class GuildConfig(Config):
 class UserConfig(Config):
     reply_format: ReplyFormat = Field(
         default=ReplyFormat.INLINE,
-        description='format for message references')
-    userproxy_reply_format: ReplyFormat = Field(
+        description='format for message references in servers')
+    dm_reply_format: ReplyFormat = Field(
         default=ReplyFormat.INLINE,
-        description='format for userproxy message references')
+        description='format for message references in dms')
     userproxy_ping_replies: bool = Field(
-        default=True,
+        default=False,
         description='whether to ping when you reply to someone')

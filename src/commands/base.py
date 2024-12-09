@@ -741,7 +741,7 @@ async def slash_edit(
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='reply_format',
-            description='the format for your replies (default: inline)',
+            description='the format for your replies in servers (default: inline)',
             choices=[
                 ApplicationCommandOptionChoice(
                     name='inline; placed at the top of your message',
@@ -752,8 +752,8 @@ async def slash_edit(
             required=False),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
-            name='userproxy_reply_format',
-            description='the format for userproxy replies (default: inline)',
+            name='dm_reply_format',
+            description='the format for your replies in dms (default: inline)',
             choices=[
                 ApplicationCommandOptionChoice(
                     name='none; reply only included in command (not visible on mobile)',
@@ -775,7 +775,7 @@ async def slash_edit(
 async def slash_config(
     interaction: Interaction,
     reply_format: str | None = None,
-    userproxy_reply_format: str | None = None,
+    dm_reply_format: str | None = None,
     userproxy_ping_replies: bool | None = None
 ) -> None:
     config = await UserConfig.get(interaction.author_id)
@@ -788,7 +788,7 @@ async def slash_config(
     if all(
         option is None
         for option in {
-            reply_format, userproxy_reply_format, userproxy_ping_replies}
+            reply_format, dm_reply_format, userproxy_ping_replies}
     ):
         await interaction.response.send_message(
             embeds=[Embed(
@@ -798,8 +798,13 @@ async def slash_config(
                 fields=[
                     EmbedField(
                         name='reply format',
-                        value=config.reply_format.name.lower(),
-                        inline=False
+                        value=config.reply_format.name.lower()),
+                    EmbedField(
+                        name='dm reply format',
+                        value=config.dm_reply_format.name.lower()),
+                    EmbedField(
+                        name='ping replies',
+                        value='enabled' if config.userproxy_ping_replies else 'disabled'
                     )
                 ])
             ])
@@ -812,11 +817,11 @@ async def slash_config(
         changes.append(
             f'reply format is now {config.reply_format.name.lower()}')
 
-    if userproxy_reply_format is not None:
-        config.userproxy_reply_format = ReplyFormat(
-            int(userproxy_reply_format))
+    if dm_reply_format is not None:
+        config.dm_reply_format = ReplyFormat(
+            int(dm_reply_format))
         changes.append(
-            f'userproxy reply format is now {config.userproxy_reply_format.name.lower()}')
+            f'dm reply format is now {config.dm_reply_format.name.lower()}')
 
     if userproxy_ping_replies is not None:
         config.userproxy_ping_replies = userproxy_ping_replies

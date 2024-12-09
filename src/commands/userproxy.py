@@ -1,4 +1,4 @@
-from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType, InteractionContextType, Webhook
+from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType, InteractionContextType, Webhook, AllowedMentions
 from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape
 from src.db import Reply, UserProxyInteraction, ReplyFormat, UserConfig
 from src.components.userproxy import umodal_send, umodal_edit
@@ -217,12 +217,6 @@ async def umessage_reply(
         else None
     )
 
-    sender = (
-        interaction.followup.send
-        if attachment else
-        interaction.response.send_message
-    )
-
     if attachment:
         await interaction.response.defer(MessageFlag.NONE)
 
@@ -230,10 +224,16 @@ async def umessage_reply(
 
     user_config = await UserConfig.get(interaction.author_id) or UserConfig.default()
 
-    proxy_with_reply = format_reply(
+    reply_format = (
+        user_config.dm_reply_format
+        if interaction.is_dm else
+        user_config.reply_format
+    )
+
+    proxy_with_reply, reply_mentions = format_reply(
         reply.content or '',
         message,
-        user_config.userproxy_reply_format
+        reply_format
     )
 
     if isinstance(proxy_with_reply, str):
@@ -241,18 +241,25 @@ async def umessage_reply(
     else:
         embed = proxy_with_reply
 
-    sent_message = await sender(
+    mentions = AllowedMentions.parse_content(
+        proxy_content or '').strip_mentions(reply_mentions)
+
+    if (
+        mentions.users and
+        message.author and
+        message.author.id in mentions.users
+    ) and not (
+        reply_format == ReplyFormat.INLINE and
+        user_config.userproxy_ping_replies
+    ):
+        mentions.users.remove(message.author.id)
+
+    sent_message = await interaction.send(
         content=proxy_content or None,
         attachments=[attachment] if attachment else None,
         embeds=[embed] if isinstance(proxy_with_reply, Embed) else None,
-        flags=(
-            MessageFlag.SUPPRESS_NOTIFICATIONS
-            if (
-                user_config.userproxy_reply_format == ReplyFormat.INLINE and
-                not user_config.userproxy_ping_replies
-            ) else
-            MessageFlag.NONE
-        )
+        allowed_mentions=mentions,
+        flags=MessageFlag.NONE
     )
 
     await reply.delete()

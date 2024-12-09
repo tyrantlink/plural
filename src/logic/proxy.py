@@ -314,9 +314,9 @@ def format_reply(
     content: str,
     reference: Message,
     format: ReplyFormat
-) -> str | Embed:
+) -> tuple[str | Embed, list[Snowflake]]:
     if format == ReplyFormat.EMBED:
-        return Embed.reply(reference)
+        return Embed.reply(reference), []
 
     assert reference.author is not None
 
@@ -356,9 +356,10 @@ def format_reply(
 
     total_content = f'{base_reply} {reply_content}\n{content}'
     if len(total_content) <= 2000:
-        return total_content
+        mentions = AllowedMentions.parse_content(reply_content)
+        return total_content, (mentions.users or []) + (mentions.roles or [])
 
-    return Embed.reply(reference)
+    return Embed.reply(reference), []
 
 
 async def fetch_attachments(message: Message) -> list[File]:
@@ -670,12 +671,12 @@ async def process_proxy(
         if message.referenced_message.guild is None:
             message.referenced_message.guild = message.guild
 
-        user_config = await UserConfig.get(message.author.id)
+        user_config = await UserConfig.get(message.author.id) or UserConfig.default()
 
-        proxy_with_reply = format_reply(
+        proxy_with_reply, reply_mentions = format_reply(
             proxy_content,
             message.referenced_message,
-            ReplyFormat.INLINE if user_config is None else user_config.reply_format
+            user_config.reply_format
         )
 
         if isinstance(proxy_with_reply, str):
@@ -701,16 +702,8 @@ async def process_proxy(
 
     group = await member.get_group()
 
-    mentions = AllowedMentions(
-        parse=[
-            AllowedMentionType.EVERYONE,
-            AllowedMentionType.ROLES
-        ],
-        users=[
-            user.id
-            for user in message.mentions
-        ]
-    )
+    mentions = AllowedMentions.parse_content(
+        proxy_content).strip_mentions(reply_mentions)
 
     mentions.replied_user = (
         message.referenced_message is not None and

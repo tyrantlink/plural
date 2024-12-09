@@ -17,6 +17,7 @@ from src.models import project
 from .base import RawBaseModel
 from datetime import datetime
 from pydantic import Field
+from regex import finditer
 from .guild import Guild
 from .embed import Embed
 from orjson import dumps
@@ -64,6 +65,32 @@ class AllowedMentions(RawBaseModel):
     roles: list[Snowflake] | None = None
     users: list[Snowflake] | None = None
     replied_user: bool | None = None
+
+    @classmethod
+    def parse_content(cls, content: str, replied_user: bool = True) -> AllowedMentions:
+        return cls(
+            parse=[AllowedMentionType.EVERYONE],
+            roles=[Snowflake(match.group(1))
+                   for match in finditer(r'<@&(\d+)>', content)],
+            users=[Snowflake(match.group(1))
+                   for match in finditer(r'<@!?(\d+)>', content)],
+            replied_user=replied_user
+        )
+
+    def strip_mentions(self, mentions: list[Snowflake]) -> AllowedMentions:
+        _users = self.users or []
+        _roles = self.roles or []
+
+        for snowflake in mentions:
+            if snowflake in _users:
+                _users.remove(snowflake)
+            if snowflake in _roles:
+                _roles.remove(snowflake)
+
+        self.users = _users
+        self.roles = _roles
+
+        return self
 
 
 class Message(RawBaseModel):

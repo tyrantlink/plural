@@ -132,6 +132,10 @@ class Interaction(RawBaseModel):
             self.response.send_message
         )
 
+    @property
+    def is_dm(self) -> bool:
+        return self.context != InteractionContextType.GUILD
+
     async def populate(self) -> None:
         # ? interactions return partials, make sure to get the full objects
         await super().populate()
