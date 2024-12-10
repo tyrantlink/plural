@@ -131,8 +131,6 @@ async def _sync_commands(
             working_commands['proxy'].options = options[
                 :len(options) - 10+member.userproxy.attachment_count]
 
-            print(working_commands['proxy'].options)
-
             if member.userproxy.command:
                 command = working_commands.pop('proxy')
                 command.name = member.userproxy.command
