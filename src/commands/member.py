@@ -69,12 +69,14 @@ async def _userproxy_sync(
 
     bot_id = _get_bot_id(bot_token)
     app_patch: dict = {
-        'interactions_endpoint_url': f'{project.api_url}/discord/interaction',
         'event_webhooks_url': f'{project.api_url}/discord/event',
         'event_webhooks_types': [EventType.APPLICATION_AUTHORIZED.value],
         'integration_types_config': {'0': {}, '1': {}},
         'install_params': None}
     bot_patch: dict = {}
+
+    if not member.userproxy.self_hosted:
+        app_patch['interactions_endpoint_url'] = f'{project.api_url}/discord/interaction'
 
     try:
         app = await Application.fetch_current(bot_token)
@@ -802,6 +804,11 @@ async def slash_member_tags_clear(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='include_group_tag',
             description='include group tag in userproxy name (default: False)',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='self_hosted',
+            description='whether your userproxy is self-hosted (default: False)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -812,7 +819,8 @@ async def slash_member_userproxy_new(
     proxy_command: str = 'proxy',
     store_token: bool = True,
     attachment_count: int = 1,
-    include_group_tag: bool = False
+    include_group_tag: bool = False,
+    self_hosted: bool = False
 ) -> None:
     bot_id = _get_bot_id(bot_token)
     proxy_command = proxy_command.lstrip('/').lower()
@@ -850,7 +858,8 @@ async def slash_member_userproxy_new(
         token=bot_token if store_token else None,
         command=proxy_command,
         attachment_count=attachment_count,
-        include_group_tag=include_group_tag
+        include_group_tag=include_group_tag,
+        self_hosted=self_hosted
     )
 
     await member.save()
