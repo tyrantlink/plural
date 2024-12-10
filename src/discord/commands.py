@@ -126,11 +126,17 @@ async def _sync_commands(
     if scope == ApplicationCommandScope.USERPROXY and 'proxy' in working_commands:
         # ? move the deepcopy to here once the edit command is removed
         # working_commands = deepcopy(working_commands)
+        if member and member.userproxy:
+            options = working_commands['proxy'].options or []
+            working_commands['proxy'].options = options[
+                :len(options) - 10+member.userproxy.attachment_count]
 
-        if member and member.userproxy and member.userproxy.command:
-            command = working_commands.pop('proxy')
-            command.name = member.userproxy.command
-            working_commands[command.name] = command
+            print(working_commands['proxy'].options)
+
+            if member.userproxy.command:
+                command = working_commands.pop('proxy')
+                command.name = member.userproxy.command
+                working_commands[command.name] = command
 
     if working_commands and not live_commands:
         logfire.debug('no commands found on discord, registering all')

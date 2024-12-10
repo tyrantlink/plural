@@ -792,6 +792,13 @@ async def slash_member_tags_clear(
             description='whether to store bot token, required for some features (see /help) (default: True)',
             required=False),
         ApplicationCommandOption(
+            type=ApplicationCommandOptionType.INTEGER,
+            name='attachment_count',
+            min_value=0,
+            max_value=10,
+            description='number of attachment options to include on the proxy command (default: 1)',
+            required=False),
+        ApplicationCommandOption(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='include_group_tag',
             description='include group tag in userproxy name (default: False)',
@@ -804,6 +811,7 @@ async def slash_member_userproxy_new(
     bot_token: str,
     proxy_command: str = 'proxy',
     store_token: bool = True,
+    attachment_count: int = 1,
     include_group_tag: bool = False
 ) -> None:
     bot_id = _get_bot_id(bot_token)
@@ -841,6 +849,7 @@ async def slash_member_userproxy_new(
         public_key=app.verify_key,
         token=bot_token if store_token else None,
         command=proxy_command,
+        attachment_count=attachment_count,
         include_group_tag=include_group_tag
     )
 
@@ -944,6 +953,13 @@ async def slash_member_userproxy_sync(
             description='whether to store bot token, required for some features (see /help) (default: False)',
             required=False),
         ApplicationCommandOption(
+            type=ApplicationCommandOptionType.INTEGER,
+            name='attachment_count',
+            min_value=0,
+            max_value=10,
+            description='number of attachment options to include on the proxy command (default: Unset)',
+            required=False),
+        ApplicationCommandOption(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='include_group_tag',
             description='include group tag in userproxy name (default: Unset)',
@@ -956,6 +972,7 @@ async def slash_member_userproxy_edit(
     proxy_command: str | None = None,
     bot_token: str | None = None,
     store_token: bool = False,
+    attachment_count: int | None = None,
     include_group_tag: bool | None = None
 ) -> None:
     if userproxy.userproxy is None:
@@ -976,6 +993,10 @@ async def slash_member_userproxy_edit(
 
     if store_token and bot_token is not None:
         userproxy.userproxy.token = bot_token
+
+    if attachment_count is not None:
+        userproxy.userproxy.attachment_count = attachment_count
+        sync_changes.add(MemberUpdateType.COMMAND)
 
     if include_group_tag is not None:
         userproxy.userproxy.include_group_tag = include_group_tag

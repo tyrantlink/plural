@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Response, Request, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 from logging import getLogger, Filter, LogRecord
 from src.errors import DuplicateEventError
 from contextlib import asynccontextmanager
@@ -64,6 +65,13 @@ app = FastAPI(
     redoc_url='/docs',
     version=VERSION,
     debug=project.dev_environment
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_methods=['*'],
+    allow_headers=['*']
 )
 
 

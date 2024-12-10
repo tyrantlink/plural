@@ -93,27 +93,27 @@ async def _sed_edit(
             required=False
         ),
         ApplicationCommandOption(
-            type=ApplicationCommandOptionType.ATTACHMENT,
-            name='attachment',
-            description='attachment to send',
-            required=False
-        ),
-        ApplicationCommandOption(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='queue_for_reply',
             description='queue for reply',
             required=False
-        )],
+        )]+[ApplicationCommandOption(
+            type=ApplicationCommandOptionType.ATTACHMENT,
+            name=f'attachment{i}' if i else 'attachment',
+            description='send an attachment',
+            required=False
+        ) for i in range(10)],
     scope=ApplicationCommandScope.USERPROXY,
     contexts=InteractionContextType.ALL(),
     integration_types=[ApplicationIntegrationType.USER_INSTALL])
 async def uslash_proxy(
     interaction: Interaction,
     message: str | None = None,
-    attachment: Attachment | None = None,
-    queue_for_reply: bool = False
+    queue_for_reply: bool = False,
+    **_attachments: Attachment,
 ) -> None:
-    if not message and not attachment:
+    attachments = list(_attachments.values())
+    if not message and not attachments:
         await interaction.response.send_modal(
             modal=umodal_send.with_title(
                 'proxy a message'
@@ -128,11 +128,17 @@ async def uslash_proxy(
     if message and await _sed_edit(interaction, message):
         return
 
-    if attachment:
+    if attachments:
         assert interaction.app_permissions is not None
         if not interaction.app_permissions & Permission.ATTACH_FILES:
             raise InteractionError(
                 'bot does not have permission to attach files in this channel')
+
+        limit = interaction.guild.filesize_limit if interaction.guild is not None else 26_214_400
+
+        if sum(attachment.size for attachment in attachments) > limit:
+            raise InteractionError(
+                f'attachments exceed the {limit / 1024 / 1024}MB limit')
 
         if not queue_for_reply:
             await interaction.response.defer(MessageFlag.NONE)
@@ -146,7 +152,7 @@ async def uslash_proxy(
     if not queue_for_reply:
         sent_message = await sender(
             content=message,
-            attachments=[await attachment.as_file()] if attachment else None,
+            attachments=[await attachment.as_file() for attachment in attachments],
             flags=MessageFlag.NONE
         )
 
@@ -163,14 +169,12 @@ async def uslash_proxy(
         bot_id=int(interaction.application_id),
         channel=int(interaction.channel_id or 0),
         content=message,
-        attachment=(
+        attachments=[
             Reply.Attachment(
                 url=attachment.url,
                 filename=attachment.filename,
-                description=attachment.description or None
-            ) if attachment
-            else None
-        )
+                description=attachment.description or None)
+            for attachment in attachments]
     ).save()
 
     await sender(
@@ -211,13 +215,12 @@ async def umessage_reply(
             ))
         return
 
-    attachment = (
-        await reply.attachment.as_file()
-        if reply.attachment
-        else None
-    )
+    attachments = [
+        await attachment.as_file()
+        for attachment in reply.attachments
+    ]
 
-    if attachment:
+    if attachments:
         await interaction.response.defer(MessageFlag.NONE)
 
     proxy_content = reply.content
@@ -256,7 +259,7 @@ async def umessage_reply(
 
     sent_message = await interaction.send(
         content=proxy_content or None,
-        attachments=[attachment] if attachment else None,
+        attachments=attachments,
         embeds=[embed] if isinstance(proxy_with_reply, Embed) else None,
         allowed_mentions=mentions,
         flags=MessageFlag.NONE

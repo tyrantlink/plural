@@ -46,7 +46,7 @@ class Reply(Document):
     bot_id: int = Field(description='bot id')
     channel: int = Field(description='the channel id of the reply')
     content: str | None = Field(description='the userproxy content')
-    attachment: Attachment | None = Field(
+    attachments: list[Attachment] = Field(
         description='the message attachment')
     ts: datetime = Field(
         default_factory=datetime.utcnow,

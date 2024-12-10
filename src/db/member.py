@@ -83,6 +83,8 @@ class ProxyMember(Document):
             'proxy', description='name of the proxy command')
         include_group_tag: bool = Field(
             False, description='whether to include group tags in the bot name')
+        attachment_count: int = Field(
+            1, description='the number of attachments options to include on the proxy command')
         guilds: list[int] = Field(
             default_factory=list,
             description='guilds the userproxy is enabled in')
