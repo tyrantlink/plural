@@ -69,14 +69,12 @@ async def _userproxy_sync(
 
     bot_id = _get_bot_id(bot_token)
     app_patch: dict = {
+        'interactions_endpoint_url': f'{project.api_url}/discord/interaction' if not member.userproxy.self_hosted else None,
         'event_webhooks_url': f'{project.api_url}/discord/event',
         'event_webhooks_types': [EventType.APPLICATION_AUTHORIZED.value],
         'integration_types_config': {'0': {}, '1': {}},
         'install_params': None}
     bot_patch: dict = {}
-
-    if not member.userproxy.self_hosted:
-        app_patch['interactions_endpoint_url'] = f'{project.api_url}/discord/interaction'
 
     try:
         app = await Application.fetch_current(bot_token)
