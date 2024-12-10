@@ -41,7 +41,7 @@ async def umodal_send(
     await Reply(
         bot_id=int(interaction.application_id),
         channel=int(interaction.channel_id or 0),
-        attachment=None,
+        attachments=[],
         content=message
     ).save()
 
