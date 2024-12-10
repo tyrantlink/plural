@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from logging import getLogger, Filter, LogRecord
 from src.errors import DuplicateEventError
 from contextlib import asynccontextmanager
+from src.models import project, INSTANCE
 from src.docs import root as docs
 from src.version import VERSION
-from src.models import project
 from typing import Any
 import logfire
 
@@ -29,8 +29,6 @@ getLogger("uvicorn.access").addFilter(LocalHealthcheckFilter())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import src.discord.types
-    from src.models import project
     from src.db import MongoDatabase
     from .session import session
 
@@ -42,6 +40,8 @@ async def lifespan(app: FastAPI):
     import src.logic
     import src.commands
     from src.discord.commands import sync_commands
+
+    logfire.info('started on instance {instance_id}', instance_id=INSTANCE)
 
     await sync_commands()
 
@@ -130,7 +130,11 @@ def handle_duplicate_event_error(request: Request, exc: DuplicateEventError):
     '/',
     responses=docs.get__root)
 async def get__root():
-    return {'message': 'this is very basic i\'ll work on it later', 'version': VERSION}
+    return {
+        'message': 'this is very basic i\'ll work on it later',
+        'instance': INSTANCE,
+        'version': VERSION
+    }
 
 
 @app.get(

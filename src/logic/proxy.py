@@ -1,8 +1,8 @@
-from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference, AllowedMentionType, File
+from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference, File
 from src.db import ProxyMember, Latch, Group, Message as DBMessage, Log, Config, GatewayEvent, UserConfig, ReplyFormat
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.errors import Forbidden, NotFound, PluralException
-from src.models import project, DebugMessage, MISSING
+from src.models import project, DebugMessage, INSTANCE
 from src.discord.http import get_from_cdn
 from dataclasses import dataclass
 from asyncio import gather
@@ -437,40 +437,44 @@ async def guild_userproxy(
             content=sha256(message.content.encode()).hexdigest()
         ).save()
 
-    try:
-        responses = await gather(
-            message.delete(reason='/plu/ral proxy'),
-            message.channel.send(
-                proxy_content,
-                attachments=attachments,
-                reference=(
-                    MessageReference(
-                        type=MessageReferenceType.FORWARD,
-                        message_id=message.id,
-                        channel_id=message.channel.id,
-                        guild_id=message.guild.id
-                    ) if (
-                        message.guild is not None and
-                        message.message_reference and
-                        message.message_reference.type == MessageReferenceType.FORWARD and
-                        not real_forward
-                    ) else message.message_reference),
-                allowed_mentions=AllowedMentions(
-                    replied_user=(
-                        message.referenced_message is not None and
-                        message.referenced_message.author is not None and
-                        message.referenced_message.author.id in [
-                            user.id for user in message.mentions])),
-                poll=message.poll,
-                flags=(
-                    MessageFlag.SUPPRESS_NOTIFICATIONS
-                    & message.flags ^
-                    MessageFlag.SUPPRESS_NOTIFICATIONS
-                ) if message.mentions else None,
-                token=member.userproxy.token
-            )
-        )
-    except Exception:
+    responses = await gather(
+        message.delete(reason='/plu/ral proxy'),
+        message.channel.send(
+            proxy_content,
+            attachments=attachments,
+            reference=(
+                MessageReference(
+                    type=MessageReferenceType.FORWARD,
+                    message_id=message.id,
+                    channel_id=message.channel.id,
+                    guild_id=message.guild.id
+                ) if (
+                    message.guild is not None and
+                    message.message_reference and
+                    message.message_reference.type == MessageReferenceType.FORWARD and
+                    not real_forward
+                ) else message.message_reference),
+            allowed_mentions=AllowedMentions(
+                replied_user=(
+                    message.referenced_message is not None and
+                    message.referenced_message.author is not None and
+                    message.referenced_message.author.id in [
+                        user.id for user in message.mentions])),
+            poll=message.poll,
+            flags=(
+                MessageFlag.SUPPRESS_NOTIFICATIONS
+                & message.flags ^
+                MessageFlag.SUPPRESS_NOTIFICATIONS
+            ) if message.mentions else None,
+            token=member.userproxy.token),
+        return_exceptions=True
+    )
+
+    if isinstance(responses[0], BaseException) and not isinstance(responses[1], BaseException):
+        await responses[1].delete()
+        return False, app_emojis, token, None
+
+    if isinstance(responses[1], BaseException):
         return False, app_emojis, token, None
 
     db_message = await DBMessage(
@@ -604,7 +608,7 @@ async def process_proxy(
     # ? final deduplication check
     if await GatewayEvent.find_one({
         'id': sha256(str(message._raw).encode()).hexdigest(),
-        'instance': {'$ne': str(id(MISSING))}
+        'instance': {'$ne': INSTANCE}
     }) is not None:
         return False, None, token, None
 
@@ -662,8 +666,7 @@ async def process_proxy(
             reference=message,
             allowed_mentions=AllowedMentions(
                 replied_user=False),
-            delete_after=10
-        )
+            delete_after=10)
         return False, app_emojis, token, None
 
     embed, reply_mentions = None, []
@@ -755,6 +758,10 @@ async def process_proxy(
                 MessageFlag.SUPPRESS_NOTIFICATIONS
             ) if message.mentions else None,
             poll=message.poll)
+
+    if isinstance(responses[0], BaseException) and not isinstance(responses[1], BaseException):
+        await responses[1].delete()
+        return False, app_emojis, token, None
 
     if isinstance(responses[1], BaseException):
         return False, app_emojis, token, None

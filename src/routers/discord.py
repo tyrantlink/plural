@@ -6,7 +6,7 @@ from fastapi.responses import Response, JSONResponse
 from src.core.auth import discord_key_validator
 from pymongo.errors import DuplicateKeyError
 from src.discord.types import ListenerType
-from src.models import project, MISSING
+from src.models import project, INSTANCE
 from src.discord.listeners import emit
 from src.logic import discord_cache
 from asyncio import create_task
@@ -34,7 +34,7 @@ async def _handle_gateway_event(event: GatewayEvent) -> Response:
         try:
             await DBGatewayEvent(
                 id=request_hash,
-                instance=str(id(MISSING))
+                instance=INSTANCE
             ).insert()
         except DuplicateKeyError:
             # ? event was inserted by another node between the check and insert attempt

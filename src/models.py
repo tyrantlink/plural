@@ -113,6 +113,8 @@ class _MissingType:
 
 MISSING = _MissingType()
 
+INSTANCE = hex(id(MISSING))[2:]
+
 T = TypeVar('T')
 MissingOr = Union[T, _MissingType]
 MissingNoneOr = Union[T, None, _MissingType]
