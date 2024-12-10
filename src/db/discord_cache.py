@@ -170,7 +170,7 @@ class DiscordCache(Document):
     ) -> DiscordCache | None:
         guild = await cls.get(guild_id, None)
 
-        if guild is None:
+        if guild is None or guild.error:
             return None
 
         guild.data['roles'] = [
