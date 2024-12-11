@@ -175,18 +175,17 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
             )
         )
 
-    send = (
-        interaction.followup.send
-        if interaction.response.responded else
-        interaction.response.send_message
+    responses = await gather(
+        *tasks,
+        interaction.send(
+            embeds=[Embed.error(str(error), expected=expected)]),
+        return_exceptions=True
     )
 
-    await gather(
-        *tasks,
-        send(
+    if isinstance(responses[-1], HTTPException):
+        await interaction.followup.send(
             embeds=[Embed.error(str(error), expected=expected)]
         )
-    )
 
 
 # ? logfire compat
