@@ -195,9 +195,30 @@ class Guild(RawBaseModel):
         )
 
     async def fetch_roles(self) -> list[Role]:
-        return [
+        roles = [
             Role(**role.data)
             for role in
             await DiscordCache.get_many(CacheType.ROLE, self.id)
             if not role.deleted
+        ]
+
+        if roles:
+            return roles
+
+        data = await request(Route(
+            'GET',
+            '/guilds/{guild_id}/roles',
+            guild_id=self.id
+        ))
+
+        await gather(*[
+            DiscordCache.add(
+                CacheType.ROLE,
+                role)
+            for role in data
+        ])
+
+        return [
+            Role(**role)
+            for role in data
         ]
