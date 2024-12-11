@@ -34,7 +34,7 @@ member_userproxy = member.create_subgroup(
 
 
 async def _self_hosted_warning(interaction: Interaction) -> None:
-    await interaction.response.send_message(
+    await interaction.followup.send(
         embeds=[Embed.warning(
             title='self-hosted userproxy',
             message='you will need to host the userproxy yourself, see the [documentation](https://plural.gg/docs/userproxies/self-hosted) for more information'
