@@ -1030,12 +1030,18 @@ async def slash_member_userproxy_edit(
     if self_hosted is not None:
         userproxy.userproxy.self_hosted = self_hosted
 
+    embed = Embed.success(
+        f'updated userproxy for member `{userproxy.name}`'
+    )
+
+    if MemberUpdateType.COMMAND in sync_changes:
+        embed.set_footer(
+            'note: you may need to restart discord for the command changes to show up')
+
     tasks = [
         userproxy.save(),
         interaction.response.send_message(
-            embeds=[Embed.success(
-                f'updated userproxy for member `{userproxy.name}`'
-            )]
+            embeds=[embed]
         )
     ]
 
