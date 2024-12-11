@@ -406,10 +406,11 @@ async def guild_userproxy(
 
     if (
         message.message_reference and
-        message.message_reference.type == MessageReferenceType.FORWARD and
-        message.message_reference.channel_id is not None and
-        message.message_reference.message_id is not None
+        message.message_reference.type == MessageReferenceType.FORWARD  # and
+        # message.message_reference.channel_id is not None and
+        # message.message_reference.message_id is not None
     ):
+        return False, None, token, None
         try:
             await Message.fetch(
                 message.message_reference.channel_id,
