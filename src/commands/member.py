@@ -33,6 +33,15 @@ member_userproxy = member.create_subgroup(
 )
 
 
+async def _self_hosted_warning(interaction: Interaction) -> None:
+    await interaction.response.send_message(
+        embeds=[Embed.warning(
+            title='self-hosted userproxy',
+            message='you will need to host the userproxy yourself, see the [documentation](https://plural.gg/docs/userproxies/self-hosted) for more information'
+        )]
+    )
+
+
 async def _sync_member_guilds(member: ProxyMember) -> None:
     if member.userproxy is None:
         raise ValueError('member does not have a userproxy')
@@ -878,6 +887,9 @@ async def slash_member_userproxy_new(
         )
     )
 
+    if self_hosted:
+        await _self_hosted_warning(interaction)
+
 
 @member_userproxy.command(
     name='sync',
@@ -970,6 +982,11 @@ async def slash_member_userproxy_sync(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='include_group_tag',
             description='include group tag in userproxy name (default: Unset)',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='self_hosted',
+            description='whether your userproxy is self-hosted (default: Unset)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -980,7 +997,8 @@ async def slash_member_userproxy_edit(
     bot_token: str | None = None,
     store_token: bool = False,
     attachment_count: int | None = None,
-    include_group_tag: bool | None = None
+    include_group_tag: bool | None = None,
+    self_hosted: bool | None = None
 ) -> None:
     if userproxy.userproxy is None:
         raise InteractionError(
@@ -1009,6 +1027,9 @@ async def slash_member_userproxy_edit(
         userproxy.userproxy.include_group_tag = include_group_tag
         sync_changes.add(MemberUpdateType.NAME)
 
+    if self_hosted is not None:
+        userproxy.userproxy.self_hosted = self_hosted
+
     tasks = [
         userproxy.save(),
         interaction.response.send_message(
@@ -1029,6 +1050,9 @@ async def slash_member_userproxy_edit(
         )
 
     await gather(*tasks)
+
+    if self_hosted is not None and self_hosted:
+        await _self_hosted_warning(interaction)
 
 
 @member_userproxy.command(
