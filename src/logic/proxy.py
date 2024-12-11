@@ -760,7 +760,10 @@ async def process_proxy(
             ) if message.mentions else None,
             poll=message.poll)
 
-    if isinstance(responses[0], BaseException) and not isinstance(responses[1], BaseException):
+    if (
+        isinstance(responses[0], (BaseException, type(None))) and
+        not isinstance(responses[1], BaseException)
+    ):
         await responses[1].delete()
         return False, app_emojis, token, None
 
