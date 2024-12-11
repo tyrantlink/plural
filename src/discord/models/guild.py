@@ -5,6 +5,7 @@ from pydantic import model_validator, field_validator
 from src.discord.http import Route, request
 from src.db import DiscordCache, CacheType
 from src.discord.types import Snowflake
+from src.errors import HTTPException
 from typing import TYPE_CHECKING
 from .base import RawBaseModel
 from .sticker import Sticker
@@ -122,7 +123,10 @@ class Guild(RawBaseModel):
         await super().populate()
 
         if not self.roles:
-            self.roles = await self.fetch_roles()
+            try:
+                self.roles = await self.fetch_roles()
+            except HTTPException:
+                pass
 
     @classmethod
     async def fetch(cls, guild_id: Snowflake | int) -> Guild:
