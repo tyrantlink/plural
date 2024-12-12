@@ -77,12 +77,13 @@ async def _userproxy_sync(
             'bot token for userproxy `{member.name}` is not stored; provide a bot token to sync the userproxy')
 
     bot_id = _get_bot_id(bot_token)
-    app_patch: dict = {
+    base_app_patch: dict = {
         'interactions_endpoint_url': f'{project.api_url}/discord/interaction' if not member.userproxy.self_hosted else None,
         'event_webhooks_url': f'{project.api_url}/discord/event',
         'event_webhooks_types': [EventType.APPLICATION_AUTHORIZED.value],
         'integration_types_config': {'0': {}, '1': {}},
         'install_params': None}
+    app_patch: dict = {}
     bot_patch: dict = {}
 
     try:
@@ -138,11 +139,18 @@ async def _userproxy_sync(
                 continue
 
     tasks.extend([
+        app.patch(bot_token, **base_app_patch),
         app.patch(bot_token, **app_patch),
         app.bot.patch(bot_token, **bot_patch)
     ])
 
-    await gather(*tasks)
+    responses = await gather(*tasks, return_exceptions=True)
+
+    for response in responses:
+        if isinstance(response, Exception):
+            raise InteractionError(
+                'an error occurred while syncing the userproxy'
+            ) from response
 
     return app
 
