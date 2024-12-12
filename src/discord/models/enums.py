@@ -259,7 +259,7 @@ class ApplicationIntegrationType(Enum):
     USER_INSTALL = 1
 
     @classmethod
-    def ALL(cls) -> list[ApplicationIntegrationType]: # noqa: N802
+    def ALL(cls) -> list[ApplicationIntegrationType]:  # noqa: N802
         return list(cls)
 
     @classmethod
@@ -285,7 +285,7 @@ class InteractionContextType(Enum):
     PRIVATE_CHANNEL = 2
 
     @classmethod
-    def ALL(cls) -> list[InteractionContextType]: # noqa: N802
+    def ALL(cls) -> list[InteractionContextType]:  # noqa: N802
         return list(cls)
 
 
@@ -511,6 +511,7 @@ class GuildFeature(StrEnum):
     CREATOR_MONETIZABLE_PENDING_NEW_OWNER_ONBOARDING = 'CREATOR_MONETIZABLE_PENDING_NEW_OWNER_ONBOARDING'
     HAD_EARLY_ACTIVITIES_ACCESS = 'HAD_EARLY_ACTIVITIES_ACCESS'
     GUILD_PRODUCTS = 'GUILD_PRODUCTS'
+    THREADS_ONLY_CHANNEL = 'THREADS_ONLY_CHANNEL'
 
 
 class MFALevel(Enum):
@@ -670,7 +671,7 @@ class TextInputStyle(Enum):
 class CharEnumMeta(EnumMeta):
     CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-    def __call__(cls, value: int | str, *args, **kwargs) -> CharEnumMeta: # noqa: ANN002, ANN003
+    def __call__(cls, value: int | str, *args, **kwargs) -> CharEnumMeta:  # noqa: ANN002, ANN003
         if isinstance(value, int):
             return super().__call__(value, *args, **kwargs)
 
