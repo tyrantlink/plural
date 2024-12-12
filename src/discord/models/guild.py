@@ -9,14 +9,14 @@ from src.discord.types import Snowflake  # noqa: TC001
 from src.errors import HTTPException
 from typing import TYPE_CHECKING
 from .base import RawBaseModel
+from .sticker import Sticker  # noqa: TC001
 from asyncio import gather
+from .emoji import Emoji  # noqa: TC001
 from .role import Role
 import logfire
 
 if TYPE_CHECKING:
-    from .sticker import Sticker
     from .member import Member
-    from .emoji import Emoji
 
 
 class WelcomeScreenChannel(RawBaseModel):

@@ -1,18 +1,14 @@
 from __future__ import annotations
+from .avatar_decoration import AvatarDecorationData  # noqa: TC001
 from .enums import GuildMemberFlag, Permission
 from src.discord.http import Route, request
 from src.db import DiscordCache, CacheType
 from src.discord.types import Snowflake  # noqa: TC001
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
 from .base import RawBaseModel
 from .channel import Channel
 from .guild import Guild
-
-
-if TYPE_CHECKING:
-    from .avatar_decoration import AvatarDecorationData
-    from .user import User
+from .user import User  # noqa: TC001
 
 
 class Member(RawBaseModel):

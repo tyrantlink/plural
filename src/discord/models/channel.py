@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from src.models import project
 from .base import RawBaseModel
 from asyncio import gather
+from .user import User  # noqa: TC001
 
 
 if TYPE_CHECKING:
@@ -17,7 +18,6 @@ if TYPE_CHECKING:
     from .webhook import Webhook
     from .embed import Embed
     from .poll import Poll
-    from .user import User
 
 
 class ChannelMention(RawBaseModel):

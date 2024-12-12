@@ -5,18 +5,18 @@ from src.discord.http import Route, request, File
 from .enums import WebhookType, MessageFlag
 from src.discord.types import Snowflake
 from .base import RawBaseModel
+from .channel import Channel  # noqa: TC001
+from .guild import Guild  # noqa: TC001
 from orjson import dumps
 from regex import search
+from .user import User  # noqa: TC001
 
 if TYPE_CHECKING:
     from .message import Message, AllowedMentions
     from .interaction import Interaction
     from .component import Component
-    from .channel import Channel
-    from .guild import Guild
     from .embed import Embed
     from .poll import Poll
-    from .user import User
 
 
 class Webhook(RawBaseModel):

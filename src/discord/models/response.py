@@ -4,18 +4,18 @@ from src.discord.models.base import PydanticArbitraryType
 from src.models import project, MISSING, MissingNoneOr
 from src.discord.http import File, Route, request
 from .message import Message, AllowedMentions
+from .component import Component  # noqa: TC001
 from typing import TYPE_CHECKING
 from .webhook import Webhook
 from orjson import dumps
+from .embed import Embed  # noqa: TC001
+from .modal import Modal  # noqa: TC001
+from .poll import Poll  # noqa: TC001
 
 
 if TYPE_CHECKING:
     from .application_command import ApplicationCommandOptionChoice
     from .interaction import Interaction
-    from .component import Component
-    from .embed import Embed
-    from .modal import Modal
-    from .poll import Poll
 
 
 class InteractionFollowup(PydanticArbitraryType):

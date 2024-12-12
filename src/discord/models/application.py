@@ -1,15 +1,11 @@
 from __future__ import annotations
 from src.discord.http import request, Route, _bytes_to_base64_data
 from src.models import project, MISSING, MissingOr, MissingNoneOr
+from .enums import ApplicationIntegrationType  # noqa: TC001
 from src.discord.types import Snowflake  # noqa: TC001
-from typing import TYPE_CHECKING
 from .base import RawBaseModel
-
-
-if TYPE_CHECKING:
-    from .enums import ApplicationIntegrationType
-    from .guild import Guild
-    from .user import User
+from .guild import Guild  # noqa: TC001
+from .user import User  # noqa: TC001
 
 
 class Application(RawBaseModel):

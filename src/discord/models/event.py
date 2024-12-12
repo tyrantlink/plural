@@ -2,7 +2,6 @@ from __future__ import annotations
 from .enums import GatewayOpCode, GatewayEventName, ReactionType, WebhookEventType, EventType, ApplicationIntegrationType  # noqa: TC001
 from src.models import MISSING, MissingOr
 from src.discord.types import Snowflake  # noqa: TC001
-from typing import TYPE_CHECKING
 from src.errors import NotFound
 from .base import RawBaseModel
 from datetime import datetime  # noqa: TC003
@@ -10,10 +9,8 @@ from .message import Message
 from pydantic import Field
 from .member import Member
 from .guild import Guild  # noqa: TC001
+from .emoji import Emoji  # noqa: TC001
 from .user import User  # noqa: TC001
-
-if TYPE_CHECKING:
-    from .emoji import Emoji
 
 
 class GatewayEvent(RawBaseModel):
