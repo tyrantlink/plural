@@ -1,6 +1,7 @@
 from pymongo import IndexModel
 from datetime import datetime
 from beanie import Document
+from typing import ClassVar
 from pydantic import Field
 
 
@@ -15,11 +16,12 @@ class ApiToken(Document):
         name = 'api_tokens'
         validate_on_save = True
         use_state_management = True
-        indexes = [
+        indexes: ClassVar = [
             IndexModel('ts', expireAfterSeconds=60*60*8)
         ]
 
-    id: int = Field(description='user id')  # type: ignore #? mypy stupid
+    id: int = Field(  # pyright: ignore #? unknown pyright rule
+        description='user id')
     ts: datetime = Field(
         default_factory=datetime.utcnow,
         description='timestamp of validation'

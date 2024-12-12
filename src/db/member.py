@@ -1,7 +1,7 @@
 from __future__ import annotations
 from .helpers import avatar_getter, avatar_setter, avatar_deleter, ImageId
+from typing import Annotated, TYPE_CHECKING, Any, ClassVar
 from pydantic import Field, model_validator, BaseModel
-from typing import Annotated, TYPE_CHECKING, Any
 from beanie import Document, PydanticObjectId
 from re import sub, IGNORECASE
 
@@ -18,8 +18,9 @@ class ProxyMember(Document):
         return hash(self.id)
 
     @model_validator(mode='before')
+    @classmethod
     def _handle_clyde(cls, values: dict[Any, Any]) -> dict[Any, Any]:
-        if (name := values.get('name', None)) is None:
+        if (name := values.get('name')) is None:
             return values
 
         # ? just stolen from pluralkit https://github.com/PluralKit/PluralKit/blob/214a6d5a4933b975068b0272c98d178a47b487d5/src/pluralkit/bot/proxy.py#L62
@@ -32,8 +33,9 @@ class ProxyMember(Document):
         return values
 
     @model_validator(mode='before')
+    @classmethod
     def _handle_avatar(cls, values: dict[Any, Any]) -> dict[Any, Any]:
-        if isinstance((avatar := values.get('avatar', None)), bytes):
+        if isinstance((avatar := values.get('avatar')), bytes):
             values['avatar'] = ImageId.validate(avatar)
         return values
 
@@ -41,8 +43,8 @@ class ProxyMember(Document):
         name = 'members'
         validate_on_save = True
         use_state_management = True
-        indexes = ['userproxy.bot_id']
-        bson_encoders = {ImageId: bytes}
+        indexes: ClassVar = ['userproxy.bot_id']
+        bson_encoders: ClassVar = {ImageId: bytes}
 
     class ProxyTag(BaseModel):
         def __eq__(self, value: object) -> bool:
@@ -66,12 +68,12 @@ class ProxyMember(Document):
         case_sensitive: bool = False
 
         @model_validator(mode='after')
-        def check_prefix_and_suffix(cls, value):
-            if not value.prefix and not value.suffix:
+        def check_prefix_and_suffix(self) -> ProxyMember.ProxyTag:
+            if not self.prefix and not self.suffix:
                 raise ValueError(
                     'At least one of prefix or suffix must be non-empty')
 
-            return value
+            return self
 
     class UserProxy(BaseModel):
         bot_id: int = Field(description='bot id')
@@ -91,7 +93,7 @@ class ProxyMember(Document):
             default_factory=list,
             description='guilds the userproxy is enabled in')
 
-    id: PydanticObjectId = Field(  # type: ignore
+    id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
     name: str = Field(
         description='the name of the member',

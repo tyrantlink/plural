@@ -1,13 +1,14 @@
 from __future__ import annotations
 from .enums import ComponentType, TextInputStyle, ButtonStyle
-from typing import Sequence, TYPE_CHECKING, Annotated
 from .base import RawBaseModel, PydanticArbitraryType
+from typing import TYPE_CHECKING, Annotated
 from src.models import MISSING, MissingOr
-from src.discord.types import Snowflake
-from .emoji import Emoji
+from collections.abc import Sequence  # noqa: TC003
 
 if TYPE_CHECKING:
     from .interaction import InteractionCallback
+    from src.discord.types import Snowflake
+    from .emoji import Emoji
 
 
 class BaseComponent(RawBaseModel):

@@ -1,5 +1,6 @@
 from beanie import Document, PydanticObjectId
 from .member import ProxyMember
+from typing import ClassVar
 from pydantic import Field
 
 
@@ -14,9 +15,9 @@ class Latch(Document):
         name = 'latches'
         validate_on_save = True
         use_state_management = True
-        indexes = [('user', 'guild')]  # ? compound index
+        indexes: ClassVar = [('user', 'guild')]  # ? compound index
 
-    id: PydanticObjectId = Field(  # type: ignore
+    id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
     user: int = Field(description='user id')
     guild: int | None = Field(description='guild id')

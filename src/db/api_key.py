@@ -1,5 +1,6 @@
 from __future__ import annotations
 from beanie import Document
+from typing import ClassVar
 from pydantic import Field
 
 
@@ -14,7 +15,7 @@ class ApiKey(Document):
         name = 'api_keys'
         validate_on_save = True
         use_state_management = True
-        indexes = ['token']
+        indexes: ClassVar = ['token']
 
     @classmethod
     def new(cls, user_id: int) -> tuple[ApiKey, str]:
@@ -36,5 +37,6 @@ class ApiKey(Document):
             token
         )
 
-    id: int = Field(description='user id')  # type: ignore #? mypy stupid
+    id: int = Field(  # pyright: ignore #? unknown pyright rule
+        description='user id')
     token: str = Field(description='hashed api key')

@@ -28,7 +28,7 @@ class FakeMessage(Message):
         content: str,
         author: User,
         referenced_message: Message | None = None,
-        **kwargs
+        **kwargs  # noqa: ANN003
     ) -> None:
         super().__init__(
             id=Snowflake(0),
@@ -112,7 +112,7 @@ async def get__message(
     responses=docs.post__message)
 async def post__message(
     message: MessageSend,
-    token: TokenData = Security(api_key_validator)
+    token: TokenData = Security(api_key_validator)  # noqa: B008
 ) -> JSONResponse:
     """
 
@@ -122,8 +122,8 @@ async def post__message(
 
     try:
         channel = await Channel.fetch(message.channel_id)
-    except Exception:
-        raise HTTPException(404, 'channel not found')
+    except Exception:  # noqa: BLE001
+        raise HTTPException(404, 'channel not found') from None
 
     if channel.guild_id is None:
         raise HTTPException(
@@ -136,10 +136,9 @@ async def post__message(
 
     try:
         author = await Member.fetch(channel.guild_id, token.user_id)
-    except Exception:
-        raise HTTPException(
-            # ? using channel not found for privacy
-            404, 'channel not found')
+    except Exception:  # noqa: BLE001
+        # ? using channel not found for privacy
+        raise HTTPException(404, 'channel not found') from None
 
     permissions = await author.fetch_permissions_for(channel.guild_id, message.channel_id)
 
@@ -163,8 +162,8 @@ async def post__message(
                 channel.id,
                 message.reference_id,
                 include_content=True)
-        except Exception:
-            raise HTTPException(404, 'referenced message not found')
+        except Exception:  # noqa: BLE001
+            raise HTTPException(404, 'referenced message not found') from None
 
     assert author.user is not None
 

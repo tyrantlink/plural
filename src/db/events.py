@@ -1,5 +1,6 @@
 from pymongo import IndexModel
 from datetime import datetime
+from typing import ClassVar
 from beanie import Document
 from pydantic import Field
 
@@ -14,11 +15,11 @@ class GatewayEvent(Document):
     class Settings:
         name = 'gateway_events'
         validate_on_save = True
-        indexes = [
+        indexes: ClassVar = [
             IndexModel('ts', expireAfterSeconds=30)
         ]
 
-    id: str = Field(  # type: ignore
+    id: str = Field(  # pyright: ignore #? unknown pyright rule
         description='the hash of the event body')
     instance: str = Field(
         description='the api instance (id of the MISSING variable)')

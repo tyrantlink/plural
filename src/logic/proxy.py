@@ -276,7 +276,10 @@ async def get_proxy_webhook(channel: Channel, use_cache: bool = True) -> Webhook
             reason='required for /plu/ral to function'
         )
 
-    if webhooks_deleted and cache:
+    if (
+        webhooks_deleted and
+        cache  # pyright: ignore[reportPossiblyUnboundVariable]
+    ):
         # ? refresh cache
         await channel.fetch_webhooks(False)
 
@@ -657,7 +660,7 @@ async def process_proxy(
     webhook = await get_proxy_webhook(message.channel)
 
     # ? don't actually clone emotes if we're debugging
-    app_emojis = list()
+    app_emojis = []
     if webhook.application_id == project.application_id and not debug_log:
         app_emojis, proxy_content = await process_emoji(proxy_content)
 

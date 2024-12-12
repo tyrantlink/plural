@@ -1,3 +1,4 @@
+# ruff: noqa: F403, F405, RUF022
 from .application_command import *
 from .application import *
 from .attachment import *

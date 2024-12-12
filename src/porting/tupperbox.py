@@ -1,13 +1,14 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Annotated
 from annotated_types import MinLen, MaxLen
+from contextlib import suppress
 from pydantic import BaseModel
-from datetime import datetime
 from .base import BaseExport
 
 
 if TYPE_CHECKING:
     from .standard import StandardExport
+    from datetime import datetime
 
 
 class TupperboxExport(BaseExport):
@@ -47,10 +48,8 @@ class TupperboxExport(BaseExport):
                 tupper.avatar_url is not None and
                 tupper.avatar_url.startswith('https://cdn.tupperbox.app/pfp/')
             ):
-                try:
+                with suppress(IndexError):
                     user_id = tupper.avatar_url.split('/')[4]
-                except IndexError:
-                    pass
 
         groups = {
             group.id: StandardExport.Group(

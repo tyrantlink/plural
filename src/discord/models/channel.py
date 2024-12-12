@@ -3,20 +3,21 @@ from .enums import ChannelType, OverwriteType, VideoQualityMode, ChannelFlag, Pe
 from src.errors import HTTPException, NotFound, Forbidden, Unauthorized
 from src.discord.http import Route, request, File
 from src.db import DiscordCache, CacheType
-from src.discord.types import Snowflake
+from src.discord.types import Snowflake  # noqa: TC001
 from typing import TYPE_CHECKING
 from src.models import project
 from .base import RawBaseModel
-from datetime import datetime
 from asyncio import gather
-from .user import User
+
 
 if TYPE_CHECKING:
     from .message import Message, MessageReference, AllowedMentions
     from .component import Component
+    from datetime import datetime
     from .webhook import Webhook
     from .embed import Embed
     from .poll import Poll
+    from .user import User
 
 
 class ChannelMention(RawBaseModel):

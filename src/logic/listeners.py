@@ -14,7 +14,7 @@ from typing import Any
 
 
 @listen(ListenerType.MESSAGE_CREATE)
-async def on_message(message: MessageCreateEvent):
+async def on_message(message: MessageCreateEvent) -> None:
     if (
         not message.author or
         message.author.bot or
@@ -33,7 +33,7 @@ async def on_message(message: MessageCreateEvent):
 
 
 @listen(ListenerType.MESSAGE_UPDATE)
-async def on_message_edit(message: MessageUpdateEvent):
+async def on_message_edit(message: MessageUpdateEvent) -> None:
     if (
         not message.author or
         message.author.bot or
@@ -49,7 +49,7 @@ async def on_message_edit(message: MessageUpdateEvent):
 
 
 @listen(ListenerType.MESSAGE_REACTION_ADD)
-async def on_reaction_add(reaction: MessageReactionAddEvent):
+async def on_reaction_add(reaction: MessageReactionAddEvent) -> None:
     if (
         reaction.user_id == project.application_id or
         reaction.guild_id is None or

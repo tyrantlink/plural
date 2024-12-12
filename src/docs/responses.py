@@ -29,7 +29,7 @@ def json_response(
             }
         }
     except ValueError:
-        print(examples)
+        print(examples) # noqa: T201
         exit()
 
 

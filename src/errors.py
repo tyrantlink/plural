@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pydantic_core import ValidationError
 from typing import TYPE_CHECKING
+from contextlib import suppress
 from traceback import format_tb
 from src.models import project
 from asyncio import gather
@@ -8,7 +9,7 @@ from io import BytesIO
 import logfire
 
 # ? logfire compat
-from types import CodeType, FrameType
+
 from functools import lru_cache
 import opentelemetry.sdk.trace
 from typing import TypedDict
@@ -16,13 +17,16 @@ from pathlib import Path
 import inspect
 import sys
 
+if TYPE_CHECKING:
+    from types import CodeType, FrameType
+
 
 if TYPE_CHECKING:
     from src.discord import Interaction
 
 
 class BasePluralException(Exception):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         self._stack_info = get_user_stack_info()
         super().__init__(*args, **kwargs)
 
@@ -33,27 +37,22 @@ class PluralException(BasePluralException):
 
 class HTTPException(BasePluralException):
     status_code: int = 0
-    ...
 
 
 class Unauthorized(HTTPException):
     status_code: int = 401
-    ...
 
 
 class Forbidden(HTTPException):
     status_code: int = 403
-    ...
 
 
 class NotFound(HTTPException):
     status_code: int = 404
-    ...
 
 
 class ServerError(HTTPException):
     status_code: int = 500
-    ...
 
 
 class ConversionError(BasePluralException):
@@ -223,11 +222,9 @@ NON_USER_CODE_PREFIXES = (SITE_PACKAGES_DIR, PYTHON_LIB_DIR, LOGFIRE_DIR)
 def get_filepath_attribute(file: str) -> StackInfo:
     path = Path(file)
     if path.is_absolute():
-        try:
+        with suppress(ValueError):
             path = path.relative_to(_CWD)
-        except ValueError:  # pragma: no cover
-            # happens if filename path is not within CWD
-            pass
+
     return {'code.filepath': str(path)}
 
 
@@ -292,7 +289,7 @@ def is_user_code(code: CodeType) -> bool:
     """
 
     if (
-        (
+        ((
             info := get_code_object_info(code)
         ) and (
             info.get('code.filepath') == 'src/errors.py' and
@@ -302,7 +299,7 @@ def is_user_code(code: CodeType) -> bool:
                 'on_interaction_error',
                 'BasePluralException.__init__'
             }
-        ) or (
+        )) or (
             info.get('code.filepath') == 'src/discord/listeners.py' and
             info.get('code.function') == 'emit'
         )

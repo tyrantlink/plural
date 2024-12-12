@@ -47,12 +47,11 @@ class TokenData(NamedTuple):
 
 async def acheckpw(password: str, hashed: str) -> bool:
     with ThreadPoolExecutor() as executor:
-        result = await get_event_loop(
+        return await get_event_loop(
         ).run_in_executor(
             executor,
             lambda: checkpw(password.encode(), hashed.encode())
         )
-    return result
 
 
 async def api_key_validator(api_key: str = Security(API_KEY)) -> TokenData:
@@ -93,8 +92,8 @@ async def discord_key_validator(
 ) -> bool:
     try:
         request_body = (await request.body()).decode()
-    except Exception:
-        raise HTTPException(400, 'Invalid request body')
+    except Exception: # noqa: BLE001
+        raise HTTPException(400, 'Invalid request body') from None
 
     verify_key = VerifyKey(bytes.fromhex(project.gateway_key))
 
@@ -109,8 +108,8 @@ async def discord_key_validator(
 
     try:
         application_id = int(loads(request_body)['application_id'])
-    except Exception:
-        raise HTTPException(400, 'Invalid request body')
+    except Exception: # noqa: BLE001
+        raise HTTPException(400, 'Invalid request body') from None
 
     member = None
     match application_id:
@@ -129,7 +128,7 @@ async def discord_key_validator(
             f'{x_signature_timestamp}{request_body}'.encode(),
             bytes.fromhex(x_signature_ed25519))
     except BadSignatureError:
-        raise HTTPException(401, 'Invalid request signature')
+        raise HTTPException(401, 'Invalid request signature') from None
 
     try:
         WebhookEvent.model_validate_json(request_body)
@@ -140,7 +139,7 @@ async def discord_key_validator(
     try:
         interaction = Interaction.model_validate_json(request_body)
     except ValidationError:
-        raise HTTPException(400, 'Invalid interaction or webhook event')
+        raise HTTPException(400, 'Invalid interaction or webhook event') from None
 
     if (  # ? always accept pings and interactions directed at the main bot
         interaction.type.value == 1 or

@@ -52,7 +52,7 @@ class Modal(RawBaseModel, PydanticArbitraryType):
         modal.title = title
         return modal
 
-    def with_text_kwargs(self, index: int, **kwargs) -> Modal:
+    def with_text_kwargs(self, index: int, **kwargs) -> Modal: # noqa: ANN003
         modal = self.__get_self()
 
         if not isinstance(modal.components[0].components[index], TextInput):
@@ -103,7 +103,7 @@ class Modal(RawBaseModel, PydanticArbitraryType):
 
             modal.extra.append(parsed)
 
-        if len('.'.join([modal.custom_id] + (modal.extra))) > 100:
+        if len('.'.join([modal.custom_id, *modal.extra])) > 100:
             raise ValueError(
                 'custom_id (with extra) must be less than 100 characters'
             )

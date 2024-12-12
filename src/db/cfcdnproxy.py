@@ -2,6 +2,7 @@ from beanie import Document, PydanticObjectId
 from datetime import datetime, timedelta
 from src.models import project
 from pymongo import IndexModel
+from typing import ClassVar
 from pydantic import Field
 
 
@@ -17,11 +18,11 @@ class CFCDNProxy(Document):
         use_cache = True
         validate_on_save = True
         cache_expiration_time = timedelta(seconds=120)
-        indexes = [
+        indexes: ClassVar = [
             IndexModel('ts', expireAfterSeconds=300)
         ]
 
-    id: PydanticObjectId = Field(  # type: ignore
+    id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
     target_url: str = Field(description='the url of the image')
     data: bytes = Field(description='the image data')

@@ -48,7 +48,7 @@ async def member_converter(
 
 async def group_converter(
     interaction: Interaction,
-    options: dict[str, ApplicationCommandInteractionDataOption],
+    _options: dict[str, ApplicationCommandInteractionDataOption],
     value: str
 ) -> Group:
     parsed_value = _try_object_id(value)

@@ -1,12 +1,14 @@
 from __future__ import annotations
 from .models import ApplicationCommand, ApplicationCommandType, ApplicationCommandOption, ApplicationIntegrationType, InteractionContextType, Permission, InteractionCallback, ApplicationCommandScope, ApplicationCommandOptionType
 from src.discord.http import Route, request, _get_bot_id
-from collections.abc import Callable
+from typing import Literal, TYPE_CHECKING
 from src.models import project
 from src.db import ProxyMember
-from typing import Literal
 from copy import deepcopy
 import logfire
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 commands: dict[
@@ -125,7 +127,7 @@ async def _sync_commands(
     # ? inject custom userproxy 'proxy' command name
     if scope == ApplicationCommandScope.USERPROXY and 'proxy' in working_commands:
         # ? move the deepcopy to here once the edit command is removed
-        # working_commands = deepcopy(working_commands)
+        working_commands = deepcopy(working_commands)
         if member and member.userproxy:
             options = working_commands['proxy'].options or []
             working_commands['proxy'].options = options[
@@ -238,7 +240,7 @@ def _base_command(
     name: str,
     scope: ApplicationCommandScope = ApplicationCommandScope.PRIMARY,
     parent: ApplicationCommand | ApplicationCommandOption | None = None,
-    **kwargs
+    **kwargs # noqa: ANN003
 ) -> Callable[[InteractionCallback], ApplicationCommand | ApplicationCommandOption]:
     def decorator(func: InteractionCallback) -> ApplicationCommand | ApplicationCommandOption:
         if parent:
@@ -293,7 +295,7 @@ def slash_command(
     )
 
 
-def SlashCommandGroup(
+def SlashCommandGroup( # noqa: N802
     name: str,
     description: str,
     default_member_permissions: Permission | None = None,

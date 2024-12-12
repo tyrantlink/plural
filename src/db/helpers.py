@@ -1,6 +1,5 @@
 from __future__ import annotations
 from pydantic_core import CoreSchema, core_schema
-from pydantic import GetJsonSchemaHandler
 from src.errors import PluralException
 from typing import Any, TYPE_CHECKING
 from src.core.session import session
@@ -10,12 +9,13 @@ from src.models import project
 import logfire
 
 if TYPE_CHECKING:
+    from pydantic import GetJsonSchemaHandler
     from src.db.member import ProxyMember
     from src.db.group import Group
 
 
 class ImageId:
-    def __init__(self, extension: ImageExtension, oid: PydanticObjectId | None = None):
+    def __init__(self, extension: ImageExtension, oid: PydanticObjectId | None = None) -> None:
         self.extension = extension
         self.id = oid or PydanticObjectId()
 
@@ -28,7 +28,7 @@ class ImageId:
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        _source_type: Any,
+        _source_type: Any, # noqa: ANN401
         _handler: GetJsonSchemaHandler,
     ) -> CoreSchema:
         return core_schema.json_or_python_schema(
@@ -46,7 +46,7 @@ class ImageId:
         )
 
     @classmethod
-    def validate(cls, value: Any) -> ImageId:
+    def validate(cls, value: Any) -> ImageId: # noqa: ANN401
         if not isinstance(value, bytes):
             raise ValueError("Invalid value for ImageId")
 

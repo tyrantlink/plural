@@ -16,7 +16,7 @@ router = APIRouter(prefix='/autoproxy', tags=['Autoproxy'])
     responses=docs.get__autoproxy)
 async def get__autoproxy(
     guild_id: int | Literal['global'],
-    token_data: TokenData = Security(api_key_validator)
+    token_data: TokenData = Security(api_key_validator)  # noqa: B008
 ) -> JSONResponse:
     """
     get your autoproxy
@@ -45,7 +45,7 @@ async def get__autoproxy(
 async def patch__autoproxy(
     guild_id: int | Literal['global'],
     patch: AutoProxyPatch,
-    token_data: TokenData = Security(api_key_validator)
+    token_data: TokenData = Security(api_key_validator)  # noqa: B008
 ) -> JSONResponse:
     """
     modify your autoproxy
@@ -85,7 +85,7 @@ async def patch__autoproxy(
     responses=docs.post__autoproxy)
 async def post__autoproxy(
     post: AutoProxyPost,
-    token_data: TokenData = Security(api_key_validator)
+    token_data: TokenData = Security(api_key_validator)  # noqa: B008
 ) -> JSONResponse:
     """
     create a new autoproxy
@@ -121,7 +121,7 @@ async def post__autoproxy(
     responses=docs.put__autoproxy)
 async def put__autoproxy(
     put: AutoProxyPost,
-    token_data: TokenData = Security(api_key_validator)
+    token_data: TokenData = Security(api_key_validator)  # noqa: B008
 ) -> JSONResponse:
     """
     create or replace your autoproxy
@@ -149,7 +149,7 @@ async def put__autoproxy(
     status_code=204)
 async def delete__autoproxy(
     guild_id: int | Literal['global'],
-    token_data: TokenData = Security(api_key_validator)
+    token_data: TokenData = Security(api_key_validator)  # noqa: B008
 ) -> Response:
     """
     delete your autoproxy

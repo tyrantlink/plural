@@ -2,9 +2,10 @@ from src.discord import GatewayEvent, GatewayEventName, GatewayOpCode
 from datetime import datetime, timedelta, UTC
 from pymongo.errors import InvalidOperation
 from src.db import DiscordCache, CacheType
+from collections.abc import Coroutine
 from src.errors import HTTPException
+from contextlib import suppress
 from pymongo import UpdateOne
-from typing import Coroutine
 from copy import deepcopy
 
 
@@ -16,7 +17,8 @@ def now(message: bool = False) -> datetime:
         datetime.now(UTC) + (
             timedelta(hours=23)
             if message else
-            timedelta())
+            timedelta()
+        )
     )
 
 
@@ -24,11 +26,11 @@ async def no_op() -> None:
     return None
 
 
-def Filter(
+def Filter(  # noqa: N802
     snowflake: int,
     guild_id: int | None,
-    **kwargs
-):
+    **kwargs  # noqa: ANN003
+) -> dict:
     return {
         'snowflake': snowflake,
         'guild_id': guild_id,
@@ -36,7 +38,7 @@ def Filter(
     }
 
 
-def Set(
+def Set(  # noqa: N802
     dict: dict,
     set_defaults: bool = True,
     set_guild: bool = True,
@@ -369,20 +371,20 @@ def thread_list_sync(event: GatewayEvent) -> Coroutine:
     )
 
 
-def guild_emojis_update(event: GatewayEvent) -> Coroutine:
+def guild_emojis_update(
+    event: GatewayEvent  # noqa: ARG001
+) -> Coroutine:
     return no_op()  # TODO
 
 
 async def webhooks_update(event: GatewayEvent) -> None:
     from src.discord.http import request, Route
 
-    try:
+    with suppress(InvalidOperation):
         await DiscordCache.get_motor_collection().delete_many({
             'guild_id': int(event.data['guild_id']),
             'data.channel_id': event.data['channel_id'],
             'type': CacheType.WEBHOOK.value})
-    except InvalidOperation:
-        pass
 
     try:
         webhooks = await request(Route(

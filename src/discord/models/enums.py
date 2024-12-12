@@ -1,9 +1,11 @@
 from __future__ import annotations
 from pydantic_core.core_schema import CoreSchema, int_schema, enum_schema, with_info_after_validator_function
-from pydantic import GetJsonSchemaHandler, GetCoreSchemaHandler
 from enum import Enum, StrEnum, IntFlag, EnumMeta
-from pydantic.json_schema import JsonSchemaValue
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pydantic import GetJsonSchemaHandler, GetCoreSchemaHandler
+    from pydantic.json_schema import JsonSchemaValue
 
 CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
@@ -257,8 +259,8 @@ class ApplicationIntegrationType(Enum):
     USER_INSTALL = 1
 
     @classmethod
-    def ALL(cls) -> list[ApplicationIntegrationType]:
-        return [member for member in cls]
+    def ALL(cls) -> list[ApplicationIntegrationType]: # noqa: N802
+        return list(cls)
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -283,8 +285,8 @@ class InteractionContextType(Enum):
     PRIVATE_CHANNEL = 2
 
     @classmethod
-    def ALL(cls) -> list[InteractionContextType]:
-        return [member for member in cls]
+    def ALL(cls) -> list[InteractionContextType]: # noqa: N802
+        return list(cls)
 
 
 class EntryPointCommandHandlerType(Enum):
@@ -668,7 +670,7 @@ class TextInputStyle(Enum):
 class CharEnumMeta(EnumMeta):
     CHARS = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-    def __call__(cls, value: int | str, *args, **kwargs) -> CharEnumMeta:
+    def __call__(cls, value: int | str, *args, **kwargs) -> CharEnumMeta: # noqa: ANN002, ANN003
         if isinstance(value, int):
             return super().__call__(value, *args, **kwargs)
 

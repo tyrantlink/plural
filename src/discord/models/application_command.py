@@ -2,8 +2,8 @@ from __future__ import annotations
 from .enums import ApplicationCommandType, ApplicationCommandOptionType, ChannelType, ApplicationIntegrationType, InteractionContextType, EntryPointCommandHandlerType, Permission, ApplicationCommandScope
 from typing import Annotated, Callable, TYPE_CHECKING
 from .base import RawBaseModel, PydanticArbitraryType
-from .interaction import InteractionCallback
-from src.discord.types import Snowflake
+from .interaction import InteractionCallback  # noqa: TC001
+from src.discord.types import Snowflake  # noqa: TC001
 from pydantic import Field
 
 

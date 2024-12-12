@@ -90,11 +90,11 @@ async def _userproxy_sync(
     except (Unauthorized, NotFound, Forbidden):
         raise InteractionError(
             '\n\n'.join([
-                f'invalid bot token; may be expired',
+                'invalid bot token; may be expired',
                 f'please go to the [discord developer portal](https://discord.com/developers/applications/{bot_id}/bot) to reset the token',
                 'then, use `/member userproxy edit` to update the token, make sure to set `store_token` to True!'
             ])
-        )
+        ) from None
 
     if app.bot is None:
         raise InteractionError('bot not found')
@@ -179,12 +179,11 @@ async def slash_member_new(
         Embed.success(f'member `{name}` created in group `{group.name}`')
     ]
 
-    if group.tag is not None:
-        if len(name+group.tag) > 79:
-            embeds.append(Embed.warning('\n\n'.join([
-                f'member name with group tag is longer than 80 characters.',
-                'display name will be truncated when proxying'
-            ])))
+    if group.tag is not None and len(name+group.tag) > 79:
+        embeds.append(Embed.warning('\n\n'.join([
+            'member name with group tag is longer than 80 characters.',
+            'display name will be truncated when proxying'
+        ])))
 
     await group.add_member(name)
 
@@ -234,7 +233,7 @@ async def slash_member_list(
             for member in await group.get_members()
         ])
         if group is not None else
-        f'\n'.join([  # ? discord strips duplicate spaces, so i have to do the stupid
+        '\n'.join([  # ? discord strips duplicate spaces, so i have to do the stupid
             f'[{group.name}]'.ljust(group_padding).replace('  ', ' ​ ').replace('  ', ' ​ ') +
             (
                 member.name
@@ -491,7 +490,7 @@ async def slash_member_set_bio(
     try:
         app = await Application.fetch_current(userproxy.userproxy.token)
     except Unauthorized:
-        raise InteractionError('invalid bot token')
+        raise InteractionError('invalid bot token') from None
 
     if app.id != userproxy.userproxy.bot_id:
         raise InteractionError('invalid bot token')
@@ -569,7 +568,7 @@ async def slash_member_set_banner(
     try:
         user = await User.fetch('@me', token=userproxy.userproxy.token)
     except Unauthorized:
-        raise InteractionError('invalid bot token')
+        raise InteractionError('invalid bot token') from None
 
     await interaction.response.defer()
 
@@ -853,11 +852,11 @@ async def slash_member_userproxy_new(
     except (Unauthorized, NotFound, Forbidden):
         raise InteractionError(
             '\n\n'.join([
-                f'invalid bot token; may be expired',
+                'invalid bot token; may be expired',
                 f'please go to the [discord developer portal](https://discord.com/developers/applications/{bot_id}/bot) to reset the token',
                 'then, use `/member userproxy edit` to update the token, make sure to set `store_token` to True!'
             ])
-        )
+        ) from None
 
     member.userproxy = ProxyMember.UserProxy(
         bot_id=bot_id,
@@ -1181,11 +1180,11 @@ async def slash_member_userproxy_nickname(
     except NotFound:
         raise InteractionError(
             'bot is not in this server; use `/member userproxy invite` to invite the bot and then use `/member userproxy sync` to sync the bot'
-        )
+        ) from None
     except Forbidden:
         raise InteractionError(
             'bot does not have permission to change it\'s own nickname'
-        )
+        ) from None
 
     await interaction.response.send_message(
         embeds=[Embed.success(

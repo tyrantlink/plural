@@ -1,6 +1,7 @@
 from beanie import Document, PydanticObjectId
 from pymongo import IndexModel
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 
 
@@ -14,14 +15,14 @@ class Message(Document):
     class Settings:
         name = 'messages'
         validate_on_save = True
-        indexes = [
+        indexes: ClassVar = [
             'original_id',
             'proxy_id',
             'author_id',
             IndexModel('ts', expireAfterSeconds=1*24*60*60)
         ]
 
-    id: PydanticObjectId = Field(  # type: ignore
+    id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
     original_id: int | None = Field(
         description='the original id of the message; None if message sent through api')

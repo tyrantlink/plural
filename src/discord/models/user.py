@@ -1,15 +1,15 @@
 from __future__ import annotations
 from src.discord.http import request, Route, _bytes_to_base64_data, _get_bot_id
-from .avatar_decoration import AvatarDecorationData
 from src.db import DiscordCache, CacheType
 from typing import TYPE_CHECKING, Literal
-from .enums import UserFlag, PremiumType
-from src.discord.types import Snowflake
 from src.errors import HTTPException
 from src.models import project
 from .base import RawBaseModel
 
 if TYPE_CHECKING:
+    from .avatar_decoration import AvatarDecorationData
+    from .enums import UserFlag, PremiumType
+    from src.discord.types import Snowflake
     from .member import Member
 
 

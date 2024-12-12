@@ -3,9 +3,9 @@ from .helpers import avatar_getter, avatar_setter, avatar_deleter, ImageId
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
 from src.db.member import ProxyMember
+from typing import Any, ClassVar
 from re import sub, IGNORECASE
 from asyncio import gather
-from typing import Any
 
 
 class Group(Document):
@@ -16,16 +16,18 @@ class Group(Document):
         return hash(self.id)
 
     @model_validator(mode='before')
+    @classmethod
     def _list_to_set(cls, values: dict[Any, Any]) -> dict[Any, Any]:
         for variable in {'accounts', 'members', 'channels'}:
-            value = values.get(variable, None)
+            value = values.get(variable)
             if value is not None and isinstance(value, list):
                 values[variable] = set(value)
         return values
 
     @model_validator(mode='before')
+    @classmethod
     def _handle_clyde(cls, values: dict[Any, Any]) -> dict[Any, Any]:
-        if (tag := values.get('tag', None)) is None:
+        if (tag := values.get('tag')) is None:
             return values
 
         # ? just stolen from pluralkit https://github.com/PluralKit/PluralKit/blob/214a6d5a4933b975068b0272c98d178a47b487d5/src/pluralkit/bot/proxy.py#L62
@@ -38,12 +40,13 @@ class Group(Document):
         return values
 
     @model_validator(mode='before')
+    @classmethod
     def _handle_avatar(cls, values: dict[Any, Any]) -> dict[Any, Any]:
-        if isinstance((avatar := values.get('avatar', None)), bytes):
+        if isinstance((avatar := values.get('avatar')), bytes):
             values['avatar'] = ImageId.validate(avatar)
         return values
 
-    def dict(self, *args, **kwargs) -> dict[str, Any]:
+    def dict(self, *args, **kwargs) -> dict[str, Any]: # noqa: ANN002, ANN003
         data = super().dict(*args, **kwargs)
         for variable in {'accounts', 'members', 'channels'}:
             if data.get(variable, None) is not None:
@@ -54,10 +57,10 @@ class Group(Document):
         name = 'groups'
         validate_on_save = True
         use_state_management = True
-        indexes = ['accounts', 'members', 'name']
-        bson_encoders = {ImageId: bytes}
+        indexes: ClassVar = ['accounts', 'members', 'name']
+        bson_encoders: ClassVar = {ImageId: bytes}
 
-    id: PydanticObjectId = Field(  # type: ignore
+    id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
     name: str = Field(
         description='the name of the group',

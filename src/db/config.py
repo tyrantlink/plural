@@ -17,7 +17,7 @@ class Config(Document):
         validate_on_save = True
         use_state_management = True
 
-    id: int = Field(  # type: ignore
+    id: int = Field(  # pyright: ignore #? unknown pyright rule
         description='either guild id or user id; currently always guild id')
 
     @classmethod

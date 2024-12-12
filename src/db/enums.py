@@ -2,8 +2,8 @@ from enum import Enum
 
 
 __all__ = (
-    'ImageExtension',
     'CacheType',
+    'ImageExtension',
     'ReplyFormat',
 )
 
@@ -11,7 +11,7 @@ __all__ = (
 class ImageExtension(Enum):
     PNG = 0
     JPG = 1
-    JPEG = 1
+    JPEG = 1 # noqa: PIE796
     GIF = 2
     WEBP = 3
 

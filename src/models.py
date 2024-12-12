@@ -1,12 +1,14 @@
 from __future__ import annotations
 from pydantic import GetJsonSchemaHandler, GetCoreSchemaHandler
+from typing import TypeVar, Union, Any, Literal, TYPE_CHECKING
 from pydantic_core import CoreSchema, core_schema
-from pydantic.json_schema import JsonSchemaValue
-from typing import TypeVar, Union, Any, Literal
 from enum import StrEnum, Enum
 from pydantic import BaseModel
 from base64 import b64decode
 from tomllib import loads
+
+if TYPE_CHECKING:
+    from pydantic.json_schema import JsonSchemaValue
 
 
 LEGACY_FOOTERS = {
@@ -88,13 +90,16 @@ class _MissingType:
     def __copy__(self) -> _MissingType:
         return self
 
-    def __deepcopy__(self, _: Any) -> _MissingType:
+    def __deepcopy__(
+        self,
+        _: Any  # noqa: ANN401
+    ) -> _MissingType:
         return self
 
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        _source_type: Any,
+        _source_type: Any,  # noqa: ANN401
         _handler: GetCoreSchemaHandler
     ) -> CoreSchema:
         return core_schema.json_or_python_schema(
@@ -120,5 +125,5 @@ MissingOr = Union[T, _MissingType]
 MissingNoneOr = Union[T, None, _MissingType]
 
 
-with open('project.toml', 'r') as f:
+with open('project.toml') as f:
     project = Project.model_validate(loads(f.read()))

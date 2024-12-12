@@ -1,6 +1,7 @@
 from beanie import Document, PydanticObjectId
 from pymongo import IndexModel
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 
 
@@ -15,15 +16,16 @@ class GroupShare(Document):
         name = 'group_shares'
         validate_on_save = True
         use_state_management = True
-        indexes = [
+        indexes: ClassVar = [
             ('sharer', 'sharee'),  # ? compound index
             IndexModel('ts', expireAfterSeconds=60*60*24)
         ]
 
-    id: PydanticObjectId = Field(  # type: ignore
+    id: PydanticObjectId = Field( # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
     sharer: int = Field(description='sharer user id')
     sharee: int | None = Field(description='sharee user id')
     group: PydanticObjectId = Field(description='group id')
-    ts: datetime = Field(default_factory=datetime.utcnow,
-                         description='timestamp')
+    ts: datetime = Field(
+        default_factory=datetime.utcnow,
+        description='timestamp')

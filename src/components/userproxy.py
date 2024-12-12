@@ -5,8 +5,8 @@ from asyncio import gather
 
 
 __all__ = (
-    'umodal_send',
     'umodal_edit',
+    'umodal_send',
 )
 
 
@@ -106,7 +106,8 @@ async def umodal_edit(
         og_message = await interaction.channel.fetch_message(message_id)
     except HTTPException:
         raise InteractionError(
-            'message not found\ndue to discord limitations, you can\'t edit messages that are older than 15 minutes')
+            'message not found\ndue to discord limitations, you can\'t edit messages that are older than 15 minutes'
+        ) from None
 
     await gather(
         og_message.edit(

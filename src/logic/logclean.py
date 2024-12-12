@@ -37,7 +37,7 @@ class LogExtract:
 
 
 @listen(ListenerType.MESSAGE_CREATE)
-async def on_message_create(event: MessageCreateEvent):
+async def on_message_create(event: MessageCreateEvent) -> None:
     if (
         event.author is None or
         not event.author.bot or

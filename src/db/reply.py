@@ -1,7 +1,7 @@
 from __future__ import annotations
 from beanie import Document, PydanticObjectId
+from typing import TYPE_CHECKING, ClassVar
 from pydantic import Field, BaseModel
-from typing import TYPE_CHECKING
 from pymongo import IndexModel
 from datetime import datetime
 from io import BytesIO
@@ -21,7 +21,7 @@ class Reply(Document):
         name = 'replies'
         validate_on_save = True
         use_state_management = True
-        indexes = [
+        indexes: ClassVar = [
             ('bot_id', 'channel'),  # ? compound index
             IndexModel('ts', expireAfterSeconds=300)
         ]
@@ -41,7 +41,7 @@ class Reply(Document):
                 spoiler=self.filename.startswith('SPOILER_')
             )
 
-    id: PydanticObjectId = Field(  # type: ignore
+    id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
     bot_id: int = Field(description='bot id')
     channel: int = Field(description='the channel id of the reply')

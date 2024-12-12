@@ -2,13 +2,19 @@ from src.discord import Interaction, ApplicationCommandInteractionData, Applicat
 from typing import NamedTuple, Protocol
 from thefuzz.utils import full_process
 from src.db import ProxyMember, Group
+from collections.abc import Callable
 from beanie import PydanticObjectId
 from bson.errors import InvalidId
 from thefuzz import process
 
 
 class AutocompleteCallback(Protocol):
-    async def __call__(self, interaction: Interaction, *args, **kwargs) -> list[ApplicationCommandOptionChoice]:
+    async def __call__(
+        self,
+        interaction: Interaction,
+        *args,  # noqa: ANN002
+        **kwargs  # noqa: ANN003
+) -> list[ApplicationCommandOptionChoice]:
         ...
 
 
@@ -22,7 +28,7 @@ class ProcessedMember(NamedTuple):
 __callbacks: dict[str, AutocompleteCallback] = {}
 
 
-def autocomplete(option_name: str):
+def autocomplete(option_name: str) -> Callable[[AutocompleteCallback], AutocompleteCallback]:
     def decorator(func: AutocompleteCallback) -> AutocompleteCallback:
         if option_name in __callbacks:
             raise ValueError(f'listener for {option_name} already exists')
@@ -38,7 +44,6 @@ async def on_autocomplete(interaction: Interaction) -> None:
 
     options = interaction.data.options or []
     focused_option = None
-    from asyncio import sleep
 
     while focused_option is None:
         for option in options:
@@ -93,12 +98,12 @@ async def autocomplete_member(
         if selected_group is not None and group.name != selected_group.value:
             continue
 
-        members.extend((
+        members.extend(
             (member, group)
             for member in
             await group.get_members()
             if not userproxies_only or member.userproxy is not None
-        ))
+        )
 
     def return_members(
         members: list[tuple[ProxyMember, Group]]
@@ -193,7 +198,7 @@ async def autocomplete_userproxy(
 
 @autocomplete('proxy_tag')
 async def autocomplete_proxy_tag(
-    interaction: Interaction,
+    interaction: Interaction,  # noqa: ARG001
     options: dict[str, ApplicationCommandInteractionDataOption]
 ) -> list[ApplicationCommandOptionChoice]:
 

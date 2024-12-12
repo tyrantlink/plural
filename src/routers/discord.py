@@ -7,9 +7,9 @@ from src.core.auth import discord_key_validator
 from pymongo.errors import DuplicateKeyError
 from src.discord.types import ListenerType
 from src.models import project, INSTANCE
+from src.utils import create_strong_task
 from src.discord.listeners import emit
 from src.logic import discord_cache
-from asyncio import create_task
 from hashlib import sha256
 import logfire
 
@@ -42,7 +42,7 @@ async def _handle_gateway_event(event: GatewayEvent) -> Response:
 
     try:  # ? temp try/except while work in progress
         await discord_cache(event)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         logfire.error(
             'caching error on {event_name} event',
             event_name=event.name,
@@ -71,7 +71,7 @@ async def _handle_gateway_event(event: GatewayEvent) -> Response:
         case _:
             raise HTTPException(500, 'event accepted but not handled')
 
-    create_task(task)
+    create_strong_task(task)
 
     return Response(event.name, status_code=200)
 
@@ -84,7 +84,7 @@ async def _handle_webhook_event(event: WebhookEvent) -> Response:
     if not event.event:
         return Response(status_code=200)
 
-    create_task(emit(
+    create_strong_task(emit(
         ListenerType.WEBHOOK_EVENT,
         event
     ))
@@ -105,7 +105,7 @@ async def post__interaction(
 
     await interaction.populate()
 
-    create_task(emit(
+    create_strong_task(emit(
         ListenerType.INTERACTION,
         interaction
     ))

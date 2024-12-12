@@ -1,8 +1,11 @@
 from __future__ import annotations
 from pydantic_core import CoreSchema, core_schema
-from pydantic.json_schema import JsonSchemaValue
-from pydantic import GetJsonSchemaHandler
+from typing import TYPE_CHECKING
 from enum import StrEnum
+
+if TYPE_CHECKING:
+    from pydantic.json_schema import JsonSchemaValue
+    from pydantic import GetJsonSchemaHandler
 
 
 __all__ = ('Snowflake',)
@@ -13,7 +16,7 @@ class Snowflake(int):
     @classmethod
     def __get_pydantic_core_schema__(
         cls,
-        _source_type: type["Snowflake"] | None,
+        _source_type: type[Snowflake] | None,
         _handler: GetJsonSchemaHandler,
     ) -> CoreSchema:
         return core_schema.json_or_python_schema(

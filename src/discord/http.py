@@ -25,7 +25,7 @@ from __future__ import annotations
 from src.errors import HTTPException, Forbidden, NotFound, ServerError, Unauthorized, InteractionError
 from aiohttp import __version__ as aiohttp_version, FormData, ClientResponse
 from asyncio import sleep, Lock, Event, get_event_loop
-from typing import Any, Iterable, Sequence
+from typing import Any, TYPE_CHECKING
 from datetime import datetime, timezone
 from weakref import WeakValueDictionary
 from base64 import b64encode, b64decode
@@ -33,11 +33,15 @@ from src.core.session import session
 from re import match, IGNORECASE
 from src.version import VERSION
 from orjson import dumps, loads
-from types import TracebackType
 from urllib.parse import quote
 from src.models import project
-from io import BufferedIOBase
 from sys import version_info
+
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+    from types import TracebackType
+    from io import BufferedIOBase
 
 
 BASE_URL = 'https://discord.com/api/v10'
@@ -60,7 +64,7 @@ class Route:
         path: str,
         discord: bool = True,
         token: str | None = None,
-        **params
+        **params # noqa: ANN003
     ) -> None:
         self.method = method
         self.path = path
@@ -140,7 +144,7 @@ class File:
         spoiler: bool = False,
         duration_secs: float | None = None,
         waveform: str | None = None,
-    ):
+    ) -> None:
         self.data = data
         self._original_pos = data.tell()
         self.filename = filename
@@ -195,17 +199,16 @@ class File:
         }
 
 
-def _get_mime_type_for_image(data: bytes):
+def _get_mime_type_for_image(data: bytes) -> str:
     if data.startswith(b'\x89\x50\x4e\x47\x0d\x0a\x1a\x0a'):
         return 'image/png'
-    elif data[0:3] == b'\xff\xd8\xff' or data[6:10] in (b'JFIF', b'Exif'):
+    if data[0:3] == b'\xff\xd8\xff' or data[6:10] in (b'JFIF', b'Exif'):
         return 'image/jpeg'
-    elif data.startswith((b'\x47\x49\x46\x38\x37\x61', b'\x47\x49\x46\x38\x39\x61')):
+    if data.startswith((b'\x47\x49\x46\x38\x37\x61', b'\x47\x49\x46\x38\x39\x61')):
         return 'image/gif'
-    elif data.startswith(b'RIFF') and data[8:12] == b'WEBP':
+    if data.startswith(b'RIFF') and data[8:12] == b'WEBP':
         return 'image/webp'
-    else:
-        raise ValueError('unsupported image type given')
+    raise ValueError('unsupported image type given')
 
 
 def _bytes_to_base64_data(data: bytes) -> str:
@@ -234,12 +237,12 @@ async def request(
     files: Sequence[File] | None = None,
     form: Iterable[dict[str, Any]] | None = None,
     json: dict[str, Any] | list[Any] | None = None,
-    data: Any | None = None,
+    data: Any | None = None, # noqa: ANN401
     reason: str | None = None,
     locale: str | None = None,
     token: str | None = project.bot_token,
-    **kwargs,
-) -> Any:
+    **kwargs, # noqa: ANN003
+) -> Any: # noqa: ANN401
     route.token = token
 
     lock = __locks.get(route.bucket)

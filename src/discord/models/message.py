@@ -6,23 +6,25 @@ from asyncio import get_event_loop, create_task
 from .channel import ChannelMention, Channel
 from typing import ForwardRef, TYPE_CHECKING
 from src.db import DiscordCache, CacheType
-from .sticker import Sticker, StickerItem
 from src.discord.types import Snowflake
-from .role import RoleSubscriptionData
-from .application import Application
-from .attachment import Attachment
-from .component import Component
-from .reaction import Reaction
 from src.models import project
 from .base import RawBaseModel
-from datetime import datetime
 from pydantic import Field
 from regex import finditer
 from .guild import Guild
-from .embed import Embed
 from orjson import dumps
-from .user import User
-from .poll import Poll
+
+if TYPE_CHECKING:
+    from .sticker import Sticker, StickerItem
+    from .role import RoleSubscriptionData
+    from .application import Application
+    from .attachment import Attachment
+    from .component import Component
+    from .reaction import Reaction
+    from datetime import datetime
+    from .embed import Embed
+    from .user import User
+    from .poll import Poll
 
 
 ResolvedRef = ForwardRef('Resolved')

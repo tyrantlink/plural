@@ -1,6 +1,7 @@
 from beanie import Document, PydanticObjectId
 from pymongo import IndexModel
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 
 
@@ -14,7 +15,7 @@ class UserProxyInteraction(Document):
     class Settings:
         name = 'userproxy_interaction'
         validate_on_save = True
-        indexes = [
+        indexes: ClassVar = [
             'message_id',
             'application_id',
             'channel_id',
@@ -22,7 +23,7 @@ class UserProxyInteraction(Document):
             IndexModel('ts', expireAfterSeconds=880)
         ]
 
-    id: PydanticObjectId = Field(  # type: ignore
+    id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
     author_id: int = Field(description='the id of the author')
     application_id: int = Field(

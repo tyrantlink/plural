@@ -1,12 +1,15 @@
 from __future__ import annotations
+from typing import ClassVar, TYPE_CHECKING, Self
 from src.models import MissingNoneOr, MISSING
 from datetime import datetime, UTC
 from pymongo import IndexModel
 from .enums import CacheType
-from typing import Sequence
 from beanie import Document
 from pydantic import Field
 import logfire
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 class DiscordCache(Document):
@@ -19,13 +22,13 @@ class DiscordCache(Document):
     class Settings:
         name = 'discord_cache'
         validate_on_save = True
-        indexes = [  # ? one day expiration
+        indexes: ClassVar = [  # ? one day expiration
             IndexModel('ts', expireAfterSeconds=60*60*24),
             'snowflake',
             IndexModel([('snowflake', 1), ('guild_id', 1)], unique=True)
         ]
 
-    snowflake: int = Field(  # type: ignore
+    snowflake: int = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         description='snowflake id of the discord object')
     type: CacheType = Field(
         description='type of the discord object')
@@ -45,13 +48,16 @@ class DiscordCache(Document):
         description='timestamp for ttl index')
 
     @classmethod
-    async def get(
+    async def get( # pyright: ignore[reportIncompatibleMethodOverride]
         cls,
         snowflake: int,
         guild_id: MissingNoneOr[int] = MISSING
     ) -> DiscordCache | None:
-        async def _get(cls, snowflake: int, guild_id: MissingNoneOr[int] = MISSING
-                       ) -> DiscordCache | None:
+        async def _get(
+            cls: type[Self],
+            snowflake: int,
+            guild_id: MissingNoneOr[int] = MISSING
+        ) -> DiscordCache | None:
             if guild_id is MISSING:
                 return await cls.find_one({'snowflake': snowflake})
 
@@ -109,6 +115,8 @@ class DiscordCache(Document):
                     raise ValueError('guild_id is required for members')
 
                 return await member_update(data, guild_id)
+            case _:
+                raise ValueError('invalid cache type')
 
         await discord_cache(GatewayEvent(
             op=GatewayOpCode.DISPATCH,
@@ -116,6 +124,8 @@ class DiscordCache(Document):
             d=data,
             s=0
         ))
+
+        return None
 
     @classmethod
     async def http4xx(
@@ -150,7 +160,7 @@ class DiscordCache(Document):
         channel_id: int,
         guild_id: int | None = None
     ) -> DiscordCache | None:
-        channel = await cls.find_one(
+        return await cls.find_one(
             {
                 'snowflake': channel_id,
                 'guild_id': (
@@ -160,8 +170,6 @@ class DiscordCache(Document):
                 )
             }
         )
-
-        return channel
 
     @classmethod
     async def get_guild(

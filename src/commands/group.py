@@ -114,7 +114,7 @@ async def slash_group_remove(
         response += (
             f' and all {count} of it\'s members'
             if count-1 else
-            f' and it\'s only member'
+            ' and it\'s only member'
         )
 
         tasks.extend([
@@ -322,7 +322,7 @@ async def slash_group_set_tag(
         ]
 
         if members_over_length:
-            members_str = f'the following members will have truncated tags when proxying messages:'
+            members_str = 'the following members will have truncated tags when proxying messages:'
 
             for member in members_over_length:
                 if len(f'{members_str}\n{member.name}') > 4096:

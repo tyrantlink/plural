@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator, Callable, Awaitable
 from fastapi import FastAPI, Response, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from logging import getLogger, Filter, LogRecord
@@ -28,17 +29,17 @@ getLogger("uvicorn.access").addFilter(LocalHealthcheckFilter())
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from src.db import MongoDatabase
     from .session import session
 
-    DB = MongoDatabase(project.mongo_uri)
+    db = MongoDatabase(project.mongo_uri)
 
-    await DB.connect()
+    await db.connect()
 
     # ? start running bot code
     import src.logic
-    import src.commands
+    import src.commands # noqa: F401
     from src.discord.commands import sync_commands
 
     logfire.info('started on instance {instance_id}', instance_id=INSTANCE)
@@ -112,7 +113,10 @@ if project.logfire_token:
 
 
 @app.middleware("http")
-async def set_client_ip(request: Request, call_next):
+async def set_client_ip(
+    request: Request,
+    call_next: Callable[..., Awaitable[Any]]
+) -> Any: # noqa: ANN401
     client_ip = request.headers.get('CF-Connecting-IP')
 
     if client_ip and request.client is not None:
@@ -122,14 +126,14 @@ async def set_client_ip(request: Request, call_next):
 
 
 @app.exception_handler(DuplicateEventError)
-def handle_duplicate_event_error(request: Request, exc: DuplicateEventError):
+def handle_duplicate_event_error(_request: Request, _exc: DuplicateEventError) -> Response:
     return Response('DUPLICATE_EVENT', 200)
 
 
 @app.get(
     '/',
     responses=docs.get__root)
-async def get__root():
+async def get__root() -> dict[str, str]:
     return {
         'message': 'this is very basic i\'ll work on it later',
         'instance': INSTANCE,
@@ -141,5 +145,5 @@ async def get__root():
     '/healthcheck',
     status_code=204,
     include_in_schema=False)
-async def get__healthcheck():
+async def get__healthcheck() -> Response:
     return Response(status_code=204)

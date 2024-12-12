@@ -14,3 +14,4 @@ class LogMessage(StrEnum):
     AVATAR_FAILED = 'E: failed to download avatar for {object_type} {object_name}'
     GROUP_TAG_TOO_LONG = 'E: group "{group_name}" tag "{tag}" is too long; skipping'
     NOTHING_IMPORTED = 'E: nothing was imported'
+    AVATAR_TOO_LARGE = 'E: avatar for {object_type} {object_name} is too large (max 8mb); skipping'

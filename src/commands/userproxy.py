@@ -1,5 +1,5 @@
 from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType, InteractionContextType, Webhook, AllowedMentions
-from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape
+from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape # noqa: N812
 from src.db import Reply, UserProxyInteraction, ReplyFormat, UserConfig
 from src.components.userproxy import umodal_send, umodal_edit
 from src.errors import InteractionError, NotFound
@@ -54,13 +54,14 @@ async def _sed_edit(
         original_message = await webhook.fetch_message('@original')
     except NotFound:
         raise InteractionError(
-            'original message not found; message may have been deleted')
+            'original message not found; message may have been deleted'
+        ) from None
 
     try:
         edited_content = sub(
             escape(expression), replacement, original_message.content, count=count, flags=flags)
     except RegexError:
-        raise InteractionError('invalid regular expression')
+        raise InteractionError('invalid regular expression') from None
 
     embed = (
         Embed.success('message edited')
@@ -241,8 +242,6 @@ async def umessage_reply(
 
     if isinstance(proxy_with_reply, str):
         proxy_content = proxy_with_reply
-    else:
-        embed = proxy_with_reply
 
     mentions = AllowedMentions.parse_content(
         proxy_content or '').strip_mentions(reply_mentions)
@@ -260,7 +259,7 @@ async def umessage_reply(
     sent_message = await interaction.send(
         content=proxy_content or None,
         attachments=attachments,
-        embeds=[embed] if isinstance(proxy_with_reply, Embed) else None,
+        embeds=[proxy_with_reply] if isinstance(proxy_with_reply, Embed) else None,
         allowed_mentions=mentions,
         flags=MessageFlag.NONE
     )

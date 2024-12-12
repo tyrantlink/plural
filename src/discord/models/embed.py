@@ -1,10 +1,11 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from .base import RawBaseModel
-from datetime import datetime
+
 
 if TYPE_CHECKING:
     from .message import Message
+    from datetime import datetime
 
 
 class EmbedFooter(RawBaseModel):

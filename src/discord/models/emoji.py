@@ -1,9 +1,13 @@
 from __future__ import annotations
 from src.discord.http import get_from_cdn, request, Route, _bytes_to_base64_data
-from src.discord.types import Snowflake
+from src.discord.types import Snowflake  # noqa: TC001
+from typing import TYPE_CHECKING
 from src.models import project
 from .base import RawBaseModel
-from .user import User
+
+
+if TYPE_CHECKING:
+    from .user import User
 
 
 class Emoji(RawBaseModel):

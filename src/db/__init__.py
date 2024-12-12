@@ -1,5 +1,5 @@
 from .userproxy_interaction import UserProxyInteraction
-from .config import Config, GuildConfig, UserConfig
+from .config import Config, GuildConfig, UserConfig # noqa: F401
 from .discord_cache import DiscordCache
 from pymongo import AsyncMongoClient
 from .group_share import GroupShare
@@ -15,7 +15,7 @@ from logfire import span
 from .group import Group
 from .latch import Latch
 from .reply import Reply
-from .enums import *
+from .enums import * # noqa: F403
 from .log import Log
 
 

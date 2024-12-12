@@ -1,12 +1,11 @@
 from __future__ import annotations
 from src.db import ApiKey, Group, ProxyMember, Message, Latch, Reply, CFCDNProxy
+from src.utils import create_strong_task
 from src.errors import PluralException
 from src.core.session import session
-from beanie import PydanticObjectId
 from urllib.parse import urlparse
 from asyncio import gather, sleep
 from typing import TYPE_CHECKING
-from asyncio import create_task
 from src.models import project
 from datetime import datetime
 from .base import BaseExport
@@ -15,6 +14,7 @@ from pydantic import Field
 
 if TYPE_CHECKING:
     from .standard import StandardExport
+    from beanie import PydanticObjectId
 
 
 class PluralExport(BaseExport):
@@ -314,7 +314,7 @@ class PluralExport(BaseExport):
             await sleep(1)
             message = await DiscordMessage.fetch(project.import_proxy_channel_id, message.id)
         else:
-            create_task(message.delete())
+            create_strong_task(message.delete())
             self.logs.append(LogMessage.AVATAR_FAILED.format(
                 object_type=object_type, object_name=object_name))
             return None
@@ -322,7 +322,7 @@ class PluralExport(BaseExport):
         image = message.embeds[0].image or message.embeds[0].thumbnail
         assert image is not None
 
-        create_task(message.delete())
+        create_strong_task(message.delete())
 
         async with session.get(image.url) as resp:
             content_length = resp.headers.get('Content-Length')
@@ -374,7 +374,7 @@ class PluralExport(BaseExport):
         except PluralException:
             self.logs.append(LogMessage.AVATAR_TOO_LARGE.format(
                 object_type=object_type, object_name=object_name))
-        except Exception:
+        except Exception:  # noqa: BLE001
             self.logs.append(
                 LogMessage.AVATAR_FAILED.format(
                     object_type=object_type, object_name=object_name))

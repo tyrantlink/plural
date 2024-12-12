@@ -2,7 +2,7 @@ from src.discord import slash_command, Interaction, message_command, Interaction
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, GuildConfig, UserConfig, ReplyFormat
 from src.components import modal_plural_edit, umodal_edit, button_api_key, help_components, button_delete_all_data
 from src.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport, LogMessage
-from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape
+from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape # noqa: N812
 from src.errors import InteractionError, Forbidden, PluralException
 from src.logic.proxy import get_proxy_webhook, process_proxy
 from src.version import VERSION, LAST_TEN_COMMITS
@@ -45,7 +45,7 @@ async def _sed_edit(
         edited_content = sub(
             escape(expression), replacement, message.content, count=count, flags=flags)
     except RegexError:
-        raise InteractionError('invalid regular expression')
+        raise InteractionError('invalid regular expression') from None
 
     embed = (
         Embed.success('message edited')
@@ -103,7 +103,7 @@ async def slash_ping(interaction: Interaction) -> None:
     timestamp = (interaction.id >> 22) + 1420070400000
 
     await interaction.response.send_message(
-        f'pong! ({round((time()*1000-timestamp))}ms)'
+        f'pong! ({round(time()*1000-timestamp)}ms)'
     )
 
 
@@ -124,7 +124,7 @@ async def message_plural_edit(interaction: Interaction, message: Message) -> Non
     try:
         await get_proxy_webhook(interaction.channel)
     except Forbidden:
-        raise InteractionError('bot does not access to this channel')
+        raise InteractionError('bot does not access to this channel') from None
 
     db_message = await DBMessage.find_one({'proxy_id': message.id})
 
@@ -390,9 +390,9 @@ async def message_plural_debug(interaction: Interaction, message: Message) -> No
 async def message_plural_proxy_info(interaction: Interaction, message: Message) -> None:
     if (
         message.author is None or
-        message.webhook_id is None and
+        (message.webhook_id is None and
         message.interaction_metadata is None and
-        not message.author.bot
+        not message.author.bot)
     ):
         raise InteractionError('message is not a proxied message!')
 
@@ -559,8 +559,8 @@ async def slash_import(
 
     try:
         data = loads(await get_from_cdn(url))
-    except Exception:
-        raise InteractionError('failed to read file')
+    except Exception: # noqa: BLE001
+        raise InteractionError('failed to read file') from None
 
     for model in (PluralKitExport, PluralExport, TupperboxExport, StandardExport):
         try:

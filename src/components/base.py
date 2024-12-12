@@ -6,9 +6,9 @@ from src.errors import InteractionError
 from asyncio import gather
 
 __all__ = (
-    'modal_plural_edit',
     'button_api_key',
     'button_delete_all_data',
+    'modal_plural_edit',
 )
 
 

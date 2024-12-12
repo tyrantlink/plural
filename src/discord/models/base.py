@@ -5,7 +5,7 @@ from typing import Self
 
 
 class RawBaseModel(BaseModel):
-    def __init__(self, **data):
+    def __init__(self, **data) -> None: # noqa: ANN003
         super().__init__(**data)
         self.__raw_data = data.copy()
 

@@ -1,21 +1,22 @@
 from __future__ import annotations
+from contextlib import suppress
 from .enums import Permission, VerificationLevel, DefaultMessageNotificationLevel, ExplicitContentFilterLevel, GuildFeature, MFALevel, SystemChannelFlag, PremiumTier, NSFWLevel
 from src.models import project, MISSING, MissingNoneOr
 from pydantic import model_validator, field_validator
 from src.discord.http import Route, request
 from src.db import DiscordCache, CacheType
-from src.discord.types import Snowflake
+from src.discord.types import Snowflake  # noqa: TC001
 from src.errors import HTTPException
 from typing import TYPE_CHECKING
 from .base import RawBaseModel
-from .sticker import Sticker
 from asyncio import gather
-from .emoji import Emoji
 from .role import Role
 import logfire
 
 if TYPE_CHECKING:
+    from .sticker import Sticker
     from .member import Member
+    from .emoji import Emoji
 
 
 class WelcomeScreenChannel(RawBaseModel):
@@ -76,6 +77,7 @@ class Guild(RawBaseModel):
     safety_alerts_channel_id: Snowflake | None = None
 
     @model_validator(mode='before')
+    @classmethod
     def _ensure_premium_tier(cls, data: dict) -> dict:
         if (
             data.get('premium_tier') is not None or
@@ -97,9 +99,9 @@ class Guild(RawBaseModel):
 
     @field_validator('features', mode='before')
     @classmethod
-    def validate_guild_feature(cls, v):
+    def validate_guild_feature(cls, v: list[GuildFeature] | None) -> list[GuildFeature]:
         features = []
-        for feature in v:
+        for feature in v or []:
             if feature in GuildFeature.__members__:
                 features.append(GuildFeature(feature))
                 continue
@@ -123,10 +125,8 @@ class Guild(RawBaseModel):
         await super().populate()
 
         if not self.roles:
-            try:
+            with suppress(HTTPException):
                 self.roles = await self.fetch_roles()
-            except HTTPException:
-                pass
 
     @classmethod
     async def fetch(cls, guild_id: Snowflake | int) -> Guild:

@@ -8,9 +8,10 @@ components: dict[str, Modal | Button] = {}
 def modal(
     custom_id: str,
     title: str | None = None,
-    text_inputs: list[TextInput] = [],
+    text_inputs: list[TextInput] | None = None,
     extra: list[str] | None = None
 ) -> Callable[[InteractionCallback], Modal]:
+    text_inputs = text_inputs or []
     def decorator(callback: InteractionCallback) -> Modal:
         modal = Modal(
             title=title,

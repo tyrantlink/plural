@@ -1,6 +1,7 @@
 from beanie import Document, PydanticObjectId
 from pymongo import IndexModel
 from datetime import datetime
+from typing import ClassVar
 from pydantic import Field
 
 
@@ -15,11 +16,11 @@ class Log(Document):
         name = 'logs'
         validate_on_save = True
         use_state_management = True
-        indexes = [
+        indexes: ClassVar = [
             IndexModel('ts', expireAfterSeconds=60)
         ]
 
-    id: PydanticObjectId = Field(  # type: ignore
+    id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
     ts: datetime = Field(
         default_factory=datetime.utcnow,

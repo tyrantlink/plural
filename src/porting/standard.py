@@ -41,11 +41,7 @@ class StandardExport(BaseExport):
         return PluralExport.from_standard(self, self.logs)
 
     def to_pluralkit(self) -> PluralKitExport:
-        # from .pluralkit import PluralKitExport
-        # return await PluralKitExport.from_standard(self, self.logs)
         ...  # ? would be a lot of effort, so maybe not
 
     def to_tupperbox(self) -> TupperboxExport:
-        # from .tupperbox import TupperboxExport
-        # return await TupperboxExport.from_standard(self, self.logs)
         ...  # ? would be a lot of effort, so maybe not
