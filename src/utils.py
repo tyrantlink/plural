@@ -11,5 +11,8 @@ def create_strong_task(coroutine: Coroutine) -> Task:
     create a task that will not be cancelled by the event loop
     """
     task = create_task(coroutine)
-    task.add_done_callback(lambda _: None)
+
+    tasks = {task}
+
+    task.add_done_callback(tasks.discard)
     return task
