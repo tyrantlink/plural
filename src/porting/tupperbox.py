@@ -3,12 +3,12 @@ from typing import TYPE_CHECKING, Annotated
 from annotated_types import MinLen, MaxLen
 from contextlib import suppress
 from pydantic import BaseModel
+from datetime import datetime
 from .base import BaseExport
 
 
 if TYPE_CHECKING:
     from .standard import StandardExport
-    from datetime import datetime
 
 
 class TupperboxExport(BaseExport):

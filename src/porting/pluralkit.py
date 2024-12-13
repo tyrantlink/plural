@@ -2,12 +2,12 @@ from __future__ import annotations
 from src.models import MISSING, MissingOr, MissingNoneOr
 from typing import TYPE_CHECKING
 from pydantic import BaseModel
+from datetime import datetime
 from .base import BaseExport
 from enum import StrEnum
 
 if TYPE_CHECKING:
     from .standard import StandardExport
-    from datetime import datetime
 
 
 class PrivacyLevel(StrEnum):
