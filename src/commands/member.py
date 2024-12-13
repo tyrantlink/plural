@@ -217,6 +217,12 @@ async def slash_member_list(
     groups = [group] if group is not None else await Group.find(
         {'accounts': interaction.author_id}).to_list()
 
+    groups = [
+        group
+        for group in groups
+        if group.members
+    ]
+
     if not groups:
         await interaction.response.send_message(
             embeds=[Embed.success(
@@ -228,7 +234,6 @@ async def slash_member_list(
     group_padding = max(
         len(group.name)
         for group in groups
-        if group.members
     ) + 3
 
     message = (
