@@ -30,9 +30,13 @@ async def member_converter(
         group = await group_converter(
             interaction,
             options,
-            str(group_option.value) if group_option is not None else 'default'
-        )
-        member = await group.get_member_by_name(value)
+            str(group_option.value) if group_option is not None else 'default')
+
+        member = await group.get_member_by_name((
+            split[1]
+            if len(split := value.split('] ', 1)) == 2
+            else value
+        ))
 
     if member is None:
         raise ConversionError('member not found')
