@@ -578,13 +578,14 @@ async def process_proxy(
         return False, None, token, None
 
     if len(proxy_content) > 1980:
-        await message.channel.send(
-            'i cannot proxy message over 1980 characters',
-            reference=message,
-            allowed_mentions=AllowedMentions(
-                replied_user=False),
-            delete_after=10
-        )
+        if not debug_log:
+            await message.channel.send(
+                'i cannot proxy message over 1980 characters',
+                reference=message,
+                allowed_mentions=AllowedMentions(
+                    replied_user=False),
+                delete_after=10
+            )
 
         if debug_log:
             debug_log.append(DebugMessage.OVER_TEXT_LIMIT)
@@ -596,13 +597,14 @@ async def process_proxy(
         for attachment in
         message.attachments
     ) > message.guild.filesize_limit:
-        await message.channel.send(
-            'attachments are above the file size limit',
-            reference=message,
-            allowed_mentions=AllowedMentions(
-                replied_user=False),
-            delete_after=10
-        )
+        if not debug_log:
+            await message.channel.send(
+                'attachments are above the file size limit',
+                reference=message,
+                allowed_mentions=AllowedMentions(
+                    replied_user=False),
+                delete_after=10
+            )
 
         if debug_log:
             debug_log.append(DebugMessage.OVER_FILE_LIMIT)
@@ -665,12 +667,13 @@ async def process_proxy(
         app_emojis, proxy_content = await process_emoji(proxy_content)
 
     if len(proxy_content) > 2000:
-        await message.channel.send(
-            'this message was over 2000 characters after processing emotes. proxy failed',
-            reference=message,
-            allowed_mentions=AllowedMentions(
-                replied_user=False),
-            delete_after=10)
+        if not debug_log:
+            await message.channel.send(
+                'this message was over 2000 characters after processing emotes. proxy failed',
+                reference=message,
+                allowed_mentions=AllowedMentions(
+                    replied_user=False),
+                delete_after=10)
         return False, app_emojis, token, None
 
     embed, reply_mentions = None, []
