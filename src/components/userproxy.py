@@ -103,13 +103,13 @@ async def umodal_send(
 
     if (
         mentions.users and
-        reply.author_id is not None and
-        reply.author_id in mentions.users
+        reply.author is not None and
+        reply.author.id in mentions.users
     ) and not (
         reply_format == ReplyFormat.INLINE and
         user_config.userproxy_ping_replies
     ):
-        mentions.users.remove(reply.author_id)
+        mentions.users.remove(reply.author.id)
 
     _, sent_message = await gather(
         reply.delete(),
