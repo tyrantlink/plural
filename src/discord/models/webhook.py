@@ -227,6 +227,7 @@ class Webhook(RawBaseModel):
             await request(
                 route,
                 form=form,
+                params=params,
                 files=attachments
             )
             if attachments else
