@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 from pydantic import Field, BaseModel
 from pymongo import IndexModel
 from datetime import datetime
+from .enums import ReplyType
 from io import BytesIO
 
 if TYPE_CHECKING:
@@ -41,11 +42,21 @@ class Reply(Document):
                 spoiler=self.filename.startswith('SPOILER_')
             )
 
+    class Author(BaseModel):
+        id: int = Field(description='the author id')
+        username: str = Field(description='the author username')
+        avatar: str | None = Field(description='the author avatar hash')
+
     id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
+    type: ReplyType = Field(description='the type of the reply')
     bot_id: int = Field(description='bot id')
     channel: int = Field(description='the channel id of the reply')
     content: str | None = Field(description='the userproxy content')
+    message_id: int | None = Field(
+        description='the message id (if type is ReplyType.REPLY)')
+    author: Author | None = Field(
+        description='the author (if type is ReplyType.REPLY)')
     attachments: list[Attachment] = Field(
         description='the message attachment')
     ts: datetime = Field(

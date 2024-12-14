@@ -1,9 +1,10 @@
-from src.discord import Message, Resolved, Snowflake, MessageType, MessageFlag, User, Guild, GuildFeature, Permission, Member, Channel, MessageReference
+from src.discord import Message, Guild, GuildFeature, Permission, Member, Channel
 from src.core.auth import api_key_validator, TokenData, Security
 from src.core.models import MessageResponse, MessageSend
 from src.db import Message as DBMessage, ProxyMember
 from fastapi import HTTPException, Query, APIRouter
 from fastapi.responses import JSONResponse
+from src.discord.utils import FakeMessage
 from src.logic.proxy import process_proxy
 from src.docs import message as docs
 from src.models import DebugMessage
@@ -19,46 +20,6 @@ def _snowflake_to_age(snowflake: int) -> float:
             ((snowflake >> 22) + 1420070400000) / 1000,
             tz=UTC)
     ).total_seconds()
-
-
-class FakeMessage(Message):
-    def __init__(
-        self,
-        channel_id: int,
-        content: str,
-        author: User,
-        referenced_message: Message | None = None,
-        **kwargs  # noqa: ANN003
-    ) -> None:
-        super().__init__(
-            id=Snowflake(0),
-            channel_id=Snowflake(channel_id),
-            content=content,
-            timestamp=datetime.now(UTC),
-            mention_everyone=False,
-            mentions=[],
-            mention_roles=[],
-            attachments=[],
-            embeds=[],
-            pinned=False,
-            type=MessageType.DEFAULT,
-            flags=MessageFlag.NONE,
-            resolved=Resolved(messages={}),
-            author=author,
-            referenced_message=referenced_message,
-            message_reference=MessageReference(
-                message_id=referenced_message.id,
-                channel_id=referenced_message.channel_id,
-            ) if referenced_message is not None else None,
-            ** kwargs
-        )
-
-    async def delete(
-        self,
-        reason: str | None = None,
-        token: str | None = None
-    ) -> None:
-        pass
 
 
 @router.get(

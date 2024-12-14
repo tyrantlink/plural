@@ -1,8 +1,9 @@
 from src.discord import slash_command, message_command, Interaction, ApplicationCommandScope, Attachment, MessageFlag, ApplicationCommandOption, ApplicationCommandOptionType, Message, Embed, Permission, ApplicationIntegrationType, InteractionContextType, Webhook, AllowedMentions
-from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape # noqa: N812
-from src.db import Reply, UserProxyInteraction, ReplyFormat, UserConfig
+from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape  # noqa: N812
+from src.db import Reply, UserProxyInteraction, ReplyFormat, UserConfig, ReplyType
 from src.components.userproxy import umodal_send, umodal_edit
 from src.errors import InteractionError, NotFound
+from datetime import datetime, timedelta, UTC
 from src.logic.proxy import format_reply
 from src.models import project
 from asyncio import gather
@@ -167,6 +168,7 @@ async def uslash_proxy(
         return
 
     await Reply(
+        type=ReplyType.QUEUE,
         bot_id=int(interaction.application_id),
         channel=int(interaction.channel_id or 0),
         content=message,
@@ -175,7 +177,9 @@ async def uslash_proxy(
                 url=attachment.url,
                 filename=attachment.filename,
                 description=attachment.description or None)
-            for attachment in attachments]
+            for attachment in attachments],
+        message_id=None,
+        author=None
     ).save()
 
     await sender(
@@ -199,7 +203,8 @@ async def umessage_reply(
 ) -> None:
     reply = await Reply.find_one({
         'bot_id': int(interaction.application_id),
-        'channel': int(interaction.channel_id or 0)
+        'channel': int(interaction.channel_id or 0),
+        'type': ReplyType.QUEUE
     })
 
     title = f'reply to {message.author.username if message.author else 'a message'}'
@@ -208,6 +213,26 @@ async def umessage_reply(
         title = 'reply to a message'
 
     if reply is None:
+        assert message.author is not None
+        await Reply(
+            type=ReplyType.REPLY,
+            bot_id=int(interaction.application_id),
+            channel=int(interaction.channel_id or 0),
+            content=message.content or '',
+            attachments=[Reply.Attachment(
+                url='',
+                filename='',
+                description=''
+            )] if message.attachments else [],
+            message_id=message.id,
+            author=Reply.Author(
+                id=message.author.id,
+                username=message.author.username,
+                avatar=message.author.avatar),
+            # ? replies are stored for 15 minutes
+            ts=datetime.now(UTC) - timedelta(minutes=10)
+        ).save()
+
         await interaction.response.send_modal(
             modal=umodal_send.with_title(
                 title
@@ -259,7 +284,8 @@ async def umessage_reply(
     sent_message = await interaction.send(
         content=proxy_content or None,
         attachments=attachments,
-        embeds=[proxy_with_reply] if isinstance(proxy_with_reply, Embed) else None,
+        embeds=[proxy_with_reply] if isinstance(
+            proxy_with_reply, Embed) else None,
         allowed_mentions=mentions,
         flags=MessageFlag.NONE
     )

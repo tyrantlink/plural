@@ -44,11 +44,13 @@ When a message is proxied in a server that has the `logclean` option enabled, th
 | User Name              |
 
 When using the userproxy `reply` command, a userproxy reply object is stored for fifteen (15) minutes OR until the reply is sent, and contains the following data:
-| Userproxy Reply Object       |
-|------------------------------|
-| Reply Message ID             |
-| Referenced Message Content   |
-| Referenced Message Author ID |
+| Userproxy Reply Object               |
+|--------------------------------------|
+| Referenced Message ID                |
+| Referenced Message Content           |
+| Referenced Message Author ID         |
+| Referenced Message Author Username   |
+| Referenced Message Author Avatar URL |
 
 ### 4.1 Data Caching
 Data caching is used to improve performance and reduce the number of API requests made to Discord. Cached data is stored for one (1) day from the last update of the given data, with the exception of messages, which are stored for one (1) hour from the last update of the given data.

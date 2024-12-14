@@ -1,6 +1,7 @@
-from src.discord import modal, TextInput, Interaction, TextInputStyle, MessageFlag, Webhook, Embed
-from src.db import UserProxyInteraction, Reply, ProxyMember
+from src.discord import modal, TextInput, Interaction, TextInputStyle, MessageFlag, Webhook, Embed, AllowedMentions, FakeMessage, User, Snowflake
+from src.db import UserProxyInteraction, Reply, ProxyMember, ReplyType, UserConfig, ReplyFormat
 from src.errors import InteractionError, HTTPException
+from src.logic.proxy import format_reply
 from asyncio import gather
 
 
@@ -24,11 +25,40 @@ async def umodal_send(
     queue_for_reply: bool,
     message: str
 ) -> None:
-    if not queue_for_reply:
+    if queue_for_reply:
+        await Reply(
+            type=ReplyType.QUEUE,
+            bot_id=int(interaction.application_id),
+            channel=int(interaction.channel_id or 0),
+            attachments=[],
+            content=message,
+            message_id=None,
+            author=None
+        ).save()
+
+        await interaction.response.send_message(
+            embeds=[
+                Embed.success(
+                    title='message queued for reply',
+                    message='use the reply command within the next 5 minutes to send your message'
+                )
+            ]
+        )
+
+        return
+
+    reply = await Reply.find_one({
+        'bot_id': int(interaction.application_id),
+        'channel': int(interaction.channel_id or 0),
+        'type': ReplyType.REPLY
+    })
+
+    if reply is None:
         sent_message = await interaction.response.send_message(
             content=message,
             flags=MessageFlag.NONE
         )
+
         await UserProxyInteraction(
             author_id=interaction.author_id,
             application_id=interaction.application_id,
@@ -36,23 +66,70 @@ async def umodal_send(
             channel_id=sent_message.channel_id,
             token=interaction.token
         ).save()
+
         return
 
-    await Reply(
-        bot_id=int(interaction.application_id),
-        channel=int(interaction.channel_id or 0),
-        attachments=[],
-        content=message
+    assert reply.author is not None
+
+    proxy_content = message
+
+    user_config = await UserConfig.get(interaction.author_id) or UserConfig.default()
+
+    reply_format = (
+        user_config.dm_reply_format
+        if interaction.is_dm else
+        user_config.reply_format
+    )
+
+    proxy_with_reply, reply_mentions = format_reply(
+        proxy_content,
+        FakeMessage(
+            channel_id=int(interaction.channel_id or 0),
+            content=reply.content or '',
+            author=User(
+                id=Snowflake(reply.author.id),
+                discriminator='0000',
+                username=reply.author.username,
+                avatar=reply.author.avatar
+            )),
+        reply_format
+    )
+
+    if isinstance(proxy_with_reply, str):
+        proxy_content = proxy_with_reply
+
+    mentions = AllowedMentions.parse_content(
+        proxy_content or '').strip_mentions(reply_mentions)
+
+    if (
+        mentions.users and
+        reply.author_id is not None and
+        reply.author_id in mentions.users
+    ) and not (
+        reply_format == ReplyFormat.INLINE and
+        user_config.userproxy_ping_replies
+    ):
+        mentions.users.remove(reply.author_id)
+
+    _, sent_message = await gather(
+        reply.delete(),
+        interaction.send(
+            content=proxy_content or None,
+            embeds=[proxy_with_reply] if isinstance(
+                proxy_with_reply, Embed) else None,
+            allowed_mentions=mentions,
+            flags=MessageFlag.NONE
+        )
+    )
+
+    await UserProxyInteraction(
+        author_id=interaction.author_id,
+        application_id=interaction.application_id,
+        message_id=sent_message.id,
+        channel_id=sent_message.channel_id,
+        token=interaction.token
     ).save()
 
-    await interaction.response.send_message(
-        embeds=[
-            Embed.success(
-                title='message queued for reply',
-                message='use the reply command within the next 5 minutes to send your message'
-            )
-        ],
-    )
     return
 
 

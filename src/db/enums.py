@@ -5,13 +5,14 @@ __all__ = (
     'CacheType',
     'ImageExtension',
     'ReplyFormat',
+    'ReplyType',
 )
 
 
 class ImageExtension(Enum):
     PNG = 0
     JPG = 1
-    JPEG = 1 # noqa: PIE796
+    JPEG = 1  # noqa: PIE796
     GIF = 2
     WEBP = 3
 
@@ -41,3 +42,8 @@ class ReplyFormat(Enum):
     NONE = 0
     INLINE = 1
     EMBED = 2
+
+
+class ReplyType(Enum):
+    QUEUE = 0
+    REPLY = 1
