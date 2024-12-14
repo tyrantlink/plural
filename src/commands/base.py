@@ -2,7 +2,7 @@ from src.discord import slash_command, Interaction, message_command, Interaction
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, GuildConfig, UserConfig, ReplyFormat
 from src.components import modal_plural_edit, umodal_edit, button_api_key, help_components, button_delete_all_data
 from src.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport, LogMessage
-from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape # noqa: N812
+from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape  # noqa: N812
 from src.errors import InteractionError, Forbidden, PluralException
 from src.logic.proxy import get_proxy_webhook, process_proxy
 from src.version import VERSION, LAST_TEN_COMMITS
@@ -391,8 +391,8 @@ async def message_plural_proxy_info(interaction: Interaction, message: Message) 
     if (
         message.author is None or
         (message.webhook_id is None and
-        message.interaction_metadata is None and
-        not message.author.bot)
+         message.interaction_metadata is None and
+         not message.author.bot)
     ):
         raise InteractionError('message is not a proxied message!')
 
@@ -559,7 +559,7 @@ async def slash_import(
 
     try:
         data = loads(await get_from_cdn(url))
-    except Exception: # noqa: BLE001
+    except Exception:  # noqa: BLE001
         raise InteractionError('failed to read file') from None
 
     for model in (PluralKitExport, PluralExport, TupperboxExport, StandardExport):
@@ -725,11 +725,18 @@ async def slash_edit(
                     message.edit(content=content, token=member.userproxy.token))
                 return
 
+    assert message.channel is not None
+
     await gather(
         interaction.response.send_message(embeds=[embed]),
         webhook.edit_message(
             message.id,
-            content=content
+            content=content,
+            thread_id=(
+                message.channel.id
+                if message.channel.is_thread else
+                None
+            )
         )
     )
 
