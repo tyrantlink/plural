@@ -1,7 +1,7 @@
 from src.discord.listeners import listen, ListenerType
 from src.discord import MessageCreateEvent
+from src.db import Log, GuildConfig
 from dataclasses import dataclass
-from src.db import Log, Config
 from hashlib import sha256
 from regex import search
 
@@ -45,7 +45,7 @@ async def on_message_create(event: MessageCreateEvent) -> None:
     ):
         return
 
-    config = await Config.get(event.guild_id)
+    config = await GuildConfig.get(event.guild_id)
 
     if config is None or not config.logclean:
         return

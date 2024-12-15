@@ -1,5 +1,5 @@
 from src.discord import Emoji, MessageCreateEvent, Message, Permission, Channel, Snowflake, Webhook, Embed, AllowedMentions, StickerFormatType, MessageFlag, MessageReferenceType, MessageReference, File
-from src.db import ProxyMember, Latch, Group, Message as DBMessage, Log, Config, GatewayEvent, UserConfig, ReplyFormat
+from src.db import ProxyMember, Latch, Group, Message as DBMessage, Log, GuildConfig, GatewayEvent, UserConfig, ReplyFormat
 from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.errors import Forbidden, NotFound, PluralException
 from src.models import project, DebugMessage, INSTANCE
@@ -430,7 +430,7 @@ async def guild_userproxy(
     app_emojis, proxy_content = await process_emoji(proxy_content, token)
 
     if (
-        (guild_config := await Config.get(message.guild.id)) is not None and
+        (guild_config := await GuildConfig.get(message.guild.id)) is not None and
         guild_config.logclean
     ):
         await Log(
@@ -699,7 +699,7 @@ async def process_proxy(
         return True, app_emojis, token, None
 
     if (
-        (guild_config := await Config.get(message.guild.id)) is not None and
+        (guild_config := await GuildConfig.get(message.guild.id)) is not None and
         guild_config.logclean
     ):
         await Log(
