@@ -20,6 +20,6 @@ If you're coming from PluralKit or Tupperbox, see the [Importing](https://github
 ## Set an avatar
 
 - use `/member set avatar` and upload an image
-  - the image must be a .jpg, .png, .webp, or .gif and must be under 10mb in size
+  - the image must be a .jpg, .png, .webp, or .gif and must be under 8mb in size
   - the image will be cropped to 4096x4096, if it's smaller than this, it will be left alone
-  - animated gif avatars will only been animated for userproxy accounts (see [Userproxies](https://github.com/tyrantlink/plural/wiki/Userproxies)
+  - animated gif avatars will only been animated for userproxy accounts (see [Userproxies](https://github.com/tyrantlink/plural/wiki/Userproxies))
