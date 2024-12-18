@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic_core import ValidationError
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from contextlib import suppress
 from traceback import format_tb
 from src.models import project
@@ -37,6 +37,10 @@ class PluralException(BasePluralException):
 
 class HTTPException(BasePluralException):
     status_code: int = 0
+
+    def __init__(self, detail: Any | None = None) -> None:
+        self.detail = detail
+        super().__init__(detail)
 
 
 class Unauthorized(HTTPException):
@@ -111,6 +115,11 @@ async def on_event_error(event: str, error: BaseException) -> None:
             **(
                 error.errors()[0].get('input', 'no input')
                 if isinstance(error, ValidationError) and error.errors()
+                else {}
+            ),
+            **(
+                {'detail': error.detail}
+                if isinstance(error, HTTPException) and error.detail
                 else {}
             )
         )

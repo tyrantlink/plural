@@ -4,7 +4,7 @@ from regex import finditer, Match, escape, match, IGNORECASE, sub
 from src.errors import Forbidden, NotFound, PluralException
 from src.models import project, DebugMessage, INSTANCE
 from src.discord.http import get_from_cdn
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from asyncio import gather
 from hashlib import sha256
 from random import randint
@@ -19,6 +19,15 @@ def emoji_index() -> str:
         _emoji_index = -1
     _emoji_index += 1
     return f'{_emoji_index:03}'
+
+
+@dataclass(frozen=True)
+class ProxyResponse:
+    success: bool = False
+    app_emojis: list[Emoji] | None = field(default_factory=list)
+    token: str = project.bot_token
+    db_message: DBMessage | None = None
+    exception: BaseException | None = None
 
 
 @dataclass(frozen=True)
@@ -389,7 +398,7 @@ async def guild_userproxy(
     attachments: list[File],
     member: ProxyMember,
     debug_log: list[DebugMessage | str] | None = None
-) -> tuple[bool, list[Emoji] | None, str, DBMessage | None]:
+) -> ProxyResponse:
     assert member.userproxy is not None
     assert member.userproxy.token is not None
     assert message.channel is not None
@@ -403,7 +412,7 @@ async def guild_userproxy(
     required_permissions = Permission.SEND_MESSAGES | Permission.VIEW_CHANNEL
 
     if bot_permissions & required_permissions != required_permissions:
-        return False, None, token, None
+        return ProxyResponse(token=token)
 
     real_forward = False
 
@@ -413,7 +422,7 @@ async def guild_userproxy(
         # message.message_reference.channel_id is not None and
         # message.message_reference.message_id is not None
     ):
-        return False, None, token, None
+        return ProxyResponse(token=token)
         try:
             await Message.fetch(
                 message.message_reference.channel_id,
@@ -425,7 +434,7 @@ async def guild_userproxy(
 
     if debug_log:
         debug_log.append(DebugMessage.SUCCESS)
-        return True, [], token, None
+        return ProxyResponse(success=True, token=token)
 
     app_emojis, proxy_content = await process_emoji(proxy_content, token)
 
@@ -476,10 +485,10 @@ async def guild_userproxy(
 
     if isinstance(responses[0], BaseException) and not isinstance(responses[1], BaseException):
         await responses[1].delete()
-        return False, app_emojis, token, None
+        return ProxyResponse(app_emojis=app_emojis, token=token, exception=responses[0])
 
     if isinstance(responses[1], BaseException):
-        return False, app_emojis, token, None
+        return ProxyResponse(app_emojis=app_emojis, token=token, exception=responses[1])
 
     db_message = await DBMessage(
         # ? supplied message id will be 0 when message is sent through api
@@ -490,7 +499,7 @@ async def guild_userproxy(
         reason='guild userproxy'
     ).save()
 
-    return True, app_emojis, token, db_message
+    return ProxyResponse(True, app_emojis, token, db_message)
 
 
 async def process_proxy(
@@ -498,7 +507,7 @@ async def process_proxy(
     debug_log: list[DebugMessage | str] | None = None,
     channel_permissions: Permission | None = None,
     member: ProxyMember | None = None,
-) -> tuple[bool, list[Emoji] | None, str, DBMessage | None]:
+) -> ProxyResponse:
     assert message.author is not None
 
     if debug_log is None:
@@ -509,9 +518,7 @@ async def process_proxy(
     if message.channel is None:
         if debug_log:
             debug_log.append(DebugMessage.PERM_VIEW_CHANNEL)
-        return False, None, project.bot_token, None
-
-    token = project.bot_token
+        return ProxyResponse()
 
     valid_content = bool(
         message.content or
@@ -540,7 +547,7 @@ async def process_proxy(
             if message.attachments and message.sticker_items:
                 debug_log.append(DebugMessage.ATTACHMENTS_AND_STICKERS)
 
-        return False, None, token, None
+        return ProxyResponse()
 
     member, proxy_content, latch, reason = (
         await get_proxy_for_message(message, debug_log)
@@ -555,7 +562,7 @@ async def process_proxy(
         if debug_log and DebugMessage.AUTHOR_NO_TAGS_NO_LATCH not in debug_log:
             debug_log.append(DebugMessage.AUTHOR_NO_TAGS_NO_LATCH)
 
-        return False, None, token, None
+        return ProxyResponse()
 
     if (
         latch is not None and
@@ -572,10 +579,10 @@ async def process_proxy(
         if debug_log:
             debug_log.append(DebugMessage.AUTOPROXY_BYPASSED)
 
-        return False, None, token, None
+        return ProxyResponse()
 
     if not await permission_check(message, debug_log, channel_permissions):
-        return False, None, token, None
+        return ProxyResponse()
 
     if len(proxy_content) > 1980:
         if not debug_log:
@@ -590,7 +597,7 @@ async def process_proxy(
         if debug_log:
             debug_log.append(DebugMessage.OVER_TEXT_LIMIT)
 
-        return False, None, token, None
+        return ProxyResponse()
 
     if sum(
         attachment.size
@@ -609,31 +616,33 @@ async def process_proxy(
         if debug_log:
             debug_log.append(DebugMessage.OVER_FILE_LIMIT)
 
-        return False, None, token, None
+        return ProxyResponse()
 
     # ? final deduplication check
     if await GatewayEvent.find_one({
         'id': sha256(str(message._raw).encode()).hexdigest(),
         'instance': {'$ne': INSTANCE}
     }) is not None:
-        return False, None, token, None
+        return ProxyResponse()
 
     try:
         attachments = await fetch_attachments(message)
     except PluralException:
         if debug_log:
             debug_log.append(DebugMessage.INCOMPATIBLE_STICKERS)
-        return False, None, token, None
+        return ProxyResponse()
+
+    token = project.bot_token
 
     if member.userproxy and message.guild.id in member.userproxy.guilds:
-        success, app_emojis, token, db_message = await guild_userproxy(
+        response = await guild_userproxy(
             message, proxy_content, attachments, member, debug_log)
 
-        if success:
-            return True, app_emojis, token, db_message
+        if response.success:
+            return response
 
-        if app_emojis:
-            gather(*[emoji.delete(token) for emoji in app_emojis])
+        if response.app_emojis:
+            gather(*[emoji.delete(token) for emoji in response.app_emojis])
 
         token = project.bot_token
 
@@ -648,7 +657,7 @@ async def process_proxy(
         if debug_log:
             debug_log.append(DebugMessage.NO_CONTENT)
 
-        return False, None, token, None
+        return ProxyResponse(token=token)
 
     if (
         message.message_reference and
@@ -657,7 +666,7 @@ async def process_proxy(
         if debug_log:
             debug_log.append(DebugMessage.NO_CONTENT)
 
-        return False, None, token, None
+        return ProxyResponse(token=token)
 
     webhook = await get_proxy_webhook(message.channel)
 
@@ -674,7 +683,8 @@ async def process_proxy(
                 allowed_mentions=AllowedMentions(
                     replied_user=False),
                 delete_after=10)
-        return False, app_emojis, token, None
+
+        return ProxyResponse(app_emojis=app_emojis, token=token)
 
     embed, reply_mentions = None, []
     if message.referenced_message:
@@ -696,7 +706,7 @@ async def process_proxy(
 
     if debug_log:
         debug_log.append(DebugMessage.SUCCESS)
-        return True, app_emojis, token, None
+        return ProxyResponse(True, app_emojis, token, None)
 
     if (
         (guild_config := await GuildConfig.get(message.guild.id)) is not None and
@@ -724,7 +734,7 @@ async def process_proxy(
     responses = await gather(
         message.delete(reason='/plu/ral proxy'),
         webhook.execute(
-            content=proxy_content,
+            content='a'*5000,  # proxy_content,
             thread_id=(
                 message.channel.id
                 if message.channel.is_thread else
@@ -744,6 +754,7 @@ async def process_proxy(
             poll=message.poll),
         return_exceptions=True
     )
+
     if isinstance(responses[1], NotFound):
         webhook = await get_proxy_webhook(message.channel, False)
         responses = responses[0], await webhook.execute(
@@ -771,10 +782,10 @@ async def process_proxy(
         not isinstance(responses[1], BaseException)
     ):
         await responses[1].delete()
-        return False, app_emojis, token, None
+        return ProxyResponse(app_emojis=app_emojis, token=token, exception=responses[0])
 
     if isinstance(responses[1], BaseException):
-        return False, app_emojis, token, None
+        return ProxyResponse(app_emojis=app_emojis, token=token, exception=responses[1])
 
     db_message = await DBMessage(
         # ? supplied message id will be 0 when message is sent through api
@@ -785,4 +796,4 @@ async def process_proxy(
         reason=reason or 'none given'
     ).save()
 
-    return True, app_emojis, token, db_message
+    return ProxyResponse(True, app_emojis, token, db_message)

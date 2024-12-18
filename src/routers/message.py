@@ -137,12 +137,12 @@ async def post__message(
 
     await fake_message.populate()
 
-    _, _, _, db_message = await process_proxy(
+    response = await process_proxy(
         fake_message,
         member=member,
     )
 
-    if db_message is None:
+    if response.db_message is None:
         debug_log: list[DebugMessage | str] = [DebugMessage.ENABLER]
 
         await process_proxy(fake_message, debug_log, member=member)
@@ -155,5 +155,5 @@ async def post__message(
         })
 
     return JSONResponse(
-        content=db_message.model_dump_json(exclude={'id'})
+        content=response.db_message.model_dump_json(exclude={'id'})
     )

@@ -23,13 +23,14 @@ async def on_message(message: MessageCreateEvent) -> None:
     ):
         return
 
-    proxied, app_emojis, token, db_message = await process_proxy(message)
+    response = await process_proxy(message)
 
-    if app_emojis:
-        gather(*[emoji.delete(token) for emoji in app_emojis])
+    if response.app_emojis:
+        gather(*[emoji.delete(response.token)
+               for emoji in response.app_emojis])
 
-    if proxied:
-        return
+    if response.exception:
+        raise response.exception
 
 
 @listen(ListenerType.MESSAGE_UPDATE)
