@@ -581,7 +581,7 @@ class PremiumTier(Enum):
     def filesize_limit(self) -> int:
         match self:
             case PremiumTier.NONE:
-                return 26_214_400
+                return 10_485_760
             case PremiumTier.TIER_1:
                 return 26_214_400
             case PremiumTier.TIER_2:

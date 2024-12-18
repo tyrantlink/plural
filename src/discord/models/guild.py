@@ -117,7 +117,7 @@ class Guild(RawBaseModel):
     @property
     def filesize_limit(self) -> int:
         if self.premium_tier is None:
-            return 26_214_400
+            return 10_485_760
 
         return self.premium_tier.filesize_limit
 
