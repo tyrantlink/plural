@@ -125,7 +125,8 @@ class Guild(RawBaseModel):
         await super().populate()
 
         if not self.roles:
-            self.roles = await self.fetch_roles()
+            with suppress(HTTPException):
+                self.roles = await self.fetch_roles()
 
     @classmethod
     async def fetch(cls, guild_id: Snowflake | int) -> Guild:
