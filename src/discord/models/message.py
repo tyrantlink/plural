@@ -64,30 +64,30 @@ class MessageCall(RawBaseModel):
 
 class AllowedMentions(RawBaseModel):
     parse: list[AllowedMentionType] = Field(default_factory=list)
-    roles: list[Snowflake] | None = None
-    users: list[Snowflake] | None = None
+    roles: set[Snowflake] | None = None
+    users: set[Snowflake] | None = None
     replied_user: bool | None = None
 
     @classmethod
     def parse_content(cls, content: str, replied_user: bool = True) -> AllowedMentions:
         return cls(
             parse=[AllowedMentionType.EVERYONE],
-            roles=[Snowflake(match.group(1))
-                   for match in finditer(r'<@&(\d+)>', content)],
-            users=[Snowflake(match.group(1))
-                   for match in finditer(r'<@!?(\d+)>', content)],
+            roles={Snowflake(match.group(1))
+                   for match in finditer(r'<@&(\d+)>', content)},
+            users={Snowflake(match.group(1))
+                   for match in finditer(r'<@!?(\d+)>', content)},
             replied_user=replied_user
         )
 
-    def strip_mentions(self, mentions: list[Snowflake]) -> AllowedMentions:
-        _users = self.users or []
-        _roles = self.roles or []
+    def strip_mentions(self, mentions: set[Snowflake]) -> AllowedMentions:
+        _users = self.users or set()
+        _roles = self.roles or set()
 
         for snowflake in mentions:
             if snowflake in _users:
-                _users.remove(snowflake)
+                _users.discard(snowflake)
             if snowflake in _roles:
-                _roles.remove(snowflake)
+                _roles.discard(snowflake)
 
         self.users = _users
         self.roles = _roles

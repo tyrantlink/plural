@@ -5,9 +5,14 @@ from typing import Self
 
 
 class RawBaseModel(BaseModel):
-    def __init__(self, **data) -> None: # noqa: ANN003
+    def __init__(self, **data) -> None:  # noqa: ANN003
         super().__init__(**data)
         self.__raw_data = data.copy()
+
+    class Config:
+        json_encoders = {
+            set: list
+        }
 
     @property
     def _raw(self) -> dict:

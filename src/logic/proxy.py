@@ -326,9 +326,9 @@ def format_reply(
     content: str,
     reference: Message,
     format: ReplyFormat
-) -> tuple[str | Embed, list[Snowflake]]:
+) -> tuple[str | Embed, set[Snowflake]]:
     if format == ReplyFormat.EMBED:
-        return Embed.reply(reference), []
+        return Embed.reply(reference), set()
 
     assert reference.author is not None
 
@@ -369,9 +369,9 @@ def format_reply(
     total_content = f'{base_reply} {reply_content}\n{content}'
     if len(total_content) <= 2000:
         mentions = AllowedMentions.parse_content(reply_content)
-        return total_content, (mentions.users or []) + (mentions.roles or [])
+        return total_content, (mentions.users or set()) | (mentions.roles or set())
 
-    return Embed.reply(reference), []
+    return Embed.reply(reference), set()
 
 
 async def fetch_attachments(message: Message) -> list[File]:
@@ -686,7 +686,7 @@ async def process_proxy(
 
         return ProxyResponse(app_emojis=app_emojis, token=token)
 
-    embed, reply_mentions = None, []
+    embed, reply_mentions = None, set()
     if message.referenced_message:
         if message.referenced_message.guild is None:
             message.referenced_message.guild = message.guild
@@ -734,7 +734,7 @@ async def process_proxy(
     responses = await gather(
         message.delete(reason='/plu/ral proxy'),
         webhook.execute(
-            content='a'*5000,  # proxy_content,
+            content=proxy_content,
             thread_id=(
                 message.channel.id
                 if message.channel.is_thread else
