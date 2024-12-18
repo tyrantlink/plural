@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # ? start running bot code
     import src.logic
-    import src.commands # noqa: F401
+    import src.commands  # noqa: F401
     from src.discord.commands import sync_commands
 
     logfire.info('started on instance {instance_id}', instance_id=INSTANCE)
@@ -95,7 +95,8 @@ if project.logfire_token:
         token=project.logfire_token,
         environment='development' if project.dev_environment else 'production',
         scrubbing=False if project.dev_environment else None,
-        console=False
+        console=False,
+        metrics=False
     )
     # ? disabled because pymongo makes a lot of logs and you can't self host logfire yet
     if project.dev_environment:
@@ -103,7 +104,6 @@ if project.logfire_token:
             capture_statement=True
         )
     logfire.instrument_aiohttp_client()
-    logfire.instrument_system_metrics()
     logfire.instrument_fastapi(
         app,
         capture_headers=app.debug,
@@ -116,7 +116,7 @@ if project.logfire_token:
 async def set_client_ip(
     request: Request,
     call_next: Callable[..., Awaitable[Any]]
-) -> Any: # noqa: ANN401
+) -> Any:  # noqa: ANN401
     client_ip = request.headers.get('CF-Connecting-IP')
 
     if client_ip and request.client is not None:
