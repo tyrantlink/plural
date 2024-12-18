@@ -61,34 +61,17 @@ class DiscordCache(Document):
         guild_id: MissingNoneOr[int] = MISSING,
         type: MissingOr[CacheType] = MISSING
     ) -> DiscordCache | None:
-        async def _get(
-            cls: type[Self],
-            snowflake: int,
-            guild_id: MissingNoneOr[int] = MISSING,
-            type: MissingOr[CacheType] = MISSING
-        ) -> DiscordCache | None:
-            query: dict[str, int | None] = {'snowflake': snowflake}
+        query: dict[str, int | None] = {'snowflake': snowflake}
 
-            if guild_id is not MISSING:
-                assert not isinstance(guild_id, _MissingType)
-                query['guild_id'] = guild_id
+        if guild_id is not MISSING:
+            assert not isinstance(guild_id, _MissingType)
+            query['guild_id'] = guild_id
 
-            if type is not MISSING:
-                assert not isinstance(type, _MissingType)
-                query['type'] = type.value
+        if type is not MISSING:
+            assert not isinstance(type, _MissingType)
+            query['type'] = type.value
 
-            return await cls.find_one(query)
-
-        cached = await _get(cls, snowflake, guild_id, type)
-
-        if cached is None:
-            logfire.debug(
-                'cache miss: {snowflake}, {guild_id}',
-                snowflake=snowflake,
-                guild_id=guild_id
-            )
-
-        return cached
+        return await cls.find_one(query)
 
     @classmethod
     async def get_many(
