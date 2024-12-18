@@ -63,6 +63,8 @@ def Set(  # noqa: N802
         dict.setdefault('deleted', False)
 
     dict.setdefault('ts', now(dict.get('type') == CacheType.MESSAGE.value))
+    dict.setdefault('error', None)
+    dict.setdefault('meta', {})
 
     return {
         '$set': dict
@@ -87,7 +89,7 @@ async def _member_update(event: GatewayEvent) -> list[UpdateOne] | None:
         )
     )
 
-    update = [UpdateOne(
+    return [UpdateOne(
         Filter(int(user_id), int(event.data['guild_id'])),
         [Set({
             'snowflake': int(user_id),
@@ -100,57 +102,6 @@ async def _member_update(event: GatewayEvent) -> list[UpdateOne] | None:
                 ]}})],
         upsert=True
     )]
-
-    existing_roles = {
-        str(role['snowflake'])
-        for role in await (
-            await DiscordCache.get_motor_collection().aggregate([
-                {  # type: ignore # ? using async pymongo, not motor
-                    '$match': {
-                        'snowflake': {'$in': [
-                            int(role_id)
-                            for role_id in
-                            member_data['roles']]},
-                        'type': CacheType.ROLE.value
-                    }
-                }, {
-                    '$project': {
-                        '_id': 0,
-                        'snowflake': 1
-                    }
-                }
-            ])
-        ).to_list()
-    }
-
-    missing_roles = set(member_data['roles']) - existing_roles
-
-    if not missing_roles:
-        return update
-
-    from src.discord.http import request, Route
-
-    roles = await request(Route(
-        'GET',
-        '/guilds/{guild_id}/roles',
-        guild_id=int(event.data['guild_id'])
-    ))
-
-    return update.extend([
-        UpdateOne(
-            Filter(int(role['id']), int(event.data['guild_id'])),
-            [Set({
-                'snowflake': int(role['id']),
-                'guild_id': int(event.data['guild_id']),
-                'type': CacheType.ROLE,
-                'data': {
-                    '$mergeObjects': [
-                        {'$ifNull': ['$data', {}]},
-                        role
-                    ]}})],
-            upsert=True)
-        for role in roles
-    ])
 
 
 async def member_update(dict: dict, guild_id: int) -> None:
@@ -245,7 +196,12 @@ def guild_create_update(event: GatewayEvent) -> Coroutine:
                             } if cache_type == CacheType.CHANNEL else
                                 {}
                             )
-                        ]}})],
+                        ]},
+                    'meta': (
+                        {'roles': [int(role['id']) for role in roles]}
+                        if cache_type == CacheType.GUILD else
+                        {}
+                    )})],
                 upsert=True)
             for snowflake, data, guild_id, cache_type in (
                 (guild_data['id'], guild_data, None, CacheType.GUILD),
@@ -285,30 +241,48 @@ def guild_delete(event: GatewayEvent) -> Coroutine:
 
 
 def guild_role_create_update(event: GatewayEvent) -> Coroutine:
-    return DiscordCache.get_motor_collection().update_one(
-        Filter(int(event.data['role']['id']), int(event.data['guild_id'])),
-        [Set({
-            'snowflake': int(event.data['role']['id']),
-            'guild_id': int(event.data['guild_id']),
-            'type': CacheType.ROLE,
-            'data': {
-                '$mergeObjects': [
-                    {'$ifNull': ['$data', {}]},
-                    event.data['role']
-                ]}})],
-        upsert=True
+    return DiscordCache.get_motor_collection().bulk_write([
+        UpdateOne(
+            Filter(int(event.data['role']['id']), int(event.data['guild_id'])),
+            [Set({
+                'snowflake': int(event.data['role']['id']),
+                'guild_id': int(event.data['guild_id']),
+                'type': CacheType.ROLE,
+                'data': {
+                    '$mergeObjects': [
+                        {'$ifNull': ['$data', {}]},
+                        event.data['role']
+                    ]}})],
+            upsert=True),
+        UpdateOne(
+            Filter(int(event.data['guild_id']), None),
+            {
+                '$addToSet': {
+                    'meta.roles': int(event.data['role']['id'])
+                }
+            }
+        )]
     )
 
 
 def guild_role_delete(event: GatewayEvent) -> Coroutine:
-    return DiscordCache.get_motor_collection().update_one(
-        Filter(int(event.data['role_id']), int(event.data['guild_id'])),
-        Set({
-            'snowflake': int(event.data['role_id']),
-            'deleted': True,
-            'type': CacheType.ROLE,
-            'data': event.data}),
-        upsert=True
+    return DiscordCache.get_motor_collection().bulk_write([
+        UpdateOne(
+            Filter(int(event.data['role_id']), int(event.data['guild_id'])),
+            Set({
+                'snowflake': int(event.data['role_id']),
+                'deleted': True,
+                'type': CacheType.ROLE,
+                'data': event.data}),
+            upsert=True),
+        UpdateOne(
+            Filter(int(event.data['guild_id']), None),
+            {
+                '$pull': {
+                    'meta.roles': int(event.data['role']['id'])
+                }
+            }
+        )]
     )
 
 

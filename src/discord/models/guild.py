@@ -125,15 +125,16 @@ class Guild(RawBaseModel):
         await super().populate()
 
         if not self.roles:
-            with suppress(HTTPException):
-                self.roles = await self.fetch_roles()
+            self.roles = await self.fetch_roles()
 
     @classmethod
     async def fetch(cls, guild_id: Snowflake | int) -> Guild:
         cached = await DiscordCache.get_guild(guild_id)
 
         if cached is not None and not cached.deleted:
-            return cls(**cached.data)
+            guild = cls(**cached.data)
+            await guild.populate()
+            return guild
 
         data = await request(Route(
             'GET',
@@ -146,7 +147,10 @@ class Guild(RawBaseModel):
             data
         )
 
-        return cls(**data)
+        guild = cls(**data)
+        await guild.populate()
+
+        return guild
 
     @classmethod
     async def fetch_user_guilds(
@@ -156,8 +160,7 @@ class Guild(RawBaseModel):
         data = await request(
             Route(
                 'GET',
-                '/users/@me/guilds'
-            ),
+                '/users/@me/guilds'),
             token=token
         )
 
@@ -198,31 +201,65 @@ class Guild(RawBaseModel):
             )
         )
 
-    async def fetch_roles(self) -> list[Role]:
-        roles = [
-            Role(**role.data)
-            for role in
-            await DiscordCache.get_many(CacheType.ROLE, self.id)
-            if not role.deleted
-        ]
-
-        if roles:
-            return roles
-
+    async def _fetch_role(self, role_id: Snowflake) -> dict:
         data = await request(Route(
             'GET',
-            '/guilds/{guild_id}/roles',
-            guild_id=self.id
+            '/guilds/{guild_id}/roles/{role_id}',
+            guild_id=self.id,
+            role_id=role_id
         ))
 
-        await gather(*[
-            DiscordCache.add(
-                CacheType.ROLE,
-                role)
-            for role in data
-        ])
+        await DiscordCache.add(
+            CacheType.ROLE,
+            data,
+            self.id
+        )
 
-        return [
+        return data
+
+    async def fetch_roles(self, guild_cache: DiscordCache | None = None) -> list[Role]:
+        guild_cache = guild_cache or await DiscordCache.get_guild(self.id)
+
+        if guild_cache is None:
+            await Guild.fetch(self.id)
+
+        if guild_cache is None or guild_cache.deleted:
+            return []
+
+        cached_roles = [
+            cached_role
+            for cached_role in
+            await DiscordCache.get_many(CacheType.ROLE, self.id)
+            if not cached_role.deleted
+        ]
+
+        missing = [
+            role_id
+            for role_id in guild_cache.meta['roles']
+            if role_id not in {role.snowflake for role in cached_roles}
+        ]
+
+        if not missing:
+            self.roles = [
+                Role(**role.data)
+                for role in
+                cached_roles]
+            return self.roles
+
+        with logfire.span('fetching missing roles'):
+            coroutines = (
+                self._fetch_role(role_id)
+                for role_id in missing
+            )
+
+            # ? call the first one to ensure the rate limit max is set and the rest can be called concurrently
+            data = [await next(coroutines)]
+
+            data.extend(await gather(*coroutines))
+
+        self.roles = [
             Role(**role)
             for role in data
         ]
+
+        return self.roles

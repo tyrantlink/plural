@@ -1,6 +1,6 @@
 from __future__ import annotations
+from src.models import project, MissingNoneOr, MISSING
 from typing import ClassVar, TYPE_CHECKING, Self
-from src.models import MissingNoneOr, MISSING
 from datetime import datetime, UTC
 from pymongo import IndexModel
 from .enums import CacheType
@@ -20,12 +20,13 @@ class DiscordCache(Document):
         return hash(self.id)
 
     class Settings:
-        name = 'discord_cache'
+        name = 'dev_cache' if project.dev_environment else 'discord_cache'
         validate_on_save = True
         indexes: ClassVar = [  # ? one day expiration
             IndexModel('ts', expireAfterSeconds=60*60*24),
             'snowflake',
-            IndexModel([('snowflake', 1), ('guild_id', 1)], unique=True)
+            IndexModel([('snowflake', 1), ('guild_id', 1),
+                       ('bot_id', 1)], unique=True)
         ]
 
     snowflake: int = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
@@ -37,18 +38,24 @@ class DiscordCache(Document):
         description='snowflake id of the guild, if applicable')
     data: dict = Field(
         description='the data of the discord object')
+    meta: dict = Field(
+        default_factory=dict,
+        description='additional metadata')
     deleted: bool = Field(
         default=False,
         description='whether the object has been deleted')
     error: int | None = Field(
         default=None,
         description='the http status code, if response was an error')
+    bot_id: str | None = Field(
+        default=None,
+        description='id of bot used to fetch the object')
     ts: datetime | None = Field(
         default_factory=datetime.utcnow,
         description='timestamp for ttl index')
 
     @classmethod
-    async def get( # pyright: ignore[reportIncompatibleMethodOverride]
+    async def get(  # pyright: ignore[reportIncompatibleMethodOverride]
         cls,
         snowflake: int,
         guild_id: MissingNoneOr[int] = MISSING
@@ -100,6 +107,7 @@ class DiscordCache(Document):
                 name = GatewayEventName.GUILD_CREATE
             case CacheType.ROLE:
                 name = GatewayEventName.GUILD_ROLE_CREATE
+                data = {'role': data, 'guild_id': guild_id}
             case CacheType.CHANNEL:
                 name = GatewayEventName.CHANNEL_CREATE
             case CacheType.EMOJI:
@@ -180,12 +188,6 @@ class DiscordCache(Document):
 
         if guild is None or guild.error:
             return None
-
-        guild.data['roles'] = [
-            role.data
-            for role in
-            await cls.get_many(CacheType.ROLE, guild_id)
-        ]
 
         return guild
 

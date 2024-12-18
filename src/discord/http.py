@@ -24,23 +24,24 @@
 from __future__ import annotations
 from src.errors import HTTPException, Forbidden, NotFound, ServerError, Unauthorized, InteractionError
 from aiohttp import __version__ as aiohttp_version, FormData, ClientResponse
-from asyncio import sleep, Lock, Event, get_event_loop
-from typing import Any, TYPE_CHECKING
+from asyncio import sleep, Lock, Event, get_event_loop, Semaphore
 from datetime import datetime, timezone
 from weakref import WeakValueDictionary
 from base64 import b64encode, b64decode
+from typing import Any, TYPE_CHECKING
 from src.core.session import session
+from dataclasses import dataclass
 from re import match, IGNORECASE
 from src.version import VERSION
 from orjson import dumps, loads
 from urllib.parse import quote
 from src.models import project
 from sys import version_info
+from time import time
 
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
-    from types import TracebackType
     from io import BufferedIOBase
 
 
@@ -53,8 +54,24 @@ USER_AGENT = ' '.join([
 
 global_limit = Event()
 global_limit.set()
-__locks = WeakValueDictionary()
+__rate_limits: dict[str, RateLimit] = {}
 loop = get_event_loop()
+
+
+@dataclass
+class RateLimit:
+    semaphore: Semaphore
+    limit: int = 1
+    remaining: int = 1
+    reset: float = 0.0
+
+    @property
+    def is_reset(self) -> bool:
+        return self.reset <= time()
+
+    @property
+    def reset_after(self) -> float:
+        return max(self.reset - time(), 0)
 
 
 class Route:
@@ -64,7 +81,7 @@ class Route:
         path: str,
         discord: bool = True,
         token: str | None = None,
-        **params # noqa: ANN003
+        **params  # noqa: ANN003
     ) -> None:
         self.method = method
         self.path = path
@@ -101,27 +118,6 @@ class Route:
             return f'{self.webhook_id}:{self.webhook_token}:{self.path}:{self.token}'
 
         return f'{self.channel_id}:{self.guild_id}:{self.path}:{self.token}'
-
-
-class MaybeUnlock:
-    def __init__(self, lock: Lock) -> None:
-        self.lock = lock
-        self._unlock = True
-
-    def __enter__(self) -> MaybeUnlock:
-        return self
-
-    def defer(self) -> None:
-        self._unlock = False
-
-    def __exit__(
-        self,
-        exc_type: type[Exception] | None,
-        exc: Exception | None,
-        traceback: TracebackType | None,
-    ) -> None:
-        if self._unlock:
-            self.lock.release()
 
 
 async def json_or_text(response: ClientResponse) -> dict[str, Any] | str:
@@ -231,25 +227,58 @@ def _get_bot_id(token: str) -> int:
     return int(b64decode(f'{m.group(3)}==').decode())
 
 
+def update_rate_limit(
+    bucket: str,
+    limit: int | str | None,
+    remaining: int | str | None,
+    reset: float | str | None
+) -> None:
+    rate_limit = __rate_limits.get(bucket, RateLimit(Semaphore(1)))
+
+    if isinstance(limit, str):
+        limit = int(limit)
+
+    if isinstance(remaining, str):
+        remaining = int(remaining)
+
+    if isinstance(reset, str):
+        reset = float(reset)
+
+    if limit is not None and limit != rate_limit.limit:
+        rate_limit.limit = limit
+
+        old_sem = rate_limit.semaphore
+        rate_limit.semaphore = Semaphore(max(int(limit / 5), 1))
+
+        for _ in range(old_sem._value):
+            old_sem.release()
+
+    if remaining is not None:
+        rate_limit.remaining = remaining
+
+    if reset is not None:
+        rate_limit.reset = reset
+
+
 async def request(
     route: Route,
     *,
     files: Sequence[File] | None = None,
     form: Iterable[dict[str, Any]] | None = None,
     json: dict[str, Any] | list[Any] | None = None,
-    data: Any | None = None, # noqa: ANN401
+    data: Any | None = None,  # noqa: ANN401
     reason: str | None = None,
     locale: str | None = None,
     token: str | None = project.bot_token,
-    **kwargs, # noqa: ANN003
-) -> Any: # noqa: ANN401
+    **kwargs,  # noqa: ANN003
+) -> Any:  # noqa: ANN401
     route.token = token
 
-    lock = __locks.get(route.bucket)
+    rate_limit = __rate_limits.get(route.bucket)
 
-    if lock is None:
-        lock = Lock()
-        __locks[route.bucket] = lock
+    if rate_limit is None:
+        rate_limit = RateLimit(Semaphore(1))
+        __rate_limits[route.bucket] = rate_limit
 
     headers: dict[str, str] = {
         'User-Agent': USER_AGENT
@@ -280,8 +309,11 @@ async def request(
 
     response: ClientResponse | None = None
     resp_data: dict[str, Any] | str | None = None
-    await lock.acquire()
-    with MaybeUnlock(lock) as maybe_lock:
+
+    if rate_limit.remaining == 0 and not rate_limit.is_reset:
+        await sleep(rate_limit.reset_after)
+
+    async with rate_limit.semaphore:
         for tries in range(5):
             if files:
                 for f in files:
@@ -303,25 +335,15 @@ async def request(
                 ) as response:
                     if route.method == 'HEAD':
                         return response.status == 200
+
+                    update_rate_limit(
+                        route.bucket,
+                        response.headers.get('X-RateLimit-Limit'),
+                        response.headers.get('X-RateLimit-Remaining'),
+                        response.headers.get('X-RateLimit-Reset')
+                    )
+
                     resp_data = await json_or_text(response)
-
-                    if (
-                        response.headers.get('X-Ratelimit-Remaining') == '0' and
-                        response.status != 429
-                    ):
-                        reset = datetime.fromtimestamp(
-                            float(response.headers.get(
-                                'X-Ratelimit-Reset') or 0),
-                            timezone.utc
-                        )
-
-                        maybe_lock.defer()
-                        loop.call_later(
-                            (
-                                reset - datetime.now(timezone.utc)
-                            ).total_seconds(),
-                            lock.release
-                        )
 
                     if 300 > response.status >= 200:
                         return resp_data
