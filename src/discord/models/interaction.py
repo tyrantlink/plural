@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class InteractionCallback(Protocol):
-    async def __call__(self, interaction: Interaction, *args, **kwargs) -> None: # noqa: ANN002, ANN003
+    async def __call__(self, interaction: Interaction, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         ...
 
 

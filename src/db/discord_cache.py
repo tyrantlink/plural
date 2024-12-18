@@ -1,5 +1,5 @@
 from __future__ import annotations
-from src.models import project, MissingNoneOr, MISSING
+from src.models import project, MissingOr, MissingNoneOr, MISSING, _MissingType
 from typing import ClassVar, TYPE_CHECKING, Self
 from datetime import datetime, UTC
 from pymongo import IndexModel
@@ -58,19 +58,28 @@ class DiscordCache(Document):
     async def get(  # pyright: ignore[reportIncompatibleMethodOverride]
         cls,
         snowflake: int,
-        guild_id: MissingNoneOr[int] = MISSING
+        guild_id: MissingNoneOr[int] = MISSING,
+        type: MissingOr[CacheType] = MISSING
     ) -> DiscordCache | None:
         async def _get(
             cls: type[Self],
             snowflake: int,
-            guild_id: MissingNoneOr[int] = MISSING
+            guild_id: MissingNoneOr[int] = MISSING,
+            type: MissingOr[CacheType] = MISSING
         ) -> DiscordCache | None:
-            if guild_id is MISSING:
-                return await cls.find_one({'snowflake': snowflake})
+            query: dict[str, int | None] = {'snowflake': snowflake}
 
-            return await cls.find_one({'snowflake': snowflake, 'guild_id': guild_id})
+            if guild_id is not MISSING:
+                assert not isinstance(guild_id, _MissingType)
+                query['guild_id'] = guild_id
 
-        cached = await _get(cls, snowflake, guild_id)
+            if type is not MISSING:
+                assert not isinstance(type, _MissingType)
+                query['type'] = type.value
+
+            return await cls.find_one(query)
+
+        cached = await _get(cls, snowflake, guild_id, type)
 
         if cached is None:
             logfire.debug(
@@ -171,11 +180,8 @@ class DiscordCache(Document):
         return await cls.find_one(
             {
                 'snowflake': channel_id,
-                'guild_id': (
-                    guild_id
-                    if guild_id is not None else
-                    {'$ne': None}
-                )
+                'guild_id': guild_id,
+                'type': CacheType.CHANNEL.value
             }
         )
 

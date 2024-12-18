@@ -193,7 +193,7 @@ class Message(RawBaseModel):
         include_content: bool = False
     ) -> Message:
         if not include_content:
-            cached = await DiscordCache.get(message_id, None)
+            cached = await DiscordCache.get(message_id, None, CacheType.MESSAGE)
 
             if cached is not None and not cached.deleted and not cached.error:
                 message = cls(**cached.data)
