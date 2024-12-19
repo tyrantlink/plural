@@ -4,7 +4,10 @@ from src.models import project
 from functools import partial
 from copy import deepcopy
 
-__all__ = ('help_components',)
+__all__ = (
+    'help_components',
+    'help_description'
+)
 
 
 PAGES = {
@@ -28,6 +31,8 @@ PAGES = {
         f'- [terms of service](<{project.base_url}/terms-of-service>)'
     ])
 }
+
+help_description = PAGES['main']
 
 
 help_embed = partial(

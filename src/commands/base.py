@@ -1,6 +1,6 @@
 from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, EmbedField, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File, ActionRow, Webhook
+from src.components import modal_plural_edit, umodal_edit, button_api_key, help_components, help_description, button_delete_all_data
 from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, GuildConfig, UserConfig, ReplyFormat
-from src.components import modal_plural_edit, umodal_edit, button_api_key, help_components, button_delete_all_data
 from src.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport, LogMessage
 from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape  # noqa: N812
 from src.errors import InteractionError, Forbidden, PluralException
@@ -502,7 +502,7 @@ async def slash_help(interaction: Interaction) -> None:
     await interaction.response.send_message(
         embeds=[Embed(
             title='welcome to /plu/ral!',
-            description='please select a category',
+            description=help_description,
             color=0x69ff69)],
         components=help_components
     )
