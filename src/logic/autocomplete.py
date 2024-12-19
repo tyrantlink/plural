@@ -111,7 +111,7 @@ async def autocomplete_member(
         return [
             ApplicationCommandOptionChoice(
                 name=f'[{group.name}] {member.name}'[
-                    0 if len(groups) == 1 else len(group.name) + 3:],
+                    (len(group.name) + 3) if len(groups) == 1 else 0:],
                 value=str(member.id))
             for member, group in members[:25]
         ]
