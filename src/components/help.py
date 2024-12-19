@@ -8,7 +8,7 @@ __all__ = ('help_components',)
 
 
 PAGES = {
-    'main': 'please select a category',
+    'main': f'visit {project.base_url} for detailed info, or click the buttons below for simple instructions',
     'getting started': '\n'.join([
         '- if you\'re coming from pluralkit or tupperbox, use the `/import` command to use the proxies you already have',
         '- otherwise, you can start by creating a new group with `/group new`',
@@ -19,7 +19,7 @@ PAGES = {
         '- that\'s all the basics, otherwise, simply type `/` and see what commands are available!']),
     'userproxies': '\n\n'.join([
         'Userproxies are proxy members attached to a real Discord Bot, giving them the ability to be used in DMs, Group DMs, and servers without /plu/ral. They can also have bios and banner images right in their pop out.',
-        'This feature is advanced and requires a lot of setup, if you want to use it, [follow the instructions on the wiki](<https://github.com/tyrantlink/plural/wiki/Userproxies#creating-a-userproxy>).']),
+        f'This feature is advanced and requires a lot of setup, if you want to use it, [follow the instructions on the wiki](<{project.base_url}/guide/userproxies#creating-a-userproxy>).']),
     'info and support': '\n'.join([
         '- for more information, check out the [github](https://github.com/tyrantlink/plural)',
         '- for support, join the [discord](https://discord.gg/4mteVXBDW7)',

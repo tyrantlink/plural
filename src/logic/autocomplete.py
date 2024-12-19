@@ -125,29 +125,27 @@ async def autocomplete_member(
     if not full_process(typed_value):
         return return_members(members)
 
-    return return_members(
-        [
-            (member, group)
-            for _, score, member, group in [
-                ProcessedMember(
-                    processed[0],
-                    processed[1],
-                    processed[2][0],
-                    processed[2][1]
-                )
-                for processed in
-                process.extract(
-                    typed_value,
-                    {
-                        (member, group): member.name
-                        for member, group in members
-                    },
-                    limit=10
-                )
-            ]
-            if score > 60
+    return return_members([
+        (member, group)
+        for _, score, member, group in [
+            ProcessedMember(
+                processed[0],
+                processed[1],
+                processed[2][0],
+                processed[2][1]
+            )
+            for processed in
+            process.extract(
+                typed_value,
+                {
+                    (member, group): member.name
+                    for member, group in members
+                },
+                limit=10
+            )
         ]
-    )
+        if score > 60
+    ])
 
 
 @autocomplete('group')
