@@ -125,8 +125,7 @@ class Guild(RawBaseModel):
         await super().populate()
 
         if not self.roles:
-            with suppress(HTTPException):
-                self.roles = await self.fetch_roles()
+            self.roles = await self.fetch_roles()
 
     @classmethod
     async def fetch(cls, guild_id: Snowflake | int) -> Guild:
@@ -220,9 +219,6 @@ class Guild(RawBaseModel):
 
     async def fetch_roles(self, guild_cache: DiscordCache | None = None) -> list[Role]:
         guild_cache = guild_cache or await DiscordCache.get_guild(self.id)
-
-        if guild_cache is None:
-            await Guild.fetch(self.id)
 
         if guild_cache is None or guild_cache.deleted:
             return []

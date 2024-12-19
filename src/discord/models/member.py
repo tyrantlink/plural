@@ -72,20 +72,19 @@ class Member(RawBaseModel):
         if guild.owner_id == self.user.id:
             return Permission.all()
 
-        if guild.roles is None:
+        if not guild.roles:
             raise ValueError('Roles not found')
 
-        everyone_role = next(
+        # ? everyone role
+        permissions = next(
             role.permissions
             for role in guild.roles
             if role.id == guild.id
         )
 
-        permissions = everyone_role
-
         for role in [
             role
-            for role in guild.roles or []
+            for role in guild.roles
             if role.id in
             (self.roles or [])
         ]:
