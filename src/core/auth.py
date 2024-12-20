@@ -138,8 +138,9 @@ async def discord_key_validator(
 
     try:
         interaction = Interaction.model_validate_json(request_body)
-    except ValidationError:
-        raise HTTPException(400, 'Invalid interaction or webhook event') from None
+    except ValidationError as invalid:
+        raise HTTPException(
+            400, 'Invalid interaction or webhook event') from invalid
 
     if (  # ? always accept pings and interactions directed at the main bot
         interaction.type.value == 1 or
