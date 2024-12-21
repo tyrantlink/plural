@@ -1,6 +1,6 @@
 from __future__ import annotations
+from src.errors import PluralException, ImageLimitExceeded
 from pydantic_core import CoreSchema, core_schema
-from src.errors import PluralException
 from typing import Any, TYPE_CHECKING
 from src.core.session import session
 from src.db.config import UserConfig
@@ -113,6 +113,14 @@ async def avatar_deleter(self: ProxyMember | Group, user_id: int, save_and_dec: 
 
 
 async def avatar_setter(self: ProxyMember | Group, url: str, user_id: int) -> None:
+    config = await UserConfig.get(user_id)
+
+    if config is None:
+        config = await UserConfig(id=user_id).save()
+
+    if config.data.images >= config.data.image_limit:
+        raise ImageLimitExceeded
+
     image_response = await session.get(url)
 
     if int(image_response.headers.get('Content-Length', 0)) > 8_388_608:

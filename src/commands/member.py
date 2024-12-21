@@ -1,6 +1,6 @@
 from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Application, Guild, COMMAND_NAME_PATTERN, EventType
+from src.errors import InteractionError, Unauthorized, Forbidden, NotFound, ImageLimitExceeded
 from src.models import USERPROXY_FOOTER, USERPROXY_FOOTER_LIMIT, LEGACY_FOOTERS
-from src.errors import InteractionError, Unauthorized, Forbidden, NotFound
 from src.discord.commands import sync_commands, _put_all_commands
 from src.db import ProxyMember, Group, ImageExtension
 from src.components import modal_plural_member_bio
@@ -449,7 +449,11 @@ async def slash_member_set_avatar(
 
     await interaction.response.defer()
 
-    await member.set_avatar(avatar.url, interaction.author_id)
+    try:
+        await member.set_avatar(avatar.url, interaction.author_id)
+    except ImageLimitExceeded:
+        raise InteractionError(
+            'you have reached the maximum number of images you can upload; please delete some by running `/group avatar set` or `/member avatar set` and leaving the `avatar` field empty')
     assert member.avatar is not None
 
     response = f'member `{member.name}` of group `{(await member.get_group()).name}` now has the avatar `{avatar.filename}`'

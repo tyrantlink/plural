@@ -550,8 +550,7 @@ async def slash_import(
             inline=False)
 
         await interaction.response.send_message(
-            embeds=[embed]
-        )
+            embeds=[embed])
         return
 
     url = file.url if file else file_url

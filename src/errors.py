@@ -59,6 +59,10 @@ class ServerError(HTTPException):
     status_code: int = 500
 
 
+class ImageLimitExceeded(HTTPException):
+    ...
+
+
 class ConversionError(BasePluralException):
     ...
 

@@ -1,6 +1,6 @@
 from src.discord import Interaction, InteractionContextType, ApplicationCommandOption, ApplicationCommandOptionType, Embed, ApplicationIntegrationType, Attachment, SlashCommandGroup, User, Channel
 from src.db import ProxyMember, Group, GroupShare, ImageExtension
-from src.errors import InteractionError
+from src.errors import InteractionError, ImageLimitExceeded
 from asyncio import gather
 
 
@@ -415,7 +415,11 @@ async def slash_group_set_avatar(
 
     await interaction.response.defer()
 
-    await group.set_avatar(avatar.url, interaction.author_id)
+    try:
+        await group.set_avatar(avatar.url, interaction.author_id)
+    except ImageLimitExceeded:
+        raise InteractionError(
+            'you have reached the maximum number of images you can upload; please delete some by running `/group avatar set` or `/member avatar set` and leaving the `avatar` field empty')
     assert group.avatar is not None
 
     response = f'group `{group.name}` now has the avatar `{avatar.filename}`'

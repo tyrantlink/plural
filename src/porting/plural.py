@@ -1,7 +1,7 @@
 from __future__ import annotations
 from src.db import ApiKey, Group, ProxyMember, Message, Latch, Reply, CFCDNProxy
+from src.errors import PluralException, ImageLimitExceeded
 from src.utils import create_strong_task
-from src.errors import PluralException
 from src.core.session import session
 from urllib.parse import urlparse
 from asyncio import gather, sleep
@@ -280,14 +280,14 @@ class PluralExport(BaseExport):
                 changes_made = True
 
                 tasks.append(
-                    self._save_object_with_avatar(member, url)
+                    self._save_object_with_avatar(member, url, account_id)
                     if (url := self.avatar_map.get(member_id)) is not None
                     else member.save()
                 )
 
             if changes_made:
                 tasks.append(
-                    self._save_object_with_avatar(group, url)
+                    self._save_object_with_avatar(group, url, account_id)
                     if (url := self.avatar_map.get(group.id)) is not None
                     else group.save()
                 )
@@ -346,7 +346,12 @@ class PluralExport(BaseExport):
 
         return proxy.proxy_url
 
-    async def _save_object_with_avatar(self, object: ProxyMember | Group, url: str | None) -> None:
+    async def _save_object_with_avatar(
+        self,
+        object: ProxyMember | Group,
+        url: str | None,
+        user_id: int
+    ) -> None:
         if url is None:
             return None
 
@@ -370,7 +375,9 @@ class PluralExport(BaseExport):
 
         # ? set_avatar calls a save at the end
         try:
-            await object.set_avatar(url)
+            await object.set_avatar(url, user_id)
+        except ImageLimitExceeded:
+            self.logs.append(LogMessage.IMAGE_LIMIT_EXCEEDED)
         except PluralException:
             self.logs.append(LogMessage.AVATAR_TOO_LARGE.format(
                 object_type=object_type, object_name=object_name))

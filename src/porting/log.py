@@ -15,3 +15,4 @@ class LogMessage(StrEnum):
     GROUP_TAG_TOO_LONG = 'E: group "{group_name}" tag "{tag}" is too long; skipping'
     NOTHING_IMPORTED = 'E: nothing was imported'
     AVATAR_TOO_LARGE = 'E: avatar for {object_type} {object_name} is too large (max 8mb); skipping'
+    IMAGE_LIMIT_EXCEEDED = 'E: image limit exceeded; only the first 1000 images will be imported'
