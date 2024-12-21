@@ -49,6 +49,9 @@ class UserConfig(Config):
     userproxy_ping_replies: bool = Field(
         default=False,
         description='whether to ping when you reply to someone')
+    groups_in_autocomplete: bool = Field(
+        default=True,
+        description='whether to show groups in member autocomplete')
     data: Data = Field(
         default_factory=Data,
         description='user specific data, stored in config because i don\'t want to make a new collection')

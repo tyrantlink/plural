@@ -775,6 +775,11 @@ async def slash_edit(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='userproxy_ping_replies',
             description='whether to ping when you reply to someone (only supports inline format) (default: False)',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='show_groups_in_autocomplete',
+            description='whether to show groups in member autocomplete when you have more than one (default: True)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -782,7 +787,8 @@ async def slash_config(
     interaction: Interaction,
     reply_format: str | None = None,
     dm_reply_format: str | None = None,
-    userproxy_ping_replies: bool | None = None
+    userproxy_ping_replies: bool | None = None,
+    show_groups_in_autocomplete: bool | None = None
 ) -> None:
     config = await UserConfig.get(interaction.author_id)
 
@@ -794,7 +800,9 @@ async def slash_config(
     if all(
         option is None
         for option in {
-            reply_format, dm_reply_format, userproxy_ping_replies}
+            reply_format, dm_reply_format, userproxy_ping_replies,
+            show_groups_in_autocomplete
+        }
     ):
         await interaction.response.send_message(
             embeds=[Embed(
@@ -810,7 +818,10 @@ async def slash_config(
                         value=config.dm_reply_format.name.lower()),
                     EmbedField(
                         name='ping replies',
-                        value='enabled' if config.userproxy_ping_replies else 'disabled'
+                        value='enabled' if config.userproxy_ping_replies else 'disabled'),
+                    EmbedField(
+                        name='show groups in autocomplete',
+                        value='enabled' if config.groups_in_autocomplete else 'disabled'
                     )
                 ])
             ])
@@ -833,6 +844,11 @@ async def slash_config(
         config.userproxy_ping_replies = userproxy_ping_replies
         changes.append(
             f'ping replies is now {"enabled" if config.userproxy_ping_replies else "disabled"}')
+
+    if show_groups_in_autocomplete is not None:
+        config.groups_in_autocomplete = show_groups_in_autocomplete
+        changes.append(
+            f'show groups in autocomplete is now {"enabled" if config.groups_in_autocomplete else "disabled"}')
 
     await config.save_changes()
 

@@ -1,7 +1,7 @@
 from src.discord import Interaction, ApplicationCommandInteractionData, ApplicationCommandOptionType, ApplicationCommandInteractionDataOption, ApplicationCommandOptionChoice
+from src.db import ProxyMember, Group, UserConfig
 from typing import NamedTuple, Protocol
 from thefuzz.utils import full_process
-from src.db import ProxyMember, Group
 from collections.abc import Callable
 from beanie import PydanticObjectId
 from bson.errors import InvalidId
@@ -105,27 +105,34 @@ async def autocomplete_member(
             if not userproxies_only or member.userproxy is not None
         )
 
-    def return_members(
+    async def return_members(
         members: list[tuple[ProxyMember, Group]]
     ) -> list[ApplicationCommandOptionChoice]:
+        # ? check config, always hide if only one group
+        hide_groups = ((
+            not (
+                await UserConfig.get(interaction.author_id) or UserConfig.default()
+            ).groups_in_autocomplete
+        ) or len(groups) == 1)
+
         return [
             ApplicationCommandOptionChoice(
                 name=f'[{group.name}] {member.name}'[
-                    (len(group.name) + 3) if len(groups) == 1 else 0:],
+                    (len(group.name) + 3) if hide_groups else 0:],
                 value=str(member.id))
             for member, group in members[:25]
         ]
 
     if not members:
-        return return_members(members)
+        return await return_members(members)
 
     typed_value = str(
         options['userproxy' if userproxies_only else 'member'].value)
 
     if not full_process(typed_value):
-        return return_members(members)
+        return await return_members(members)
 
-    return return_members([
+    return await return_members([
         (member, group)
         for _, score, member, group in [
             ProcessedMember(
