@@ -302,7 +302,7 @@ async def slash_member_remove(
     member: ProxyMember
 ) -> None:
     group = await member.get_group()
-    await group.delete_member(member.id)
+    await group.delete_member(member.id, interaction.author_id)
 
     await interaction.response.send_message(
         embeds=[Embed.success(
@@ -428,7 +428,7 @@ async def slash_member_set_avatar(
 ) -> None:
     if avatar is None:
         await gather(
-            member.delete_avatar(),
+            member.delete_avatar(interaction.author_id),
             interaction.response.send_message(
                 embeds=[Embed.success(
                     f'removed member `{member.name}` avatar'
@@ -449,7 +449,7 @@ async def slash_member_set_avatar(
 
     await interaction.response.defer()
 
-    await member.set_avatar(avatar.url)
+    await member.set_avatar(avatar.url, interaction.author_id)
     assert member.avatar is not None
 
     response = f'member `{member.name}` of group `{(await member.get_group()).name}` now has the avatar `{avatar.filename}`'

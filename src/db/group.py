@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .helpers import avatar_getter, avatar_setter, avatar_deleter, ImageId
+from .helpers import avatar_getter, avatar_setter, avatar_deleter, Image
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
 from src.db.member import ProxyMember
@@ -43,10 +43,10 @@ class Group(Document):
     @classmethod
     def _handle_avatar(cls, values: dict[Any, Any]) -> dict[Any, Any]:
         if isinstance((avatar := values.get('avatar')), bytes):
-            values['avatar'] = ImageId.validate(avatar)
+            values['avatar'] = Image.validate(avatar)
         return values
 
-    def dict(self, *args, **kwargs) -> dict[str, Any]: # noqa: ANN002, ANN003
+    def dict(self, *args, **kwargs) -> dict[str, Any]:  # noqa: ANN002, ANN003
         data = super().dict(*args, **kwargs)
         for variable in {'accounts', 'members', 'channels'}:
             if data.get(variable, None) is not None:
@@ -58,7 +58,7 @@ class Group(Document):
         validate_on_save = True
         use_state_management = True
         indexes: ClassVar = ['accounts', 'members', 'name']
-        bson_encoders: ClassVar = {ImageId: bytes}
+        bson_encoders: ClassVar = {Image: bytes}
 
     id: PydanticObjectId = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default_factory=PydanticObjectId)
@@ -69,7 +69,7 @@ class Group(Document):
         default_factory=set,
         description='the discord accounts attached to this group'
     )
-    avatar: ImageId | None = Field(
+    avatar: Image | None = Field(
         None,
         description='the avatar uuid of the group'
     )
@@ -100,7 +100,7 @@ class Group(Document):
         if self.avatar is None:
             return None
 
-        return f'{project.cdn_url}/images/{self.id}/{self.avatar.id}.{self.avatar.extension}'
+        return f'{project.cdn_url}/images/{self.id}/{self.avatar.hash}.{self.avatar.ext}'
 
     async def get_members(self) -> list[ProxyMember]:
         return await ProxyMember.find_many(
@@ -142,7 +142,8 @@ class Group(Document):
 
     async def delete_member(
         self,
-        id: PydanticObjectId
+        id: PydanticObjectId,
+        user_id: int
     ) -> None:
         member = await ProxyMember.find_one(
             {'_id': id}
@@ -162,7 +163,7 @@ class Group(Document):
         ]
 
         if member.avatar is not None:
-            tasks.append(member.delete_avatar())
+            tasks.append(member.delete_avatar(user_id))
 
         await gather(*tasks)
 
@@ -189,8 +190,8 @@ class Group(Document):
 
         return await avatar_getter(self)
 
-    async def set_avatar(self, url: str) -> None:
-        await avatar_setter(self, url)
+    async def set_avatar(self, url: str, user_id: int) -> None:
+        await avatar_setter(self, url, user_id)
 
-    async def delete_avatar(self) -> None:
-        await avatar_deleter(self)
+    async def delete_avatar(self, user_id: int) -> None:
+        await avatar_deleter(self, user_id)

@@ -108,13 +108,13 @@ async def button_delete_all_data(
 
     for group in groups:
         if group.avatar:
-            images.append(group.delete_avatar())
+            images.append(group.delete_avatar(interaction.author_id))
 
         tasks.append(group.delete())
 
     for member in members:
         if member.avatar:
-            images.append(member.delete_avatar())
+            images.append(member.delete_avatar(interaction.author_id))
 
         if member.userproxy:
             userproxy_ids.add(member.userproxy.bot_id)

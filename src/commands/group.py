@@ -122,7 +122,7 @@ async def slash_group_remove(
         ])
 
     if group.avatar is not None:
-        tasks.append(group.delete_avatar())
+        tasks.append(group.delete_avatar(interaction.author_id))
 
     await gather(
         *tasks,
@@ -394,7 +394,7 @@ async def slash_group_set_avatar(
 ) -> None:
     if avatar is None:
         await gather(
-            group.delete_avatar(),
+            group.delete_avatar(interaction.author_id),
             interaction.response.send_message(
                 embeds=[Embed.success(
                     f'removed group `{group.name}` avatar'
@@ -415,7 +415,7 @@ async def slash_group_set_avatar(
 
     await interaction.response.defer()
 
-    await group.set_avatar(avatar.url)
+    await group.set_avatar(avatar.url, interaction.author_id)
     assert group.avatar is not None
 
     response = f'group `{group.name}` now has the avatar `{avatar.filename}`'

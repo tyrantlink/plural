@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .helpers import avatar_getter, avatar_setter, avatar_deleter, ImageId
+from .helpers import avatar_getter, avatar_setter, avatar_deleter, Image
 from typing import Annotated, TYPE_CHECKING, Any, ClassVar
 from pydantic import Field, model_validator, BaseModel
 from beanie import Document, PydanticObjectId
@@ -36,7 +36,7 @@ class ProxyMember(Document):
     @classmethod
     def _handle_avatar(cls, values: dict[Any, Any]) -> dict[Any, Any]:
         if isinstance((avatar := values.get('avatar')), bytes):
-            values['avatar'] = ImageId.validate(avatar)
+            values['avatar'] = Image.validate(avatar)
         return values
 
     class Settings:
@@ -44,7 +44,7 @@ class ProxyMember(Document):
         validate_on_save = True
         use_state_management = True
         indexes: ClassVar = ['userproxy.bot_id']
-        bson_encoders: ClassVar = {ImageId: bytes}
+        bson_encoders: ClassVar = {Image: bytes}
 
     class ProxyTag(BaseModel):
         def __eq__(self, value: object) -> bool:
@@ -99,7 +99,7 @@ class ProxyMember(Document):
         description='the name of the member',
         min_length=1, max_length=80
     )
-    avatar: ImageId | None = Field(
+    avatar: Image | None = Field(
         None,
         description='the avatar uuid of the member; overrides the group avatar'
     )
@@ -119,7 +119,7 @@ class ProxyMember(Document):
         if self.avatar is None:
             return None
 
-        return f'{project.cdn_url}/images/{self.id}/{self.avatar.id}.{self.avatar.extension.name.lower()}'
+        return f'{project.cdn_url}/images/{self.id}/{self.avatar.hash}.{self.avatar.ext}'
 
     async def get_group(self) -> Group:
         from src.db.group import Group
@@ -134,8 +134,8 @@ class ProxyMember(Document):
     async def get_avatar(self) -> bytes | None:
         return await avatar_getter(self)
 
-    async def set_avatar(self, url: str) -> None:
-        await avatar_setter(self, url)
+    async def set_avatar(self, url: str, user_id: int) -> None:
+        await avatar_setter(self, url, user_id)
 
-    async def delete_avatar(self) -> None:
-        await avatar_deleter(self)
+    async def delete_avatar(self, user_id: int) -> None:
+        await avatar_deleter(self, user_id)

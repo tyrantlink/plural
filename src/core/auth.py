@@ -92,7 +92,7 @@ async def discord_key_validator(
 ) -> bool:
     try:
         request_body = (await request.body()).decode()
-    except Exception: # noqa: BLE001
+    except Exception:  # noqa: BLE001
         raise HTTPException(400, 'Invalid request body') from None
 
     verify_key = VerifyKey(bytes.fromhex(project.gateway_key))
@@ -108,7 +108,7 @@ async def discord_key_validator(
 
     try:
         application_id = int(loads(request_body)['application_id'])
-    except Exception: # noqa: BLE001
+    except Exception:  # noqa: BLE001
         raise HTTPException(400, 'Invalid request body') from None
 
     member = None
