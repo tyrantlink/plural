@@ -34,7 +34,7 @@ class GuildConfig(Config):
 class UserConfig(Config):
     class Data(BaseModel):
         image_limit: int = Field(
-            default=300,
+            default=1000,
             description='the maximum number of images a user can upload')
         images: int = Field(
             default=0,
