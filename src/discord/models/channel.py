@@ -103,16 +103,8 @@ class Channel(RawBaseModel):
         if cached is not None and not cached.deleted and cached.error is None:
             return cls(**cached.data)
 
-        if cached is not None and cached.error:
-            match cached.error:
-                case 404:
-                    raise NotFound(f'channel {channel_id} not found')
-                case 403:
-                    raise Forbidden(f'channel {channel_id} is forbidden')
-                case 401:
-                    raise Unauthorized(f'channel {channel_id} is unauthorized')
-                case _:
-                    raise HTTPException(cached.error)
+        if cached is not None and cached.exception:
+            raise cached.exception
 
         try:
             data = await request(Route(
@@ -124,7 +116,8 @@ class Channel(RawBaseModel):
                 await DiscordCache.http4xx(
                     e.status_code,
                     CacheType.CHANNEL,
-                    channel_id)
+                    channel_id,
+                    guild_id)
             raise
 
         if 'guild_id' in data or guild_id is not None:

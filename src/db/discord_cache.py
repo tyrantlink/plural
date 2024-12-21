@@ -54,6 +54,24 @@ class DiscordCache(Document):
         default_factory=datetime.utcnow,
         description='timestamp for ttl index')
 
+    @property
+    def exception(self) -> Exception | None:
+        from src.errors import NotFound, Forbidden, Unauthorized, HTTPException
+        if self.error is None:
+            return None
+
+        base = f'{self.type.name.lower()} {self.snowflake}'
+
+        match self.error:
+            case 404:
+                raise NotFound(f'{base} not found')
+            case 403:
+                raise Forbidden(f'{base} is forbidden')
+            case 401:
+                raise Unauthorized(f'{base} is unauthorized')
+            case _:
+                raise HTTPException(self.error)
+
     @classmethod
     async def get(  # pyright: ignore[reportIncompatibleMethodOverride]
         cls,
@@ -148,7 +166,8 @@ class DiscordCache(Document):
                     'deleted': False,
                     'type': type.value,
                     'data': {},
-                    'ts': datetime.now(UTC).isoformat(),
+                    'meta': {},
+                    'ts': datetime.now(UTC),
                 }
             },
             upsert=True
@@ -160,25 +179,21 @@ class DiscordCache(Document):
         channel_id: int,
         guild_id: int | None = None
     ) -> DiscordCache | None:
-        return await cls.find_one(
-            {
-                'snowflake': channel_id,
-                'guild_id': guild_id,
-                'type': CacheType.CHANNEL.value
-            }
-        )
+        return await cls.find_one({
+            'snowflake': channel_id,
+            'guild_id': guild_id,
+            'type': CacheType.CHANNEL.value
+        })
 
     @classmethod
     async def get_guild(
         cls,
         guild_id: int
     ) -> DiscordCache | None:
-        guild = await cls.get(guild_id, None)
-
-        if guild is None or guild.error:
-            return None
-
-        return guild
+        return await cls.find_one({
+            'snowflake': guild_id,
+            'type': CacheType.GUILD.value
+        })
 
     @classmethod
     async def get_member(

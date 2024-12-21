@@ -131,16 +131,26 @@ class Guild(RawBaseModel):
     async def fetch(cls, guild_id: Snowflake | int) -> Guild:
         cached = await DiscordCache.get_guild(guild_id)
 
-        if cached is not None and not cached.deleted:
+        if cached is not None and not cached.deleted and cached.error is None:
             guild = cls(**cached.data)
             await guild.populate()
             return guild
 
-        data = await request(Route(
-            'GET',
-            '/guilds/{guild_id}',
-            guild_id=guild_id
-        ))
+        if cached is not None and cached.exception:
+            raise cached.exception
+
+        try:
+            data = await request(Route(
+                'GET',
+                '/guilds/{guild_id}',
+                guild_id=guild_id))
+        except HTTPException as e:
+            if 400 <= e.status_code < 500:
+                await DiscordCache.http4xx(
+                    e.status_code,
+                    CacheType.GUILD,
+                    guild_id)
+            raise
 
         await DiscordCache.add(
             CacheType.GUILD,
@@ -220,7 +230,7 @@ class Guild(RawBaseModel):
     async def fetch_roles(self, guild_cache: DiscordCache | None = None) -> list[Role]:
         guild_cache = guild_cache or await DiscordCache.get_guild(self.id)
 
-        if guild_cache is None or guild_cache.deleted:
+        if guild_cache is None or guild_cache.deleted or 'roles' not in guild_cache.meta:
             return []
 
         cached_roles = [

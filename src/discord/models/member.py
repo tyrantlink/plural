@@ -5,6 +5,7 @@ from src.discord.http import Route, request
 from src.db import DiscordCache, CacheType
 from src.discord.types import Snowflake  # noqa: TC001
 from datetime import datetime, timezone
+from src.errors import HTTPException
 from .base import RawBaseModel
 from .channel import Channel
 from .guild import Guild
@@ -38,15 +39,26 @@ class Member(RawBaseModel):
     async def fetch(cls, guild_id: Snowflake | int, user_id: Snowflake | int) -> Member:
         cached = await DiscordCache.get_member(user_id, guild_id)
 
-        if cached is not None and not cached.deleted:
+        if cached is not None and not cached.deleted and cached.error is None:
             return cls(**cached.data)
 
-        data = await request(Route(
-            'GET',
-            '/guilds/{guild_id}/members/{user_id}',
-            guild_id=guild_id,
-            user_id=user_id
-        ))
+        if cached is not None and cached.exception:
+            raise cached.exception
+
+        try:
+            data = await request(Route(
+                'GET',
+                '/guilds/{guild_id}/members/{user_id}',
+                guild_id=guild_id,
+                user_id=user_id))
+        except HTTPException as e:
+            if 400 <= e.status_code < 500:
+                await DiscordCache.http4xx(
+                    e.status_code,
+                    CacheType.MEMBER,
+                    user_id,
+                    guild_id)
+            raise
 
         member = cls(**data)
 
