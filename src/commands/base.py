@@ -9,10 +9,10 @@ from src.version import VERSION, LAST_TEN_COMMITS
 from src.models import DebugMessage, project
 from src.discord.http import get_from_cdn
 from pydantic_core import ValidationError
+from time import time, perf_counter
 from asyncio import gather
 from orjson import loads
 from io import BytesIO
-from time import time
 
 
 SED_PATTERN = r'^s/(.*?)/(.*?)/?([gi]*)$'
@@ -576,11 +576,12 @@ async def slash_import(
 
     await interaction.response.defer()
 
+    st = perf_counter()
     logs = [
         log.lstrip('E: ')
         for log in await export.to_plural().import_to_account(interaction.author_id)
-        if log.startswith('E: ')
-    ]
+        if log.startswith('E: ')]
+    et = perf_counter()
 
     formatted_logs = f'```{'\n'.join(logs)}```'
 
@@ -590,19 +591,19 @@ async def slash_import(
         'too many logs, sending as a file'
     )
 
-    await interaction.followup.send(
-        embeds=(
-            [Embed.error(
-                title='import failed',
-                message=embed_message)]
-            if LogMessage.NOTHING_IMPORTED.lstrip('E: ') in logs else
-            [Embed.warning(
-                title='import successful, but with errors',
-                message=embed_message)]
-            if logs else
-            [Embed.success('import successful; no errors')]
-        )
-    )
+    embed = (
+        Embed.error(
+            title='import failed',
+            message=embed_message)
+        if LogMessage.NOTHING_IMPORTED.lstrip('E: ') in logs else
+        Embed.warning(
+            title='import successful, but with errors',
+            message=embed_message)
+        if logs else
+        Embed.success('import successful; no errors')
+    ).set_footer(f'import took {et-st:.2f}s')
+
+    await interaction.followup.send(embeds=[embed])
 
     if len(formatted_logs) > 4096:
         message = await interaction.followup.send(
