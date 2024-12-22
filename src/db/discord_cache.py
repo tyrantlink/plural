@@ -177,13 +177,13 @@ class DiscordCache(Document):
     async def get_channel(
         cls,
         channel_id: int,
-        guild_id: int | None = None
+        guild_id: MissingNoneOr[int] = MISSING
     ) -> DiscordCache | None:
         return await cls.find_one({
             'snowflake': channel_id,
-            'guild_id': guild_id,
-            'type': CacheType.CHANNEL.value
-        })
+            'type': CacheType.CHANNEL.value} | (
+            {'guild_id': guild_id} if guild_id is not MISSING else {}
+        ))
 
     @classmethod
     async def get_guild(

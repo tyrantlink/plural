@@ -1,11 +1,11 @@
 from __future__ import annotations
 from .enums import ChannelType, OverwriteType, VideoQualityMode, ChannelFlag, Permission, MessageFlag
-from src.errors import HTTPException, NotFound, Forbidden, Unauthorized
+from src.models import project, MissingNoneOr, MISSING
 from src.discord.http import Route, request, File
 from src.db import DiscordCache, CacheType
 from src.discord.types import Snowflake  # noqa: TC001
+from src.errors import HTTPException
 from typing import TYPE_CHECKING
-from src.models import project
 from .base import RawBaseModel
 from asyncio import gather
 from .user import User  # noqa: TC001
@@ -96,7 +96,7 @@ class Channel(RawBaseModel):
     async def fetch(
         cls,
         channel_id: Snowflake | int,
-        guild_id: Snowflake | int | None = None
+        guild_id: MissingNoneOr[Snowflake | int] = MISSING
     ) -> Channel:
         cached = await DiscordCache.get_channel(channel_id, guild_id)
 
@@ -107,7 +107,7 @@ class Channel(RawBaseModel):
             raise cached.exception
 
         try:
-            data = await request(Route(
+            data: dict = await request(Route(
                 'GET',
                 '/channels/{channel_id}',
                 channel_id=channel_id))
@@ -117,14 +117,14 @@ class Channel(RawBaseModel):
                     e.status_code,
                     CacheType.CHANNEL,
                     channel_id,
-                    guild_id)
+                    guild_id or None)
             raise
 
-        if 'guild_id' in data or guild_id is not None:
+        if 'guild_id' in data or guild_id:
             await DiscordCache.add(
                 CacheType.CHANNEL,
                 data,
-                guild_id
+                guild_id or data.get('guild_id')
             )
 
         return cls(**data)
