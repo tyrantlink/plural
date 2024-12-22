@@ -1,5 +1,5 @@
 from src.discord import modal, TextInput, Interaction, TextInputStyle, MessageFlag, Webhook, Embed, AllowedMentions, FakeMessage, User, Snowflake
-from src.db import UserProxyInteraction, Reply, ProxyMember, ReplyType, UserConfig, ReplyFormat
+from src.db import UserProxyInteraction, Reply, ProxyMember, ReplyType, UserConfig, ReplyFormat, CacheType, DiscordCache
 from src.errors import InteractionError, HTTPException
 from src.logic.proxy import format_reply
 from asyncio import gather
@@ -71,15 +71,27 @@ async def umodal_send(
 
     assert reply.author is not None
 
-    proxy_content = message
+    enforce_format, channel_data = None, None
+
+    if interaction.channel_id is not None:
+        channel_data = await DiscordCache.get_channel(
+            int(interaction.channel_id), guild_id=int(interaction.guild_id or 0))
+
+        if channel_data is not None:
+            enforce_format = channel_data.meta.get('enforce_format', None)
 
     user_config = await UserConfig.get(interaction.author_id) or UserConfig.default()
 
     reply_format = (
-        user_config.dm_reply_format
-        if interaction.is_dm else
-        user_config.reply_format
+        ReplyFormat(enforce_format)
+        if enforce_format is not None else (
+            user_config.dm_reply_format
+            if interaction.is_dm else
+            user_config.reply_format
+        )
     )
+
+    proxy_content = message
 
     proxy_with_reply, reply_mentions = format_reply(
         proxy_content,
@@ -90,8 +102,7 @@ async def umodal_send(
                 id=Snowflake(reply.author.id),
                 discriminator='0000',
                 username=reply.author.username,
-                avatar=reply.author.avatar
-            )),
+                avatar=reply.author.avatar)),
         reply_format
     )
 
@@ -121,6 +132,23 @@ async def umodal_send(
             flags=MessageFlag.NONE
         )
     )
+
+    if not (
+        interaction.guild is None or not sent_message.flags & MessageFlag.EPHEMERAL
+    ):
+        match reply_format:
+            case ReplyFormat.INLINE:
+                reply_format = ReplyFormat.EMBED
+                await interaction.send('this channel\'s automod blocks inline replies; try again to send an embed')
+            case ReplyFormat.EMBED:
+                reply_format = ReplyFormat.NONE
+                await interaction.send('embed replies cannot be sent in this channel; try again to send a plain message')
+
+        if channel_data is not None:
+            channel_data.meta['enforce_format'] = reply_format.value
+            await channel_data.save()
+
+        return
 
     await UserProxyInteraction(
         author_id=interaction.author_id,

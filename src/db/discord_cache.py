@@ -192,6 +192,7 @@ class DiscordCache(Document):
     ) -> DiscordCache | None:
         return await cls.find_one({
             'snowflake': guild_id,
+            'guild_id': None,
             'type': CacheType.GUILD.value
         })
 

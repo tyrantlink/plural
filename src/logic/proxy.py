@@ -327,6 +327,9 @@ def format_reply(
     reference: Message,
     format: ReplyFormat
 ) -> tuple[str | Embed, set[Snowflake]]:
+    if format == ReplyFormat.NONE:
+        return content, set()
+
     if format == ReplyFormat.EMBED:
         return Embed.reply(reference), set()
 
