@@ -8,8 +8,8 @@ from .proxy import process_proxy, get_proxy_webhook
 from src.discord.components import components
 from .autocomplete import on_autocomplete
 from beanie import PydanticObjectId
+from asyncio import gather, sleep
 from src.models import project
-from asyncio import gather
 from typing import Any
 
 
@@ -45,6 +45,17 @@ async def on_message_edit(message: MessageUpdateEvent) -> None:
 
     if message.id != message.channel.last_message_id:
         return None
+
+    # ? when an attachement is added to a message, the update event is fired
+    # ? but message may be processed by another node, so wait a bit to make sure
+    await sleep(1.5)
+
+    db_message = await DBMessage.find_one(
+        {'original_id': message.id}
+    )
+
+    if db_message is not None:
+        return
 
     await on_message(message)
 
