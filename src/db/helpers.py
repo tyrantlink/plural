@@ -94,16 +94,25 @@ async def _get_image_extension(url: str) -> ImageExtension:
                 raise HTTPException('failed to get asset')
 
 
+async def _try_request(method: str, url: str, headers: dict[str, str], data: Any = None, retries=5) -> bool:
+    try:
+        async with session.request(method, url, headers=headers, data=data) as resp:
+            return resp.status == 204
+    except Exception as e:
+        if retries > 0:
+            return await _try_request(method, url, headers, data, retries - 1)
+        raise e
+
+
 async def avatar_deleter(self: ProxyMember | Group, user_id: int, save_and_dec: bool = True) -> None:
     if self.avatar_url is not None:
-        async with session.delete(
+        if not await _try_request(
+            'DELETE',
             self.avatar_url,
-            headers={'Authorization': f'Bearer {project.cdn_api_key}'}
-        ) as resp:
-            if resp.status != 204:
-                logfire.error(
-                    'failed to delete avatar {avatar_url} with status {status} and message {message}',
-                    avatar_url=self.avatar_url, status=resp.status, message=await resp.text())
+            {'Authorization': f'Bearer {project.cdn_api_key}'}
+        ):
+            logfire.error(f'failed to delete avatar {self.avatar_url}')
+            return
 
     self.avatar = None
 
@@ -136,18 +145,17 @@ async def avatar_setter(self: ProxyMember | Group, url: str, user_id: int) -> No
 
     avatar = Image(await _get_image_extension(url), md5(data).hexdigest())
 
-    async with session.put(
+    if not await _try_request(
+        'PUT',
         f'{project.cdn_url}/images/{self.id}/{avatar.hash}.{avatar.ext}',
-        data=bytes(data),
-        headers={
+        {
             'Authorization': f'Bearer {project.cdn_api_key}',
-            'Content-Type': avatar.extension.mime_type}
-    ) as resp:
-        if resp.status != 204:
-            logfire.error(
-                'failed to upload avatar {avatar_hash}.{extension} with status {status} and message {message}',
-                avatar_hash=avatar.hash, extension=avatar.extension, status=resp.status, message=await resp.text())
-            return None
+            'Content-Type': avatar.extension.mime_type
+        },
+        bytes(data)
+    ):
+        logfire.error(f'failed to upload avatar {avatar.hash}.{avatar.ext}')
+        return
 
     await (
         UserConfig.inc_images(user_id)
