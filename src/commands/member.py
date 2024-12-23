@@ -165,6 +165,21 @@ async def _userproxy_sync(
             description='name of the member',
             required=True),
         ApplicationCommandOption(
+            type=ApplicationCommandOptionType.ATTACHMENT,
+            name='avatar',
+            description='avatar for the member (max 8MB)',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='tag_prefix',
+            description='proxy tag prefix (e.g. {prefix}text)',
+            required=False),
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='tag_suffix',
+            description='proxy tag suffix (e.g. text{suffix})',
+            required=False),
+        ApplicationCommandOption(
             type=ApplicationCommandOptionType.STRING,
             name='group',
             description='group to add the member to',
@@ -175,6 +190,9 @@ async def _userproxy_sync(
 async def slash_member_new(
     interaction: Interaction,
     name: str,
+    avatar: Attachment | None = None,
+    tag_prefix: str | None = None,
+    tag_suffix: str | None = None,
     group: Group | None = None
 ) -> None:
     group = group or await Group.get_or_create_default(interaction.author_id)
@@ -193,9 +211,43 @@ async def slash_member_new(
             'display name will be truncated when proxying'
         ])))
 
-    await group.add_member(name)
+    member = await group.add_member(name)
 
-    await interaction.response.send_message(embeds=embeds)
+    if tag_prefix or tag_suffix:
+        member.proxy_tags.append(
+            ProxyMember.ProxyTag(
+                prefix=tag_prefix or '',
+                suffix=tag_suffix or ''
+            )
+        )
+
+    avatar_set = True
+
+    if avatar is not None:
+        if avatar.size > 8_388_608:
+            raise InteractionError('avatars must be less than 8MB')
+
+        if (
+            '.' in avatar.filename and
+            avatar.filename.rsplit(
+                '.', 1)[-1].lower() not in {'png', 'jpeg', 'jpg', 'gif', 'webp'}
+        ):
+            raise InteractionError('avatars must be a png, jpg, gif, or webp')
+
+        await interaction.response.defer()
+
+        try:
+            await member.set_avatar(avatar.url, interaction.author_id)
+        except ImageLimitExceeded:
+            avatar_set = False
+
+    await interaction.send(embeds=embeds)
+
+    if avatar_set:
+        return
+
+    raise InteractionError(
+        'you have reached the maximum number of images you can upload; please delete some by running `/group avatar set` or `/member avatar set` and leaving the `avatar` field empty')
 
 
 @member.command(  # ! add pagination
