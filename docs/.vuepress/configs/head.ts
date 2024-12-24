@@ -32,9 +32,9 @@ export const head: HeadConfig[] = [
     {
       rel: 'mask-icon',
       href: '/images/icons/safari-pinned-tab.svg',
-      color: '#3eaf7c',
+      color: '#d0aa78',
     },
   ],
-  ['meta', { name: 'msapplication-TileColor', content: '#3eaf7c' }],
-  ['meta', { name: 'theme-color', content: '#3eaf7c' }],
+  ['meta', { name: 'msapplication-TileColor', content: '#d0aa78' }],
+  ['meta', { name: 'theme-color', content: '#d0aa78' }],
 ]

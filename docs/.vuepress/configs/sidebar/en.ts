@@ -21,6 +21,38 @@ export const sidebarEn: SidebarOptions = {
         ]
     },
     {
+        text: 'Server Guide',
+        collapsible: true,
+        children: [
+            {
+                text: 'Logging Compatibility',
+                link: '/server-guide/logging-compatibility'
+            }
+        ]
+    },
+    {
+        text: 'Third Party Applications',
+        collapsible: true,
+        children: [
+            {
+                text: 'Creating Applications',
+                link: '/third-party-applications/creating-applications'
+            },
+            {
+                text: 'API Reference',
+                link: '/third-party-applications/api-reference'
+            },
+            {
+                text: 'Known Applications',
+                link: '/third-party-applications/application-guide'
+            },
+            {
+                text: 'Adding Logging Support',
+                link: '/third-party-applications/logging-support'
+            }
+        ]
+    },
+    {
         text: 'Information',
         collapsible: true,
         children: [

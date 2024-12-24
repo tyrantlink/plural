@@ -1,9 +1,9 @@
 from src.discord import Message, Guild, GuildFeature, Permission, Member, Channel
 from src.core.auth import api_key_validator, TokenData, Security
 from src.core.models import MessageResponse, MessageSend
+from fastapi.responses import JSONResponse, Response
 from src.db import Message as DBMessage, ProxyMember
 from fastapi import HTTPException, Query, APIRouter
-from fastapi.responses import JSONResponse
 from src.discord.utils import FakeMessage
 from src.logic.proxy import process_proxy
 from src.docs import message as docs
@@ -30,34 +30,31 @@ async def get__message(
     message_id: int,
     only_check_existence: bool = Query(
         default=False,
-        description='if True, returns a boolean indicating whether the message was found'),
-    max_wait: int = Query(
+        description='returns no body, only a 204 status code if the message exists'),
+    max_wait: float = Query(
         default=10, ge=0, le=10,
         description='the maximum time to wait for the message to be found')
-) -> JSONResponse:
-    _find = {
-        '$or':
-            [
-                {'original_id': message_id},
-                {'proxy_id': message_id}
-            ]
-    }
+) -> Response:
+    _find = {'$or': [
+        {'original_id': message_id},
+        {'proxy_id': message_id}
+    ]}
 
     message = await DBMessage.find_one(_find)
 
-    # ? /plu/ral deletes the original message and replaces it silmultaneously
+    # ? /plu/ral deletes the original message and replaces it simultaneously
     # ? due to discord ratelimiting, the original message may be deleted before the proxy is created
     for _ in range(15):
-        if message is not None or _snowflake_to_age(message_id) > max_wait:
+        age = _snowflake_to_age(message_id)
+
+        if message is not None or -5 < age < max_wait:
             break
 
         await sleep(0.5)
         message = await DBMessage.find_one(_find)
 
     if only_check_existence:
-        return JSONResponse(
-            content=message is not None
-        )
+        return Response(status_code=204 if message is not None else 404)
 
     if message is None:
         raise HTTPException(status_code=404, detail='message not found')

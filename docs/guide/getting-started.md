@@ -4,6 +4,7 @@ If you're coming from PluralKit or Tupperbox, see the [Importing](https://github
 
 - use `/member new` and specify a name
   - this name must be unique within a member group, if you don't specify a group, "default" will be used
+  - you can also add an avatar, and proxy tag with this command
 
 ## Add some proxy tags
 
@@ -11,7 +12,7 @@ If you're coming from PluralKit or Tupperbox, see the [Importing](https://github
   - a tag must have a prefix or a suffix
   - use the `regex` option to have your tags matched with regex, don't use this if you don't know what you're doing
   - use the `case_sensitive` option to make your matches case sensitive, by default, tags are case insensitive
-```
+```text :no-line-numbers
 /member tags add prefix:/st
 /member tags add suffix:--steve
 /member tags add prefix:< suffix:>

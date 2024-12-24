@@ -35,6 +35,7 @@ export default defineUserConfig({
       },
     }
   }),
+  port: 8081,
   plugins: [
     backToTopPlugin(),
     removeHtmlExtensionPlugin(),
@@ -45,6 +46,6 @@ export default defineUserConfig({
     }),
     shikiPlugin({
       themes: { light: 'github-light', dark: 'github-dark' },
-      langs: ['py', 'json'],
+      langs: ['py', 'json', 'sh'],
     })]
 })

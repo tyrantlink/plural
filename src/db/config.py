@@ -1,6 +1,6 @@
 from .enums import ReplyFormat, SupporterTier
+from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, Field
-from beanie import Document
 from typing import Self
 
 
@@ -36,6 +36,9 @@ class UserConfig(Config):
         supporter_tier: SupporterTier = Field(
             default=SupporterTier.NONE,
             description='the supporter tier of the user')
+        applications: list[PydanticObjectId] = Field(
+            default_factory=list,
+            description='the applications the user has authorized')
         image_limit: int = Field(
             default=1000,
             description='the maximum number of images a user can upload')
