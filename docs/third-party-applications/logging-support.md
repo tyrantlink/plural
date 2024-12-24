@@ -1,6 +1,6 @@
 ### Adding Logging Support
 
-this page is for logging bot developers who want to add native support for \*plu/ral\* to their bot. if you're a user looking to clean logs with a bot that doesn't have native support, see the [logging compatibility](/server-guide/logging-compatibility) page.
+this page is for logging bot developers who want to add native support for /plu/ral to their bot. if you're a user looking to clean logs with a bot that doesn't have native support, see the [logging compatibility](/server-guide/logging-compatibility) page.
 
 #### Instructions
 you must have a registered /plu/ral application (see [creating applications](/third-party-applications/creating-applications))
