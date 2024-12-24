@@ -439,6 +439,8 @@ async def message_plural_proxy_info(interaction: Interaction, message: Message) 
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_api(interaction: Interaction) -> None:
+    raise InteractionError(
+        'getting an api token is disabled for now, as i decided i want to handle it differently')
     await interaction.response.send_message(
         embeds=[Embed(
             title='api key management',
