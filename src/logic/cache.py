@@ -511,8 +511,8 @@ async def discord_cache(event: GatewayEvent) -> None:
         case GatewayEventName.GUILD_ROLE_DELETE:
             task = guild_role_delete(event)
         case (
-            GatewayEventName.CHANNEL_CREATE | GatewayEventName.CHANNEL_UPDATE |
-            GatewayEventName.THREAD_CREATE | GatewayEventName.THREAD_UPDATE
+            GatewayEventName.CHANNEL_CREATE | GatewayEventName.THREAD_CREATE |
+            GatewayEventName.CHANNEL_UPDATE | GatewayEventName.THREAD_UPDATE
         ):
             task = channel_thread_create_update(event)
         case GatewayEventName.CHANNEL_DELETE | GatewayEventName.THREAD_DELETE:

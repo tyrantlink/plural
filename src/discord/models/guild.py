@@ -131,7 +131,7 @@ class Guild(RawBaseModel):
     async def fetch(cls, guild_id: Snowflake | int) -> Guild:
         cached = await DiscordCache.get_guild(guild_id)
 
-        if cached is not None and not cached.deleted and cached.error is None:
+        if cached is not None and cached.valid:
             guild = cls(**cached.data)
             await guild.populate()
             return guild

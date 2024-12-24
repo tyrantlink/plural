@@ -72,6 +72,18 @@ class DiscordCache(Document):
             case _:
                 raise HTTPException(self.error)
 
+    @property
+    def valid(self) -> bool:
+        return bool(
+            not self.deleted and
+            self.error is None and
+            self.data and (
+                self.meta.get('roles', False)
+                if self.type == CacheType.GUILD
+                else True
+            )
+        )
+
     @classmethod
     async def get(  # pyright: ignore[reportIncompatibleMethodOverride]
         cls,
