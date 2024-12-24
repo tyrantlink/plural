@@ -1,5 +1,5 @@
+from .enums import ReplyFormat, SupporterTier
 from pydantic import BaseModel, Field
-from .enums import ReplyFormat
 from beanie import Document
 from typing import Self
 
@@ -33,6 +33,9 @@ class GuildConfig(Config):
 
 class UserConfig(Config):
     class Data(BaseModel):
+        supporter_tier: SupporterTier = Field(
+            default=SupporterTier.NONE,
+            description='the supporter tier of the user')
         image_limit: int = Field(
             default=1000,
             description='the maximum number of images a user can upload')

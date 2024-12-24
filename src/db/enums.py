@@ -6,6 +6,7 @@ __all__ = (
     'ImageExtension',
     'ReplyFormat',
     'ReplyType',
+    'SupporterTier',
 )
 
 
@@ -47,3 +48,9 @@ class ReplyFormat(Enum):
 class ReplyType(Enum):
     QUEUE = 0
     REPLY = 1
+
+
+class SupporterTier(Enum):
+    NONE = 0
+    DEVELOPER = 1
+    SUPPORTER = 2

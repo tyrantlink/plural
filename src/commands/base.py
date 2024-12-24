@@ -1,6 +1,6 @@
 from src.discord import slash_command, Interaction, message_command, InteractionContextType, Message, ApplicationCommandOption, ApplicationCommandOptionType, Embed, EmbedField, Permission, ApplicationIntegrationType, ApplicationCommandOptionChoice, Attachment, File, ActionRow, Webhook
+from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, GuildConfig, UserConfig, ReplyFormat, SupporterTier
 from src.components import modal_plural_edit, umodal_edit, button_api_key, help_components, help_description, button_delete_all_data
-from src.db import Message as DBMessage, ProxyMember, Latch, UserProxyInteraction, GuildConfig, UserConfig, ReplyFormat
 from src.porting import StandardExport, PluralExport, PluralKitExport, TupperboxExport, LogMessage
 from regex import match as regex_match, sub, error as RegexError, IGNORECASE, escape  # noqa: N812
 from src.errors import InteractionError, Forbidden, PluralException
@@ -402,6 +402,8 @@ async def message_plural_proxy_info(interaction: Interaction, message: Message) 
         raise InteractionError(
             'message could not be found, is it more than a day old?')
 
+    author_config = await UserConfig.get(db_message.author_id) or UserConfig.default()
+
     embed = Embed(
         title='proxy info',
         color=0x69ff69
@@ -427,6 +429,15 @@ async def message_plural_proxy_info(interaction: Interaction, message: Message) 
     embed.set_thumbnail(
         url=message.author.avatar_url
     )
+
+    assert embed.fields is not None and embed.footer is not None
+
+    match author_config.data.supporter_tier:
+        case SupporterTier.DEVELOPER:
+            ...  # ? i'll think about this later
+        case SupporterTier.SUPPORTER:
+            embed.fields[0].value = f'🌟{embed.fields[0].value}🌟'
+            embed.footer.text += '\n🌟/plu/ral supporter🌟'
 
     await interaction.response.send_message(
         embeds=[embed]
