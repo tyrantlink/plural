@@ -400,6 +400,7 @@ async def guild_userproxy(
     proxy_content: str,
     attachments: list[File],
     member: ProxyMember,
+    reason: str | None = None,
     debug_log: list[DebugMessage | str] | None = None
 ) -> ProxyResponse:
     assert member.userproxy is not None
@@ -499,7 +500,7 @@ async def guild_userproxy(
         proxy_id=responses[1].id,
         author_id=message.author.id,
         channel_id=message.channel.id,
-        reason='guild userproxy'
+        reason=reason or 'none given'
     ).save()
 
     return ProxyResponse(True, app_emojis, token, db_message)
@@ -639,7 +640,7 @@ async def process_proxy(
 
     if member.userproxy and message.guild.id in member.userproxy.guilds:
         response = await guild_userproxy(
-            message, proxy_content, attachments, member, debug_log)
+            message, proxy_content, attachments, member, reason, debug_log)
 
         if response.success:
             return response
