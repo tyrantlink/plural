@@ -1,4 +1,5 @@
-# Importing from PluralKit
+# Importing
+## Importing from PluralKit
 
 1. Start a DM with [PluralKit](<https://discord.com/users/466378653216014359>)
 
@@ -8,7 +9,7 @@
 
 - note: large imports can take a while, particularly if you have a lot of avatars.
 
-# Importing from Tupperbox
+## Importing from Tupperbox
 
 1. Start a DM with [Tupperbox](<https://discord.com/users/431544605209788416>)
 

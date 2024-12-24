@@ -4,6 +4,7 @@ If you like the bot and find it useful, consider supporting the development. I a
 
 #### Benefits
 - The supporter role in the [support server](https://discord.gg/4mteVXBDW7)
+- Stars next to your name when someone uses the `/plu/ral proxy info` command on one of your messages
 - Probably more at some point, but I will never charge for features unless they have a direct cost to me.
 
 Once you donate, you'll keep the supporter role forever, even if it's just a one-time donation or you cancel a subscription.

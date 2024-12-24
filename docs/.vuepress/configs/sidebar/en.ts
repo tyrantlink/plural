@@ -17,6 +17,10 @@ export const sidebarEn: SidebarOptions = {
             {
                 text: 'Userproxies',
                 link: '/guide/userproxies'
+            },
+            {
+                text: 'FAQ',
+                link: '/guide/faq'
             }
         ]
     },
@@ -43,7 +47,7 @@ export const sidebarEn: SidebarOptions = {
                 link: '/third-party-applications/api-reference'
             },
             {
-                text: 'Known Applications',
+                text: 'Application Guide',
                 link: '/third-party-applications/application-guide'
             },
             {

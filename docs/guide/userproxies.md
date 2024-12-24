@@ -1,3 +1,4 @@
+# Userproxies
 ## What are Userproxies?
 
 Userproxies are proxy members attached to a real Discord Bot, giving them banners, bios, and the ability to be used in DMs, Group DMs, and servers without /plu/ral.

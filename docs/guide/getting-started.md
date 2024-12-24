@@ -1,3 +1,5 @@
+# Getting Started
+
 If you're coming from PluralKit or Tupperbox, see the [Importing](https://github.com/tyrantlink/plural/wiki/Importing) page
 
 ## Create a member

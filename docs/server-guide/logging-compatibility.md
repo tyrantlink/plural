@@ -1,3 +1,4 @@
+# Logging Compatibility
 ## Log Cleaning
 /plu/ral has the option to automatically delete delete logs for proxied messages, which can be enabled with the following command:
 ```text :no-line-numbers
@@ -14,3 +15,4 @@
 
 ### Adding support for your logging bot
 see the [adding logging support](/third-party-applications/logging-support) page
+
