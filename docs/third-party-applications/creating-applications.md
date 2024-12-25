@@ -1,4 +1,4 @@
-# Application Intents
+# Creating Applications
 
 i'll add more to this page later
 
@@ -21,7 +21,7 @@ i'll add more to this page later
       </div>
     </div>
     <div class="intent-section">
-      <div class="section-title">The following intents require specific verification:</div>
+      <div class="section-title">The following intents require verification:</div>
       <div class="intent-rows">
         <div class="intent-row">
           <label v-for="name in ['MEMBERS$USERPROXY_TOKEN$READ', 'MEMBERS$USERPROXY_TOKEN$WRITE']" :key="name">
@@ -82,7 +82,6 @@ const getSectionIntents = (section) => {
     })
 }
 
-
 watch(selected.value, (newVal, oldVal) => {
   sections.value.forEach(section => {
     if (!newVal[`${section}$READ`] && selected.value[`${section}$EVENTS`]) {
@@ -96,7 +95,7 @@ const formatIntentName = (name) => {
     return name.toLowerCase().replaceAll('$', '.')
 }
 
-    const sum = ref(0)
+const sum = ref(0)
 
 const calculateValue = () => {
   sum.value = Object.entries(selected.value)
@@ -117,7 +116,7 @@ const calculateValue = () => {
 .intent-grid {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0rem;
 }
 
 .intent-section {
@@ -126,7 +125,7 @@ const calculateValue = () => {
 
 .section-title {
   font-weight: bold;
-  padding-top: 0.5rem;
+  padding-top: 0.8rem;
   padding-bottom: 0.25rem;
 }
 
