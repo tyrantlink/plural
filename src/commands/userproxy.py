@@ -82,6 +82,23 @@ async def _sed_edit(
     return True
 
 
+async def _external_app_check(
+    interaction: Interaction
+) -> bool:
+    if (
+        interaction.member and
+        interaction.member.permissions and
+        not interaction.member.permissions & Permission.USE_EXTERNAL_APPS
+    ):
+        await interaction.response.send_message(
+            embeds=[Embed.error(
+                'you do not have permission to use external apps in this server; please contact a moderator')
+            ]
+        )
+        return True
+    return False
+
+
 @slash_command(
     name='proxy',
     description='send a message',
@@ -114,6 +131,9 @@ async def uslash_proxy(
     queue_for_reply: bool = False,
     **_attachments: Attachment,
 ) -> None:
+    if await _external_app_check(interaction):
+        return
+
     attachments = list(_attachments.values())
     if not message and not attachments:
         await interaction.response.send_modal(
@@ -201,6 +221,9 @@ async def umessage_reply(
     interaction: Interaction,
     message: Message
 ) -> None:
+    if await _external_app_check(interaction):
+        return
+
     reply = await Reply.find_one({
         'bot_id': int(interaction.application_id),
         'channel': int(interaction.channel_id or 0),
