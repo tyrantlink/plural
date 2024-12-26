@@ -230,7 +230,7 @@ async def umessage_reply(
                 username=message.author.username,
                 avatar=message.author.avatar),
             # ? replies are stored for 15 minutes
-            ts=datetime.now(UTC) - timedelta(minutes=10)
+            ts=datetime.now(UTC) + timedelta(minutes=10)
         ).save()
 
         await interaction.response.send_modal(
