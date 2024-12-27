@@ -1,5 +1,5 @@
 from src.discord import modal, TextInput, Interaction, TextInputStyle, MessageFlag, Webhook, Embed, AllowedMentions, FakeMessage, User, Snowflake
-from src.db import UserProxyInteraction, Reply, ProxyMember, ReplyType, UserConfig, ReplyFormat, CacheType, DiscordCache
+from src.db import UserProxyInteraction, Reply, ProxyMember, ReplyType, UserConfig, ReplyFormat, DiscordCache
 from src.errors import InteractionError, HTTPException
 from src.logic.proxy import format_reply
 from asyncio import gather
@@ -96,13 +96,15 @@ async def umodal_send(
     proxy_with_reply, reply_mentions = format_reply(
         proxy_content,
         FakeMessage(
+            id=Snowflake(reply.message_id or 0),
             channel_id=int(interaction.channel_id or 0),
             content=reply.content or '',
             author=User(
                 id=Snowflake(reply.author.id),
                 discriminator='0000',
                 username=reply.author.username,
-                avatar=reply.author.avatar)),
+                avatar=reply.author.avatar),
+            guild=interaction.guild),
         reply_format
     )
 
