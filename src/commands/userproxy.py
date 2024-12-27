@@ -82,21 +82,28 @@ async def _sed_edit(
     return True
 
 
-async def _external_app_check(
+async def _permission_check(
     interaction: Interaction
 ) -> bool:
-    if (
-        interaction.member and
-        interaction.member.permissions and
-        not interaction.member.permissions & Permission.USE_EXTERNAL_APPS
-    ):
-        await interaction.response.send_message(
-            embeds=[Embed.error(
-                'you do not have permission to use external apps in this server; please contact a moderator')
-            ]
-        )
-        return True
-    return False
+    if not (interaction.member and interaction.member.permissions):
+        return False
+
+    error = ''
+
+    if not interaction.member.permissions & Permission.SEND_MESSAGES:
+        error = 'you do not have permission to send messages in this channel'
+
+    if not interaction.member.permissions & Permission.USE_EXTERNAL_APPS:
+        error = 'you do not have permission to use external apps in this server; please contact a moderator'
+
+    if not error:
+        return False
+
+    await interaction.response.send_message(
+        embeds=[Embed.error(error)]
+    )
+
+    return True
 
 
 @slash_command(
@@ -109,8 +116,7 @@ async def _external_app_check(
             min_length=0,
             max_length=2000,
             description='message to send',
-            required=False
-        ),
+            required=False),
         ApplicationCommandOption(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='queue_for_reply',
@@ -131,7 +137,7 @@ async def uslash_proxy(
     queue_for_reply: bool = False,
     **_attachments: Attachment,
 ) -> None:
-    if await _external_app_check(interaction):
+    if await _permission_check(interaction):
         return
 
     attachments = list(_attachments.values())
@@ -221,7 +227,7 @@ async def umessage_reply(
     interaction: Interaction,
     message: Message
 ) -> None:
-    if await _external_app_check(interaction):
+    if await _permission_check(interaction):
         return
 
     reply = await Reply.find_one({
