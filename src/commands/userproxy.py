@@ -148,7 +148,8 @@ async def uslash_proxy(
             ).with_text_kwargs(
                 0, placeholder='you should only use this if you need to send a message with newlines'
             ).with_extra(
-                queue_for_reply
+                queue_for_reply,
+                None
             )
         )
         return
@@ -266,7 +267,8 @@ async def umessage_reply(
             modal=umodal_send.with_title(
                 title
             ).with_extra(
-                False
+                False,
+                message.id
             ))
         return
 

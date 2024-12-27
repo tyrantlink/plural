@@ -23,7 +23,8 @@ __all__ = (
 async def umodal_send(
     interaction: Interaction,
     queue_for_reply: bool,
-    message: str
+    reply_id: int | None = None,
+    message: str = ''
 ) -> None:
     if queue_for_reply:
         await Reply(
@@ -50,7 +51,8 @@ async def umodal_send(
     reply = await Reply.find_one({
         'bot_id': int(interaction.application_id),
         'channel': int(interaction.channel_id or 0),
-        'type': ReplyType.REPLY
+        'type': ReplyType.REPLY,
+        'message_id': reply_id
     })
 
     if reply is None:
