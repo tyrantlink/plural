@@ -47,7 +47,7 @@ async def _sync_member_guilds(member: ProxyMember) -> None:
         raise ValueError('member does not have a userproxy')
 
     if member.userproxy.token is None:
-        raise ValueError('member does not have a bot token stored')
+        return
 
     member.userproxy.guilds = [
         guild.id
@@ -75,6 +75,8 @@ async def _userproxy_sync(
     if bot_token is None:
         raise InteractionError(
             'bot token for userproxy `{member.name}` is not stored; provide a bot token to sync the userproxy')
+
+    bot_token = bot_token.strip()
 
     bot_id = _get_bot_id(bot_token)
     base_app_patch: dict = {
