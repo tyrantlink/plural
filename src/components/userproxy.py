@@ -140,16 +140,10 @@ async def umodal_send(
     if not (
         interaction.guild is None or not sent_message.flags & MessageFlag.EPHEMERAL
     ):
-        match reply_format:
-            case ReplyFormat.INLINE:
-                reply_format = ReplyFormat.EMBED
-                await interaction.send('this channel\'s automod blocks inline replies; try again to send an embed')
-            case ReplyFormat.EMBED:
-                reply_format = ReplyFormat.NONE
-                await interaction.send('embed replies cannot be sent in this channel; try again to send a plain message')
+        await interaction.send('automod blocked the reply; try again to send without reply formatting')
 
         if channel_data is not None:
-            channel_data.meta['enforce_format'] = reply_format.value
+            channel_data.meta['enforce_format'] = ReplyFormat.NONE.value
             await channel_data.save()
 
         return
