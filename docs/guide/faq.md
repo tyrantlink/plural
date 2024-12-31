@@ -6,7 +6,8 @@ in servers, /plu/ral will proxy messages from registered users to their members,
 you can use the bot for any purpose that doesn't violate the [/plu/ral terms of service](/terms-of-service), [discord community guidelines](https://discord.com/guidelines) or [discord terms of service](https://discord.com/terms)
 
 ### Who is the mascot?
-[/plu/ral](/images/plural.png) was based on [twinbellows](https://www.kidicaruswiki.org/wiki/Twinbellows) from the Kid Icarus series, and was drawn by awaiting artist source.
+[/plu/ral](/images/plural.png) was based on [twinbellows](https://www.kidicaruswiki.org/wiki/Twinbellows) from the Kid Icarus series, and was drawn by an old friend from school.
+[The banner](/images/banner.png) was drawn by [deathpacito](https://discord.com/users/163154103801872384)
 
 ### How do I suggest features, report bugs, or ask for help?
 you can join the [support server](https://discord.gg/4mteVXBDW7) and ask in the `#support` forum. make sure to search before making a post to see if your question has already been answered. 
