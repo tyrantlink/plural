@@ -13,4 +13,4 @@ class Reaction(RawBaseModel):
     me: bool
     me_burst: bool
     emoji: Emoji
-    burst_colors: list[int]
+    burst_colors: list[str]
