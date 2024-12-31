@@ -132,7 +132,7 @@ async def on_event_error(event: str, error: BaseException) -> None:
 
 
 async def on_interaction_error(interaction: Interaction, error: BaseException) -> None:
-    from src.discord import InteractionType, Embed, Webhook, User, File
+    from src.discord import InteractionType, Embed, Webhook, User, File, MessageFlag
 
     if interaction.type not in {
         InteractionType.APPLICATION_COMMAND,
@@ -190,7 +190,8 @@ async def on_interaction_error(interaction: Interaction, error: BaseException) -
     responses = await gather(
         *tasks,
         interaction.send(
-            embeds=[Embed.error(str(error), expected=expected)]),
+            embeds=[Embed.error(str(error), expected=expected)],
+            flags=MessageFlag.EPHEMERAL),
         return_exceptions=True
     )
 
