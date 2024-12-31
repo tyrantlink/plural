@@ -2,6 +2,7 @@ from __future__ import annotations
 from .enums import MessageFlag, InteractionCallbackType, InteractionContextType
 from src.discord.models.base import PydanticArbitraryType
 from src.models import project, MISSING, MissingNoneOr
+from src.errors import HTTPException, InteractionError
 from src.discord.http import File, Route, request
 from .message import Message, AllowedMentions
 from .component import Component  # noqa: TC001
@@ -53,17 +54,26 @@ class InteractionFollowup(PydanticArbitraryType):
         if not flags:
             flags = MessageFlag.EPHEMERAL
 
-        return await webhook.execute(
-            content=content,
-            wait=True,
-            tts=tts,
-            embeds=embeds,
-            allowed_mentions=allowed_mentions,
-            components=components,
-            attachments=attachments,
-            flags=flags,
-            poll=poll
-        )
+        try:
+            return await webhook.execute(
+                content=content,
+                wait=True,
+                tts=tts,
+                embeds=embeds,
+                allowed_mentions=allowed_mentions,
+                components=components,
+                attachments=attachments,
+                flags=flags,
+                poll=poll
+            )
+        except HTTPException as e:
+            if (
+                e.status_code == 400 and
+                isinstance(e.detail, dict) and
+                e.detail.get('code') == 200000  # automod blocked
+            ):
+                raise InteractionError('message blocked by automod') from e
+            raise
 
     async def edit_message(
         self,
@@ -217,12 +227,23 @@ class InteractionResponse(PydanticArbitraryType):
             }
         )
 
-        message = (
-            await request(
-                self.callback_route,
-                **request_args
-            )
-        )['resource']['message']
+        try:
+            message = (
+                await request(
+                    self.callback_route,
+                    **request_args
+                )
+            )['resource']['message']
+        except HTTPException as e:
+            self.responded = True
+            if (
+                e.status_code == 400 and
+                isinstance(e.detail, dict) and
+                e.detail.get('code') == 200000  # automod blocked
+            ):
+                raise InteractionError('message blocked by automod') from e
+            raise
+
         self.responded = True
 
         return Message(**message)
