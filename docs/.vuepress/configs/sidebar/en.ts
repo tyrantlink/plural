@@ -3,7 +3,7 @@ import type { SidebarOptions } from '@vuepress/theme-default'
 export const sidebarEn: SidebarOptions = {
   '/': [
     {
-        text: 'Guide',
+        text: 'User Guide',
         collapsible: true,
         children: [
             {
@@ -29,8 +29,12 @@ export const sidebarEn: SidebarOptions = {
         collapsible: true,
         children: [
             {
-                text: 'Logging Compatibility',
-                link: '/server-guide/logging-compatibility'
+                text: 'Logging',
+                link: '/server-guide/logging'
+            },
+            {
+                text: 'Automod',
+                link: '/server-guide/automod'
             }
         ]
     },

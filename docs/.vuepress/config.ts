@@ -46,6 +46,6 @@ export default defineUserConfig({
     }),
     shikiPlugin({
       themes: { light: 'github-light', dark: 'github-dark' },
-      langs: ['py', 'json', 'sh'],
+      langs: ['py', 'json', 'sh', 'regex'],
     })]
 })

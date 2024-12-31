@@ -1,4 +1,7 @@
-# Logging Compatibility
+# Logging
+
+This page is intended for server moderators
+
 ## Log Cleaning
 /plu/ral has the option to automatically delete delete logs for proxied messages, which can be enabled with the following command:
 ```text :no-line-numbers

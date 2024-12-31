@@ -31,7 +31,14 @@ This involves creating a bot, and giving the token token to /plu/ral so it can b
 - To edit messages, you must also [add /plu/ral to your account](https://discord.com/oauth2/authorize?client_id=1291501048493768784), this also allows you to manage your members from anywhere.
 
 
-### Adding the Userproxy to servers
+### Userproxies in Servers
+#### Proxying without the userproxy invited to the server
+You can proxy in servers even without the userproxy invited to the server, with a few limitations
+- You can only proxy in servers where you have the `Use External Apps` permission
+- If the server uses automod to block masked links, you probably won't be able to properly reply. see [the automod page](./server-guide/automod.md) for more information
+
+
+#### Inviting the Userproxy to a server
 #### Note for Server Admins
 - Discord has a bot limit of 50 bots/server, if your server is any bigger than a friend group server, this is not recommended, and normal proxying will still work.
 - Do not give these accounts a bot role, or any role that you wouldn't give to the owner of the account, The account owner has full control of the bot, so if you give the bot a permission, you are trusting the account owner with that permission.
