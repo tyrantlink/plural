@@ -108,8 +108,11 @@ async def _userproxy_sync(
         match change:
             case MemberUpdateType.NAME:
                 userproxy_name = (
-                    (member.name + (f' {(await member.get_group()).tag}' or ''))
-                    if member.userproxy.include_group_tag else
+                    (member.name + (f' {tag}' or ''))
+                    if (
+                        member.userproxy.include_group_tag and
+                        (tag := (await member.get_group()).tag) is not None
+                    ) else
                     member.name
                 )
 
