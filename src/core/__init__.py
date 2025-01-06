@@ -46,10 +46,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     await sync_commands()
 
-    from src.routers import autoproxy, discord, message
+    from src.routers import autoproxy, discord, message, migration
     app.include_router(autoproxy.router)
     app.include_router(discord.router)
     app.include_router(message.router)
+    app.include_router(migration.router)
 
     yield
 
