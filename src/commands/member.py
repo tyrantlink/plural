@@ -74,7 +74,7 @@ async def _userproxy_sync(
 
     if bot_token is None:
         raise InteractionError(
-            'bot token for userproxy `{member.name}` is not stored; provide a bot token to sync the userproxy')
+            f'bot token for userproxy `{member.name}` is not stored; provide a bot token to sync the userproxy')
 
     bot_token = bot_token.strip()
 
