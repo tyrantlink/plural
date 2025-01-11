@@ -1,16 +1,2 @@
 bot_token = ''
-bot_public_key = ''
-mongo_uri = ''
-base_url = 'https://example.com'
-api_url = 'https://api.example.com'
-# discord channel id, used when importing avatars; make sure only the bot has access to this channel
-import_proxy_channel_id = 0
-# webhook to text channel, error tracebacks are sent here
-error_webhook = ''
-# nacl key for messages sent from the gateway proxy
-gateway_key = ''
-# OPTIONAL https://logfire.pydantic.dev token
-logfire_token = ''
-# /plu/ral cdn api key
-cdn_api_key = ''
-dev_environment = true
+redis_url = 'redis://localhost:6379'
