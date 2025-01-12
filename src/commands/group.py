@@ -524,3 +524,30 @@ async def slash_group_channels_remove(
                 f'removed channel {channel.mention} from group `{group.name}` channel restrictions')]
         )
     )
+
+
+@group_channels.command(
+    name='clear',
+    description='remove all channel restrictions from a group',
+    options=[
+        ApplicationCommandOption(
+            type=ApplicationCommandOptionType.STRING,
+            name='group',
+            description='group to modify',
+            required=True,
+            autocomplete=True)],
+    contexts=[InteractionContextType.GUILD],
+    integration_types=[ApplicationIntegrationType.GUILD_INSTALL])
+async def slash_group_channels_clear(
+    interaction: Interaction,
+    group: Group
+) -> None:
+    group.channels.clear()
+
+    await gather(
+        group.save(),
+        interaction.response.send_message(
+            embeds=[Embed.success(
+                f'cleared all channel restrictions from group `{group.name}`')]
+        )
+    )
