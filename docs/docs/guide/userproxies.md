@@ -3,6 +3,18 @@
 
 Userproxies are proxy members attached to a real Discord Bot, giving them banners, bios, and the ability to be used in DMs, Group DMs, and servers without /plu/ral.
 
+### Userproxy Commands
+Userproxies have two commands
+- `/proxy`\* - Sends a message as the userproxy
+  - \* This command can be given a custom name
+- `reply` - Replies to a message as the userproxy
+  - This is a message command, to use it you must:
+    - Right click on a message (or long press on mobile)
+    - Click Apps
+    - Click the reply command that matches the userproxy icon
+
+Note: in order to edit messages, you must also [add /plu/ral to your account](https://discord.com/oauth2/authorize?client_id=1291501048493768784)
+
 ### Creating a Userproxy
 
 This involves creating a bot, and giving the token token to /plu/ral so it can be managed by /plu/ral
