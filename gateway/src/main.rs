@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let fload: Result<(), fred::prelude::Error> = redis.function_load(
         true,
-        include_str!("dedupe_publish.lua")
+        include_str!("publish.lua")
     ).await;
 
     match fload {
@@ -86,13 +86,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let mut redis = redis.clone();
         tokio::spawn(async move {
-            if let Err(e) = forward_event(&mut redis, json_str).await {
-                println!("Error handling event: {:?}", e);
+            if let Err(e) = forward_event(&mut redis, json_str.clone()).await {
+                println!("Error handling {} event: {:?}", get_event_name(&json_str), e);
             }
         });
     }
 
     Ok(())
+}
+
+fn get_event_name(json_str: &str) -> &str {
+    match json_str.find("\"t\":") {
+        Some(event_start) => {
+            &json_str[
+                event_start + 5..json_str[event_start + 5..]
+                .find("\"").unwrap() + event_start + 5
+            ]
+        },
+        None => "UNKNOWN"
+    }
 }
 
 async fn forward_event(
@@ -112,26 +124,28 @@ async fn forward_event(
     }
 
     let result: i32 = redis.fcall(
-        "dedupe_publish",
+        "publish",
         &["discord_events"],
         &[&json_str]
     ).await?;
 
-    if result == 0 {
-        println!("duplicate event");
-        return Ok(());
+    match result {
+        0 => {
+            println!("published {}", get_event_name(&json_str));
+        }
+        1 => {
+            println!("duplicate {}", get_event_name(&json_str));
+        }
+        2 => {
+            println!("cached    {}", get_event_name(&json_str));
+        }
+        3 => {
+            println!("unsupport {}", get_event_name(&json_str));
+        }
+        _ => {
+            println!("unknown   {} response: {}", get_event_name(&json_str), result);
+        }
     }
-
-    let mut event_name = "UNKNOWN";
-
-    if let Some(event_start) = json_str.find("\"t\":\"") {
-        event_name = &json_str[
-            event_start + 5..json_str[event_start + 5..]
-            .find("\"").unwrap() + event_start + 5
-        ]
-    }
-
-    println!("forwarded {} event", event_name);
 
     Ok(())
 }
