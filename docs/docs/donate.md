@@ -12,15 +12,19 @@ Once you donate, you'll keep the supporter role forever, even if it's just a one
 ### Donation Methods
 Methods are listed in order of my preference, based on how much of a cut the platform takes, but ultimately it's up to you.
 
-#### [GitHub Sponsors](https://github.com/sponsors/tyrantlink)
+#### [GitHub Sponsors](https://github.com/sponsors/tyrantlink)\*
+
+#### [LiberaPay](https://liberapay.com/tyrantlink)\*
 
 #### [Ko-fi](https://ko-fi.com/tyrantlink)
 
 #### [Patreon](https://www.patreon.com/tyrantlink)
 
-#### [Discord](https://discord.com/application-directory/1291501048493768784/store)
+#### [Discord](https://discord.com/application-directory/1291501048493768784/store)\*
 
-#### [Cryptocurrency](/donate_crypto)
+#### [Cryptocurrency](/donate_crypto)\*
 
 
 if you have another method you'd like to use, let me know in the development server and i'll see what i can do.
+
+\* These methods will NOT give you the supporter role automatically. If you donate through one of these methods, please send me a DM with your username on that platform and I will give you the role.

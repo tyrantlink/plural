@@ -1,1 +1,0 @@
-### placeholder; ability to self-host userproxies is not yet implemented
