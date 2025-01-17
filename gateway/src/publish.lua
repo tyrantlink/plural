@@ -60,40 +60,46 @@ end
 local function bulk_delete(pattern)
     local cursor = '0'
     repeat
-        local result = server.call('SCAN', cursor, 'MATCH', pattern, 'COUNT', 1000)
+        local result = redis.call('SCAN', cursor, 'MATCH', pattern, 'COUNT', 1000)
         cursor = result[1]
         local keys = result[2]
 
         for _, key in ipairs(keys) do
-            server.call('DEL', key)
+            redis.call('DEL', key)
         end
     until cursor == '0'
+end
+
+---@param data table
+---@param meta table | nil
+local function cache_model(data, meta)
+    return '{' ..
+        '"data":' .. cjson.encode(data) .. ',' ..
+        '"meta":' .. cjson.encode(meta or {}) .. ',' ..
+        '"deleted":0,' ..
+        '"error":0' ..
+        '}'
 end
 
 ---@param data table
 local function user_update(data)
     local key = 'discord:user:' .. data['id']
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call('HSET', key, 'data', cmsgpack.pack(merge(cmsgpack.unpack(cache), data)))
+        redis.call(
+            'JSON.SET',
+            key, 'data', cjson.encode(merge(cjson.decode(cache), data))
+        )
     else
-        server.call(
-            'HSET',
-            key,
-            'data', cmsgpack.pack(data),
-            'meta', '',
-            'deleted', 0,
-            'error', 0
+        redis.call(
+            'JSON.SET',
+            key, '$', cache_model(data)
         )
     end
 
-    server.call(
-        'EXPIRE',
-        key,
-        86400
-    )
+    redis.call('EXPIRE', key, 86400)
 end
 
 ---@param data table
@@ -110,26 +116,21 @@ local function member_update(data)
 
     local key = 'discord:member:' .. data['guild_id'] .. ':' .. user_id
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call('HSET', key, 'data', cmsgpack.pack(merge(cmsgpack.unpack(cache), data)))
+        redis.call(
+            'JSON.SET',
+            key, 'data', cjson.encode(merge(cjson.decode(cache), data))
+        )
     else
-        server.call(
-            'HSET',
-            key,
-            'data', cmsgpack.pack(data),
-            'meta', '',
-            'deleted', 0,
-            'error', 0
+        redis.call(
+            'JSON.SET',
+            key, '$', cache_model(data)
         )
     end
 
-    server.call(
-        'EXPIRE',
-        key,
-        86400
-    )
+    redis.call('EXPIRE', key, 86400)
 end
 
 ---@param data table
@@ -150,93 +151,77 @@ local function message_create_update(data)
     data['author'] = nil
     data['member'] = nil
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call('HSET', key, 'data',
-            cmsgpack.pack(stripped(merge(cmsgpack.unpack(cache), data))))
+        redis.call('JSON.SET', key, 'data',
+            cjson.encode(stripped(merge(cjson.decode(cache), data))))
     else
-        server.call(
-            'HSET',
-            key,
-            'data', cmsgpack.pack(stripped(data)),
-            'meta', cmsgpack.pack({author_id = author_id}),
-            'deleted', 0,
-            'error', 0
+        redis.call(
+            'JSON.SET',
+            key, '$', cache_model(
+                stripped(data),
+                {author_id = author_id}
+            )
         )
     end
 
-    server.call(
-        'EXPIRE',
-        key,
-        3600
-    )
+    redis.call('EXPIRE', key, 3600)
 end
 
 ---@param data table
 local function message_delete(data)
     local key = 'discord:message:' .. data['id']
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call(
-            'HSET',
-            key,
-            'deleted', 1,
-            'data', cmsgpack.pack(data)
+        redis.call(
+            'JSON.MSET',
+            key, 'deleted', 1,
+            key, 'data', cjson.encode(data)
         )
     end
 
-    server.call(
-        'EXPIRE',
-        key,
-        86400
-    )
+    redis.call('EXPIRE', key, 86400)
 end
 
 ---@param data table
 local function role_create_update(data)
     local key = 'discord:role:' .. data['guild_id'] .. ':' .. data['role']['id']
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call('HSET', key, 'data', cmsgpack.pack(merge(cmsgpack.unpack(cache), data['role'])))
+        redis.call(
+            'JSON.SET',
+            key, 'data', cjson.encode(merge(cjson.decode(cache), data['role']))
+        )
     else
-        server.call(
-            'HSET',
-            key,
-            'data', cmsgpack.pack(data['role']),
-            'meta', '',
-            'deleted', 0,
-            'error', 0
+        redis.call(
+            'JSON.SET',
+            key, '$', cache_model(data['role'])
         )
     end
 
-    server.call(
-        'EXPIRE',
-        key,
-        86400
-    )
+    redis.call('EXPIRE', key, 86400)
 
     local guild_key = 'discord:guild:' .. data['guild_id']
 
-    local guild_meta = server.call('HGET', guild_key, 'meta')
+    local guild_meta = redis.call('JSON.GET', guild_key, 'meta')
 
     if not guild_meta then
         return
     end
 
-    local meta = cmsgpack.unpack(guild_meta)
+    local meta = cjson.decode(guild_meta)
 
     if not contains(meta['roles'], data['role']['id']) then
         table.insert(meta['roles'], data['role']['id'])
 
-        server.call(
-            'HSET',
-            guild_key,
-            'meta', cmsgpack.pack(meta)
+        redis.call(
+            'JSON.SET',
+            guild_key, 'meta', cjson.encode(meta)
         )
     end
 end
@@ -245,14 +230,13 @@ end
 local function role_delete(data)
     local key = 'discord:role:' .. data['guild_id'] .. ':' .. data['role_id']
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call(
-            'HSET',
-            key,
-            'deleted', 1,
-            'data', cmsgpack.pack(data)
+        redis.call(
+            'JSON.MSET',
+            key, 'deleted', 1,
+            key, 'data', cjson.encode(data)
         )
     end
 end
@@ -262,26 +246,21 @@ end
 local function _insert_single_emoji(guild_id, emoji)
     local key = 'discord:emojis:' .. guild_id .. ':' .. emoji['id']
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call('HSET', key, 'data', cmsgpack.pack(merge(cmsgpack.unpack(cache), emoji)))
+        redis.call(
+            'JSON.SET',
+            key, 'data', cjson.encode(merge(cjson.decode(cache), emoji))
+        )
     else
-        server.call(
-            'HSET',
-            key,
-            'data', cmsgpack.pack(emoji),
-            'meta', '',
-            'deleted', 0,
-            'error', 0
+        redis.call(
+            'JSON.SET',
+            key, '$', cache_model(emoji)
         )
     end
 
-    server.call(
-        'EXPIRE',
-        key,
-        86400
-    )
+    redis.call('EXPIRE', key, 86400)
 end
 
 ---@param data table
@@ -301,25 +280,37 @@ local function channel_create_update(data)
         key = 'discord:channel:' .. data['id']
     end
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call('HSET', key, 'data', cmsgpack.pack(merge(cmsgpack.unpack(cache), data)))
+        redis.call(
+            'JSON.SET',
+            key, 'data', cjson.encode(merge(cjson.decode(cache), data))
+        )
     else
-        server.call(
-            'HSET',
-            key,
-            'data', cmsgpack.pack(data),
-            'meta', '',
-            'deleted', 0,
-            'error', 0
+        redis.call(
+            'JSON.SET',
+            key, '$', cache_model(data)
         )
     end
 
-    server.call(
-        'EXPIRE',
-        key,
-        86400
+    redis.call('EXPIRE', key, 86400)
+end
+
+---@param channel string
+---@param guild string|nil
+---@param message_id string
+local function update_last_channel_message(channel, guild, message_id)
+    if not guild then
+        return
+    end
+
+    redis.call(
+        'JSON.SET',
+        'discord:channel:' .. guild .. ':' .. channel,
+        'data.last_message_id',
+        '"' .. message_id .. '"',
+        'XX'
     )
 end
 
@@ -332,14 +323,13 @@ local function channel_delete(data)
         key = 'discord:channel:' .. data['id']
     end
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call(
-            'HSET',
-            key,
-            'deleted', 1,
-            'data', cmsgpack.pack(data)
+        redis.call(
+            'JSON.MSET',
+            key, 'deleted', 1,
+            key, 'data', cjson.encode(data)
         )
     end
 end
@@ -389,26 +379,21 @@ local function guild_create_update(data)
 
     local key = 'discord:guild:' .. data['id']
 
-    local cache = server.call('HGET', key, 'data')
+    local cache = redis.call('JSON.GET', key, 'data')
 
     if cache then
-        server.call('HSET', key, 'data', cmsgpack.pack(merge(cmsgpack.unpack(cache), data)))
+        redis.call(
+            'JSON.SET',
+            key, 'data', cjson.encode(merge(cjson.decode(cache), data))
+        )
     else
-        server.call(
-            'HSET',
-            key,
-            'data', cmsgpack.pack(data),
-            'meta', cmsgpack.pack({roles = roles}),
-            'deleted', 0,
-            'error', 0
+        redis.call(
+            'JSON.SET',
+            key, '$', cache_model(data, {roles = roles})
         )
     end
 
-    server.call(
-        'EXPIRE',
-        key,
-        86400
-    )
+    redis.call('EXPIRE', key, 86400)
 end
 
 ---@param data table
@@ -419,7 +404,7 @@ local function guild_delete(data)
 
     local guild_id = data['id']
 
-    server.call('DEL', 'discord:guild:' .. guild_id)
+    redis.call('DEL', 'discord:guild:' .. guild_id)
     bulk_delete('discord:channel:' .. guild_id .. ':*')
     bulk_delete('discord:role:' .. guild_id .. ':*')
     bulk_delete('discord:member:' .. guild_id .. ':*')
@@ -447,6 +432,7 @@ local function cache(value)
 
     if name == 'MESSAGE_CREATE' then
         message_create_update(event['d'])
+        update_last_channel_message(event['d']['channel_id'], event['d']['guild_id'], event['d']['id'])
     elseif name == 'MESSAGE_UPDATE' then
         message_create_update(event['d'])
     elseif name == 'MESSAGE_DELETE' then
@@ -490,12 +476,12 @@ local function cache(value)
     end
 end
 
-server.register_function(
+redis.register_function(
     'publish',
     function(keys, args)
-        if not server.call(
+        if not redis.call(
             'SET',
-            'event:' .. server.sha1hex(args[1]),
+            'event:' .. redis.sha1hex(args[1]),
             '1', --? 1 takes less space than an empty string, for some reason, i dunno redis has the stupid
             'NX',
             'EX',
@@ -507,15 +493,15 @@ server.register_function(
         local cached = cache(args[1])
 
         if cached == Response.PUBLISHED then
-            server.call(
+            redis.call(
                 'PUBLISH',
                 keys[1],
                 args[1])
         elseif cached == Response.UNSUPPORTED then
-            server.call(
+            redis.call(
                 'PUBLISH',
                 'unsupported_events',
-                args[1]--cjson.decode(args[1])['t']
+                args[1] --cjson.decode(args[1])['t']
             )
         end
 
@@ -523,7 +509,7 @@ server.register_function(
     end
 )
 
-server.register_function(
+redis.register_function(
     'cache',
     function(keys, args)
         cache(args[1])
