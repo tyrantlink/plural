@@ -1,9 +1,9 @@
-use twilight_gateway::{Message, Intents, Config, stream::{self, ShardMessageStream}};
+use twilight_gateway::{Message, Intents, Config, Shard};
 use twilight_http::Client;
-use futures::StreamExt;
-use serde::Deserialize;
 use std::error::Error;
-use std::fs;
+use futures::StreamExt;
+use std::env;
+use tokio::signal;
 use fred::{
     clients::Client as RedisClient, interfaces::ClientLike, prelude::FunctionInterface, types::{
         config::Config as RedisConfig,
@@ -11,22 +11,19 @@ use fred::{
     }
 };
 
-#[derive(Deserialize)]
-struct Project {
+struct Env {
     bot_token: String,
     redis_url: String,
 }
 
-async fn load_project() -> Result<Project, Box<dyn Error>> {
-    let project_str: String = fs::read_to_string("project.toml")?;
-    Ok(toml::from_str(&project_str)?)
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let project: Project = load_project().await?;
+    let env = Env {
+        bot_token: env::var("BOT_TOKEN")?,
+        redis_url: env::var("REDIS_URL")?,
+    };
 
-    let redis: RedisClient = RedisBuilder::from_config(RedisConfig::from_url(&project.redis_url)?)
+    let redis: RedisClient = RedisBuilder::from_config(RedisConfig::from_url(&env.redis_url)?)
         .build()?;
 
     redis.init().await?;
@@ -43,9 +40,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    let bot = Client::new(project.bot_token.clone());
+    let bot = Client::new(env.bot_token.clone());
     let config = Config::new(
-        project.bot_token,
+        env.bot_token,
         Intents::GUILDS                    |
         Intents::GUILD_EMOJIS_AND_STICKERS |
         Intents::GUILD_WEBHOOKS            |
@@ -54,43 +51,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Intents::MESSAGE_CONTENT
     );
 
-    let mut shards = stream::create_recommended(&bot, config, |_, builder| builder.build())
-        .await?
-        .collect::<Vec<_>>();
+    let shards =
+        twilight_gateway::create_recommended(&bot, config, |_, builder| builder.build()).await?;
+    let mut senders = Vec::with_capacity(shards.len());
+    let mut tasks = Vec::with_capacity(shards.len());
 
     println!("event forwarding with {} shards", shards.len());
 
-    let mut stream = ShardMessageStream::new(shards.iter_mut());
-
-    while let Some((_shard, message)) = stream.next().await {
-        let message = match message {
-            Ok(message) => message,
-            Err(_) => {
-                continue;
-            }
-        };
-
-        let json_str: String = match message {
-            Message::Text(content) => content,
-            Message::Close(_) => {
-                continue;
-            }
-        };
-
-        if json_str.starts_with("{\"t\":\"READY\"") ||
-           json_str.starts_with("{\"t\":null")      ||
-           json_str.starts_with("{\"t\":\"RESUMED\"")
-        {
-            continue;
-        }
-
-        let mut redis = redis.clone();
-        tokio::spawn(async move {
-            if let Err(e) = forward_event(&mut redis, json_str.clone()).await {
-                println!("Error handling {} event: {:?}", get_event_name(&json_str), e);
-            }
-        });
+    for shard in shards {
+        senders.push(shard.sender());
+        tasks.push(tokio::spawn(runner(shard, redis.clone())));
     }
+
+    signal::ctrl_c().await?;
 
     Ok(())
 }
@@ -107,12 +80,32 @@ fn get_event_name(json_str: &str) -> &str {
     }
 }
 
-async fn forward_event(
-    redis: &mut RedisClient,
-    json_str: String,
-) -> Result<(), Box<dyn Error>> {
-    // normalize sequence number so the body is always the same regardless of gateway connection
-    let mut json_str = json_str.clone();
+async fn runner(mut shard: Shard, redis: RedisClient) {
+    while let Some(message) = shard.next().await {
+        match message {
+            Ok(message) => tokio::spawn(handle_message(message, redis.clone())),
+            Err(_) => {
+                continue;
+            }
+        };
+    }
+}
+
+
+async fn handle_message(message: Message, redis: RedisClient) {
+    let mut json_str: String = match message {
+        Message::Text(content) => content,
+        Message::Close(_) => {
+            return;
+        }
+    };
+
+    if json_str.starts_with("{\"t\":\"READY\"") ||
+       json_str.starts_with("{\"t\":null")      ||
+       json_str.starts_with("{\"t\":\"RESUMED\"")
+    {
+        return;
+    }
 
     if let Some(sequence_start) = json_str.find("\"s\":") {
         json_str = json_str.replace(
@@ -123,29 +116,28 @@ async fn forward_event(
         )
     }
 
-    let result: i32 = redis.fcall(
+    match redis.fcall(
         "publish",
         &["discord_events"],
         &[&json_str]
-    ).await?;
-
-    match result {
-        0 => {
+    ).await {
+        Ok(0) => {
             println!("published {}", get_event_name(&json_str));
-        }
-        1 => {
+        },
+        Ok(1) => {
             println!("duplicate {}", get_event_name(&json_str));
-        }
-        2 => {
+        },
+        Ok(2) => {
             println!("cached    {}", get_event_name(&json_str));
-        }
-        3 => {
+        },
+        Ok(3) => {
             println!("unsupport {}", get_event_name(&json_str));
-        }
-        _ => {
+        },
+        Ok(result) => {
             println!("unknown   {} response: {}", get_event_name(&json_str), result);
+        },
+        Err(e) => {
+            println!("Failed to publish event: {:?}", e);
         }
     }
-
-    Ok(())
 }

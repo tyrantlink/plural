@@ -1,2 +1,0 @@
-bot_token = ''
-redis_url = 'redis://localhost:6379'

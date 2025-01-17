@@ -7,7 +7,6 @@ edition = "2021"
 fred = { version = "10.0", default-features = false, features = ["i-scripts", "enable-rustls"] }
 futures = "0.3"
 serde = { version = "1.0", features = ["derive"] }
-tokio = { version = "1", features = ["rt", "net"] }
-toml = "0.8"
-twilight-gateway = { version = "0.15", default-features = false, features = ["rustls-native-roots", "twilight-http", "zlib-simd"] }
-twilight-http = { version = "0.15", default-features = false, features = ["rustls-native-roots", "simd-json"] }
+tokio = { version = "1", features = ["rt", "net", "signal"] }
+twilight-gateway = { version = "0.16", default-features = false, features = ["rustls-platform-verifier", "twilight-http", "zlib-simd", "rustls-aws_lc_rs"] }
+twilight-http = { version = "0.16", default-features = false, features = ["rustls-platform-verifier", "simd-json", "rustls-aws_lc_rs", "hickory"] }
