@@ -21,13 +21,21 @@ If you need any additional information, or have any questions, you can join my s
 - Restrict a group to certain channels, with roleplay proxies for example, with `/group channels add`
 - And a fully featured API, anything you can do with the bot, you can do with the API https://api.plural.gg/docs
 
-### Planned Features
-- A GUI management menu for groups and members, accessible with `/manage`
-- Avatar uploading via API
-- Sharing groups between discord accounts (already built into the backend, if you urgently need this just join the support server and DM me (@tyrantlink))
-- export command to export your data to a json file
-
-# Hosting it yourself
+# Hosting and development
 If you don't plan on hosting it yourself, you can simply add the bot with https://plural.gg/invite and stop reading here.
 
-I will write this out in more detail at some point
+for hosting or local development, you'll need the following:
+- Podman/Docker
+- A Discord bot token
+
+### Instructions
+```sh
+git clone https://github.com/tyrantlink/plural
+cd plural
+cp .env.example .env
+# Edit .env with your bot token
+podman compose up --no-recreate -d # or docker-compose up --no-recreate -d
+```
+
+# License
+This project is licensed under the AGPL-3.0 License - see the [LICENSE](LICENSE) file for details
