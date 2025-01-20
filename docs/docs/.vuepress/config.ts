@@ -35,7 +35,7 @@ export default defineUserConfig({
       },
     }
   }),
-  port: 8081,
+  port: 8080,
   plugins: [
     backToTopPlugin(),
     removeHtmlExtensionPlugin(),

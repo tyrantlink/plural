@@ -1,18 +1,25 @@
 defmodule Bot do
-  @moduledoc """
-  Documentation for `Bot`.
-  """
+  use Application
+  require Logger
 
-  @doc """
-  Hello world.
+  def start(_type, _args) do
+    Logger.info("Starting bot...")
 
-  ## Examples
+    load_config()
 
-      iex> Bot.hello()
-      :world
+    children = [
+      EventSupervisor,
+      RedisSubscriber,
+      {Redix, {Application.get_env(:bot, :redis_url), name: :redix}}
+    ]
 
-  """
-  def hello do
-    :world
+    opts = [strategy: :one_for_one, name: YourApp.Supervisor]
+    Supervisor.start_link(children, opts)
+  end
+
+  defp load_config do
+    Application.put_env(:bot, :bot_token, System.fetch_env!("BOT_TOKEN"))
+    Application.put_env(:bot, :bot_token, System.fetch_env!("DISCORD_URL"))
+    Application.put_env(:bot, :redis_url, System.fetch_env!("REDIS_URL"))
   end
 end

@@ -479,6 +479,8 @@ end
 redis.register_function(
     'publish',
     function(keys, args)
+        --? just a note that for some reason, json is more memory efficient than just a string
+        --? using only 88 bytes vs 96, BUT you can't set expiry in the same call, so i'm sticking with set
         if not redis.call(
             'SET',
             'event:' .. redis.sha1hex(args[1]),

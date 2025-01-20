@@ -14,7 +14,8 @@ defmodule Bot.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {Bot, []}
     ]
   end
 
@@ -22,7 +23,9 @@ defmodule Bot.MixProject do
   defp deps do
     [
       {:redix, "~> 1.5"},
-      {:mongodb_driver, "~> 1.5.0"}
+      {:httpoison, "~> 2.2"},
+      {:jason, "~> 1.4"},
+      {:toml, "~> 0.7"}
     ]
   end
 end

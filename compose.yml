@@ -1,0 +1,90 @@
+name: plural
+
+services:
+  redis:
+    container_name: plural-redis
+    image: redis/redis-stack-server:7.4.0-v2
+    environment:
+      - REDIS_ARGS=--save 60 1 --appendonly yes
+    # ports: # ? only expose for development with redis insight, all applications use internal network
+    #   - 6379:6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - plural_net
+    restart: unless-stopped
+  egress-proxy:
+    container_name: plural-egress-proxy
+    build:
+      context: egress-proxy
+    env_file:
+      - .env
+    networks:
+      - plural_net
+    restart: unless-stopped
+  gateway:
+    container_name: plural-gateway
+    build:
+      context: gateway
+    env_file:
+      - .env
+    networks:
+      - plural_net
+    depends_on:
+      - redis
+    restart: unless-stopped
+  api:
+    container_name: plural-api
+    build:
+      context: api
+    env_file:
+      - .env
+    ports:
+      - 8080:8081
+    networks:
+      - plural_net
+    depends_on:
+      - redis
+      - egress-proxy
+    restart: unless-stopped
+  bot:
+    container_name: plural-bot
+    build:
+      context: bot
+    env_file:
+      - .env
+    networks:
+      - plural_net
+    depends_on:
+      - redis
+      - gateway
+      - egress-proxy
+    restart: unless-stopped
+  docs: # ? only for development. in production this runs on cloudflare pages
+    container_name: plural-docs
+    build:
+      context: docs
+    env_file:
+      - .env
+    ports:
+      - 8080:8080
+    networks:
+      - plural_net
+    restart: unless-stopped
+  cdn-worker: # ? only for development. in production this runs on cloudflare workers
+    container_name: plural-cdn-worker
+    build:
+      context: cdn-worker
+    env_file:
+      - .env
+    ports:
+      - 8787:8787
+    networks:
+      - plural_net
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  plural_net:

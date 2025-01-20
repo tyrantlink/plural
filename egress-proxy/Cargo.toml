@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+actix-web = "4.9"
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1.43", features = ["full"] }
+parking_lot = "0.12"
+bytes = "1.9"
+serde_json = "1.0"

@@ -1,15 +1,20 @@
-use twilight_gateway::{Message, Intents, Config, Shard};
-use twilight_http::Client;
-use std::error::Error;
-use futures::StreamExt;
 use std::env;
-use tokio::signal;
+use std::error::Error;
+use std::time::Duration;
+
 use fred::{
-    clients::Client as RedisClient, interfaces::ClientLike, prelude::FunctionInterface, types::{
-        config::Config as RedisConfig,
-        Builder as RedisBuilder
-    }
+    clients::Client as RedisClient,
+    interfaces::ClientLike,
+    prelude::FunctionInterface,
+    types::{
+        config::{Config as RedisConfig, TcpConfig},
+        Builder as RedisBuilder,
+    },
 };
+use futures::StreamExt;
+use tokio::signal;
+use twilight_gateway::{Config, Intents, Message, Shard};
+use twilight_http::Client;
 
 struct Env {
     bot_token: String,
@@ -24,17 +29,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let redis: RedisClient = RedisBuilder::from_config(RedisConfig::from_url(&env.redis_url)?)
+        .with_connection_config(|config| {
+            config.connection_timeout = Duration::from_secs(5);
+            config.tcp = TcpConfig {
+                nodelay: Some(true),
+                ..Default::default()
+            };
+        })
         .build()?;
 
     redis.init().await?;
 
-    let fload: Result<(), fred::prelude::Error> = redis.function_load(
-        true,
-        include_str!("publish.lua")
-    ).await;
+    let fload: Result<(), fred::prelude::Error> =
+        redis.function_load(true, include_str!("publish.lua")).await;
 
     match fload {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => {
             println!("Failed to load Redis function: {:?}", e);
         }
@@ -43,12 +53,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let bot = Client::new(env.bot_token.clone());
     let config = Config::new(
         env.bot_token,
-        Intents::GUILDS                    |
-        Intents::GUILD_EMOJIS_AND_STICKERS |
-        Intents::GUILD_WEBHOOKS            |
-        Intents::GUILD_MESSAGES            |
-        Intents::GUILD_MESSAGE_REACTIONS   |
-        Intents::MESSAGE_CONTENT
+        Intents::GUILDS
+            | Intents::GUILD_EMOJIS_AND_STICKERS
+            | Intents::GUILD_WEBHOOKS
+            | Intents::GUILD_MESSAGES
+            | Intents::GUILD_MESSAGE_REACTIONS
+            | Intents::MESSAGE_CONTENT,
     );
 
     let shards =
@@ -71,12 +81,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
 fn get_event_name(json_str: &str) -> &str {
     match json_str.find("\"t\":") {
         Some(event_start) => {
-            &json_str[
-                event_start + 5..json_str[event_start + 5..]
-                .find("\"").unwrap() + event_start + 5
-            ]
-        },
-        None => "UNKNOWN"
+            &json_str
+                [event_start + 5..json_str[event_start + 5..].find("\"").unwrap() + event_start + 5]
+        }
+        None => "UNKNOWN",
     }
 }
 
@@ -91,7 +99,6 @@ async fn runner(mut shard: Shard, redis: RedisClient) {
     }
 }
 
-
 async fn handle_message(message: Message, redis: RedisClient) {
     let mut json_str: String = match message {
         Message::Text(content) => content,
@@ -100,42 +107,44 @@ async fn handle_message(message: Message, redis: RedisClient) {
         }
     };
 
-    if json_str.starts_with("{\"t\":\"READY\"") ||
-       json_str.starts_with("{\"t\":null")      ||
-       json_str.starts_with("{\"t\":\"RESUMED\"")
+    if json_str.starts_with("{\"t\":\"READY\"")
+        || json_str.starts_with("{\"t\":null")
+        || json_str.starts_with("{\"t\":\"RESUMED\"")
     {
         return;
     }
 
     if let Some(sequence_start) = json_str.find("\"s\":") {
         json_str = json_str.replace(
-            &json_str[
-                sequence_start..sequence_start +
-                json_str[sequence_start..].find(",").unwrap()],
-            "\"s\":0"
+            &json_str
+                [sequence_start..sequence_start + json_str[sequence_start..].find(",").unwrap()],
+            "\"s\":0",
         )
     }
 
-    match redis.fcall(
-        "publish",
-        &["discord_events"],
-        &[&json_str]
-    ).await {
+    match redis
+        .fcall("publish", &["discord_events"], &[&json_str])
+        .await
+    {
         Ok(0) => {
             println!("published {}", get_event_name(&json_str));
-        },
+        }
         Ok(1) => {
             println!("duplicate {}", get_event_name(&json_str));
-        },
+        }
         Ok(2) => {
             println!("cached    {}", get_event_name(&json_str));
-        },
+        }
         Ok(3) => {
             println!("unsupport {}", get_event_name(&json_str));
-        },
+        }
         Ok(result) => {
-            println!("unknown   {} response: {}", get_event_name(&json_str), result);
-        },
+            println!(
+                "unknown   {} response: {}",
+                get_event_name(&json_str),
+                result
+            );
+        }
         Err(e) => {
             println!("Failed to publish event: {:?}", e);
         }
