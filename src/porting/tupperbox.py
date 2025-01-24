@@ -24,7 +24,7 @@ class TupperboxExport(BaseExport):
         birthday: datetime | None
         tag: str | None
         nick: str | None
-        created_at: datetime
+        created_at: datetime | None
         group_id: int | None
         last_used: datetime | None
 

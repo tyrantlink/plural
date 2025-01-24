@@ -40,7 +40,7 @@ class PluralKitExport(BaseExport):
         hid_display_split: bool
         hid_display_caps: bool
         hid_list_padding: str
-        proxy_switch: MissingOr[bool] = MISSING
+        proxy_switch: MissingOr[bool | str] = MISSING
         name_format: MissingNoneOr[str] = MISSING  # ? unsure of type
         description_templates: list[str]  # ? unsure of type
 
