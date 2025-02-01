@@ -802,7 +802,17 @@ async def slash_member_tags_remove(
     member: ProxyMember,
     proxy_tag: str
 ) -> None:
-    index = int(proxy_tag)
+    try:
+        index = int(proxy_tag)
+    except ValueError:
+        # ? user didn't select from autocomplete
+        try:
+            index = [
+                f'{tag.prefix}text{tag.suffix}' for tag in member.proxy_tags
+            ].index(proxy_tag)
+        except ValueError:
+            raise InteractionError('proxy tag not found') from None
+
     if index < 0 or index >= len(member.proxy_tags):
         raise InteractionError('proxy tag index out of range')
 
