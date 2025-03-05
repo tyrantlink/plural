@@ -167,7 +167,7 @@ class Interaction(RawBaseModel):
         assert self.author.user is not None
         return self.author.user.username
 
-    async def process(self) -> None:
+    async def process(self, latency: int) -> None:
         from src.events import on_interaction
         await self.populate()
-        await on_interaction(self)
+        await on_interaction(self, latency)

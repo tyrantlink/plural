@@ -40,14 +40,19 @@ from .autocomplete import on_autocomplete
 type CustomIdExtraTypeType = None | str | int | bool | User | Channel | ProxyMember | Group | Message
 
 
-async def on_interaction(interaction: Interaction) -> None:
+async def on_interaction(interaction: Interaction, latency: int) -> None:
     if interaction.type == InteractionType.APPLICATION_COMMAND_AUTOCOMPLETE:
         try:
             return await on_autocomplete(interaction)
         except Exception as e:  # noqa: BLE001
             await on_interaction_error(interaction, e)
 
-    with span('uninitialized interaction'):
+    with span(
+        'uninitialized interaction',
+        attributes={
+            'interaction.latency': latency
+        }
+    ):
         try:
             match interaction.type:
                 case InteractionType.APPLICATION_COMMAND:

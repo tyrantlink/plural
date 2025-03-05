@@ -38,14 +38,16 @@ async def post__interaction(
 
     pipeline = redis.pipeline()
 
-    pipeline.lpush(
-        'interaction_latency',
-        round(time()*1000-((interaction.id >> 22) + 1420070400000)))
+    latency = round(
+        time()*1000-((interaction.id >> 22) + 1420070400000)
+    )
+
+    pipeline.lpush('interaction_latency', latency)
     pipeline.ltrim('interaction_latency', 0, 99)
 
-    await pipeline.execute()
+    create_strong_task(interaction.process(latency))
 
-    create_strong_task(interaction.process())
+    await pipeline.execute()
 
     return Response(status_code=202)
 
