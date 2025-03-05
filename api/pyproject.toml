@@ -14,6 +14,7 @@ dependencies = [
     "thefuzz>=0.22.1",
     "regex>=2024.11.6",
     "types-regex>=2024.11.6.20241221",
+    "pyvips-binary>=8.16.0",
 ]
 
 [tool.uv.sources]
