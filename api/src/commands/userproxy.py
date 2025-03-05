@@ -115,12 +115,12 @@ async def _userproxy_sync(
 
     group = group or await member.get_group()
 
-    base_app_patch: dict = {  # ! update subdomains before live build
+    base_app_patch: dict = {
         'interactions_endpoint_url': (
-            f'https://testing.{env.domain}/interaction'
+            f'https://api.{env.domain}/interaction'
             if not usergroup.userproxy_config.self_hosted else
             None),
-        'event_webhooks_url': f'https://testing.{env.domain}/event',
+        'event_webhooks_url': f'https://api.{env.domain}/event',
         'event_webhooks_types': [
             EventWebhooksType.APPLICATION_AUTHORIZED.value],
         'event_webhooks_status': EventWebhooksStatus.ENABLED.value

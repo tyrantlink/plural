@@ -40,7 +40,6 @@ def modal(
         components.update({custom_id: modal})
 
         return modal
-
     return decorator
 
 

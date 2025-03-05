@@ -84,8 +84,7 @@ def _convert_avatar(
             avatar.data,
             '',
             n=-1,
-            access='sequential'
-        )
+            access='sequential')
     except VipsError:
         image: Image = Image.new_from_buffer(
             avatar.data,
