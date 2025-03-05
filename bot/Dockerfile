@@ -2,15 +2,13 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY api api
+COPY bot bot
 COPY shared shared
 
 RUN pip install uv
 
-WORKDIR /app/api
+WORKDIR /app/bot
 
 RUN uv sync
-
-EXPOSE 8080
 
 CMD uv run main.py
