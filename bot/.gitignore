@@ -1,10 +1,4 @@
-/_build/
-/cover/
-/deps/
-/doc/
-/.fetch
-erl_crash.dump
-*.ez
-bot-*.tar
-/tmp/
-.elixir_ls/
+.venv
+__pycache__
+.mypy_cache
+uv.lock

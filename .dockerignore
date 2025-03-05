@@ -1,0 +1,8 @@
+node_modules/
+.venv/
+target/
+.mypy_cache/
+.gitignore
+.dockerignore
+LICENSE
+Dockerfile

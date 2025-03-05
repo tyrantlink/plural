@@ -1,40 +1,118 @@
 from collections.abc import AsyncGenerator, Callable, Awaitable
-from fastapi import FastAPI, Response, Request, WebSocket
-from fastapi.middleware.cors import CORSMiddleware
-from src.core.models import env, INSTANCE
 from contextlib import asynccontextmanager
-from src.core.version import VERSION
+from asyncio import gather
+from random import randint
 from typing import Any
-import logfire
+
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Response, Request
+
+from plural.db import mongo_init, redis_init
+from plural.utils import create_strong_task
+from plural.missing import is_not_missing
+from plural.env import INSTANCE
+from plural.otel import span
+
+from src.core.version import VERSION
+from src.core.models import env
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    from src.db import redis_init
-    # from .session import session
+async def lifespan(app: FastAPI) -> AsyncGenerator:
+    with span(f'initializing api instance {INSTANCE}'):
+        await gather(
+            env.init(),
+            mongo_init(),
+            redis_init(),
+            emoji_init()
+        )
 
-    await redis_init(env.redis_url)
+        from src.routers import discord, message
+        # ? commands need to be imported after init
+        from src.discord.commands import sync_commands
+        import src.commands  # noqa: F401
 
-    # # ? start running bot code
-    # import src.logic
-    # import src.commands  # noqa: F401
-    # from src.discord.commands import sync_commands
+        await sync_commands(env.bot_token)
 
-    logfire.info('started on instance {instance_id}', instance_id=INSTANCE)
+        app.include_router(discord.router)
+        app.include_router(message.router)
 
-    # await sync_commands()
-
-    from src.routers import autoproxy, discord, message, migration
-    app.include_router(autoproxy.router)
-    app.include_router(discord.router)
-    app.include_router(message.router)
-    app.include_router(migration.router)
+    create_strong_task(install_count_loop())
 
     yield
 
-    # await session.close()
-    logfire.info('shutting down')
-    logfire.shutdown()
+    from src.core.http import DISCORD_SESSION, GENERAL_SESSION
+
+    await DISCORD_SESSION.close()
+    await GENERAL_SESSION.close()
+
+
+async def install_count_loop() -> None:
+    from asyncio import sleep
+
+    from plural.db import redis
+
+    from src.discord.models import Application
+
+    first_run = True
+
+    if await redis.get('discord_users') is None:
+        await redis.set('discord_users', 0)
+
+    if await redis.get('discord_guilds') is None:
+        await redis.set('discord_guilds', 0)
+
+    last_user_count = int(await redis.get('discord_users'))
+    last_guild_count = int(await redis.get('discord_guilds'))
+
+    while True:
+        if not first_run:
+            await sleep(randint(480, 900))
+
+        first_run = False
+
+        application = await Application.fetch(env.bot_token, silent=True)
+
+        users = application.approximate_user_install_count
+        guilds = application.approximate_guild_count
+
+        if (
+            (not is_not_missing(users) or users == last_user_count) and
+            (not is_not_missing(guilds) or guilds == last_guild_count)
+        ):
+            continue
+
+        with span(
+            f'updated install count to {users} users and {guilds} guilds',
+            attributes={
+                'users': users,
+                'guilds': guilds
+            }
+        ):
+            last_user_count = users
+            last_guild_count = guilds
+            await redis.set('discord_users', users)
+            await redis.set('discord_guilds', guilds)
+
+
+async def emoji_init() -> None:
+    from src.discord.models import Application
+    from src.core.emoji import EMOJI, EXPECTED
+
+    with span('initializing application emojis'):
+        emojis = await Application.list_emojis(env.bot_token)
+
+        for emoji in emojis:
+            if emoji.name not in EXPECTED:
+                continue
+
+            EMOJI[emoji.name] = emoji
+            EXPECTED.discard(emoji.name)
+
+    if EXPECTED:
+        print(  # noqa: T201
+            f'WARNING: Bot is missing the following emojis: {'\n'.join(EXPECTED)}'
+        )
 
 
 app = FastAPI(
@@ -55,31 +133,7 @@ app.add_middleware(
 )
 
 
-def live_discord_redaction(request: Request | WebSocket, attributes: dict[str, Any]) -> dict[str, Any] | None:
-    if env.dev:
-        return attributes
-
-    match request.url.path:
-        # ? might do more later
-        case '/discord/event' | '/discord/interaction':
-            return None
-
-    return attributes
-
-
-if env.logfire_token:
-    logfire.configure(
-        service_name='/plu/ral' + ('-dev' if env.dev else ''),
-        service_version=VERSION,
-        token=env.logfire_token,
-        environment='development' if env.dev else 'production',
-        scrubbing=False if env.dev else None,
-        console=False,
-        metrics=False
-    )
-
-
-@app.middleware("http")
+@app.middleware('http')
 async def set_client_ip(
     request: Request,
     call_next: Callable[..., Awaitable[Any]]
@@ -95,7 +149,7 @@ async def set_client_ip(
 @app.get('/')
 async def get__root() -> dict[str, str]:
     return {
-        'message': '/plu/ral api, you should ',
+        'message': 'hello from the /plu/ral api!',
         'instance': INSTANCE,
         'version': VERSION
     }

@@ -1,23 +1,67 @@
 [project]
 name = "api"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "bcrypt>=4.2.1",
-    "bson>=0.5.10",
+    "aiohttp>=3.11.11",
     "fastapi>=0.115.6",
-    "logfire>=3.1.1",
     "orjson>=3.10.14",
     "pynacl>=1.5.0",
-    "redis-om>=0.3.3",
     "uvicorn>=0.34.0",
     "uvloop>=0.21.0",
+    "version",
+    "plural",
+    "thefuzz>=0.22.1",
+    "regex>=2024.11.6",
+    "types-regex>=2024.11.6.20241221",
 ]
+
+[tool.uv.sources]
+version = { path = "../shared/version" }
+plural = { path = "../shared/plural" }
+
+[tool.mypy]
+enable_incomplete_feature = ["NewGenericSyntax"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E",
+    "W",
+    "I002",
+    "N",
+    "UP",
+    "YTT",
+    "ANN",
+    "ASYNC",
+    "BLE",
+    "B",
+    "C4",
+    "FA",
+    "PIE",
+    "T20",
+    "RSE",
+    "RET",
+    "SIM",
+    "TC",
+    "ARG",
+    "ERA",
+    "RUF"
+]
+ignore = ["FA102", "RET501", "E501", "N818"]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
 [dependency-groups]
 dev = [
-    "pymongo>=4.10.1",
     "tqdm>=4.67.1",
 ]

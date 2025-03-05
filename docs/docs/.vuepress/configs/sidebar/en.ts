@@ -21,6 +21,10 @@ export const sidebarEn: SidebarOptions = {
             {
                 text: 'FAQ',
                 link: '/guide/faq'
+            },
+            {
+                text: 'Command Reference',
+                link: '/guide/command-reference'
             }
         ]
     },

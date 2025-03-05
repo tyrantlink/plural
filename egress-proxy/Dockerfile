@@ -1,5 +1,5 @@
 # build
-FROM rust:1.83-slim as builder
+FROM rust:1.85-slim as builder
 WORKDIR /app
 
 RUN apt-get update && \
@@ -11,8 +11,13 @@ RUN apt-get update && \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-COPY . .
-RUN cargo build --release
+
+COPY Cargo.toml .
+COPY shared/version shared/version
+COPY gateway gateway
+COPY egress-proxy egress-proxy
+
+RUN cargo build -rp egress-proxy
 
 # runtime
 FROM debian:bookworm-slim
@@ -20,14 +25,15 @@ WORKDIR /app
 
 RUN apt-get update && \
     apt-get install -y \
-    libssl3 \
-    ca-certificates \
-    openssl \
+    git \
+    libssl-dev \
     --no-install-recommends && \
-    update-ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/egress-proxy ./egress-proxy
-RUN chmod +x /app/egress-proxy
+COPY .git .git
+RUN chmod +x ./egress-proxy
+
+EXPOSE 8086
 
 CMD ["./egress-proxy"]

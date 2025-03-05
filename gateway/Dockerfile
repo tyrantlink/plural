@@ -1,5 +1,5 @@
 # build
-FROM rust:1.83-slim as builder
+FROM rust:1.85-slim as builder
 WORKDIR /app
 
 RUN apt-get update && \
@@ -11,7 +11,8 @@ RUN apt-get update && \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-COPY . .
+# do this better
+COPY . . 
 RUN cargo build --release
 
 # runtime
@@ -20,6 +21,7 @@ WORKDIR /app
 
 RUN apt-get update && \
     apt-get install -y \
+    git \
     libssl3 \
     ca-certificates \
     openssl \

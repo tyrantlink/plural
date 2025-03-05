@@ -1,12 +1,23 @@
 [package]
 name = "egress-proxy"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-actix-web = "4.9"
-reqwest = { version = "0.12", features = ["json"] }
-tokio = { version = "1.43", features = ["full"] }
-parking_lot = "0.12"
+actix-web = { version = "4.9", features = ["rustls"] }
+base64 = "0.22"
 bytes = "1.9"
+flate2 = { version = "1.0" }
+http = "1.2"
+lazy_static = "1.5"
+opentelemetry = "0.27"
+opentelemetry_sdk = { version = "0.27", features = ["trace", "rt-tokio"] }
+opentelemetry-http = { version = "0.27" }
+opentelemetry-otlp = { version = "0.27", default-features = false, features = ["trace", "http-proto", "reqwest-client", "reqwest-rustls", "grpc-tonic"] }
+opentelemetry-semantic-conventions = { version = "0.27" }
+parking_lot = "0.12"
+regex = "1.11"
+reqwest = { version = "0.12", features = ["json"] }
 serde_json = "1.0"
+tokio = { version = "1.43", features = ["full"] }
+version = { path = "../shared/version" }

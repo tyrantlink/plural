@@ -1,5 +1,22 @@
+import { RedisClient } from "@alloc/redis-on-workers"
+
 interface ErrorResponse {
     detail: string
+}
+
+interface RequestProps {
+    method: string
+    headers: Headers
+    body?: ArrayBuffer
+}
+
+interface CDNRequest {
+    request: Request
+    env: Env
+    ctx: ExecutionContext
+    userId: string
+    fileHash: string
+    redis: RedisClient
 }
 
 export default {
@@ -15,49 +32,59 @@ export default {
 
         const [_, userId, fileHash, _fileExt] = match
 
+        const cdnRequest = {
+            request,
+            env,
+            ctx,
+            userId,
+            fileHash,
+            redis: new RedisClient({
+                url: env.REDIS_URL})
+        } as CDNRequest
+
+        let response
+
         switch (request.method) {
             case 'GET':
-                return handleGet(request, env, ctx, userId, fileHash)
+                response = await handleGet(cdnRequest)
+                break
+            case 'HEAD':
+                response = await handleHead(cdnRequest)
+                break
             case 'PUT':
-                return handlePut(request, env, userId, fileHash)
+                response = await handlePut(cdnRequest)
+                break
             case 'DELETE':
-                return handleDelete(request, env, userId, fileHash)
+                response = await handleDelete(cdnRequest)
+                break
             case 'OPTIONS':
                 return handleOptions()
             default:
                 return jsonError('Method Not Allowed', 405)
         }
+
+        await cdnRequest.redis.close()
+
+        return response
     }
 }
 
-async function handleGet(request: Request, env: Env, ctx: ExecutionContext, userId: string, fileHash: string) {
-    const cacheKey = new Request(request.url)
-    const cache = caches.default
-    let response = await cache.match(cacheKey)
+async function handleGet(cdnRequest: CDNRequest): Promise<Response> {
+    const cacheKey = new Request(cdnRequest.request.url)
+
+    let response = await caches.default.match(cacheKey)
 
     if (response) {
         return response
     }
 
-    if (!await has_access(env, userId, fileHash)) {
+    if (!await has_access(cdnRequest)) {
         response = jsonError('Not Found', 404)
-        ctx.waitUntil(cache.put(cacheKey, response.clone()))
+        cdnRequest.ctx.waitUntil(caches.default.put(cacheKey, response.clone()))
         return response
     }
 
-    const s3Url = `https://${env.S3_URL}/${fileHash}`
-
-    const s3Date = new Date().toUTCString()
-    const signatureString = `GET\n\n\n${s3Date}\n/plural-images/${fileHash}`
-    const signature = await createSignature(signatureString, env.S3_SECRET_ACCESS_KEY)
-
-    const s3Response = await fetch(s3Url, {
-        headers: {
-            'Host': env.S3_URL,
-            'Date': s3Date,
-            'Authorization': `AWS ${env.S3_ACCESS_KEY_ID}:${signature}`
-        }
-    })
+    const s3Response = await s3_fetch('GET', cdnRequest)
 
     if (!s3Response.ok) {
         return jsonError('Not Found', 404)
@@ -67,34 +94,46 @@ async function handleGet(request: Request, env: Env, ctx: ExecutionContext, user
         headers: {
             'Cache-Control': 'public, max-age=31536000',
             'Content-Type': s3Response.headers.get('Content-Type') || 'image/webp',
+            'Content-Length': s3Response.headers.get('Content-Length') || '0',
             'Access-Control-Allow-Origin': '*'
         }
     })
 
-    ctx.waitUntil(cache.put(cacheKey, response.clone()))
+    cdnRequest.ctx.waitUntil(caches.default.put(cacheKey, response.clone()))
     return response
 }
 
-async function handlePut(request: Request, env: Env, userId: string, fileHash: string) {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || authHeader !== `Bearer ${env.API_TOKEN}`) {
+async function handleHead(cdnRequest: CDNRequest): Promise<Response> {
+    const response = await handleGet(cdnRequest)
+
+    return new Response(null, {
+        status: response.status,
+        headers: response.headers
+    })
+}
+
+async function handlePut(cdnRequest: CDNRequest): Promise<Response> {
+    const authHeader = cdnRequest.request.headers.get('Authorization')
+
+    if (!authHeader || authHeader !== `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`) {
         return jsonError('Unauthorized', 401)
     }
 
-    const contentType = request.headers.get('Content-Type')
+    const contentType = cdnRequest.request.headers.get('Content-Type')
     if (!contentType?.startsWith('image/')) {
         return jsonError('Invalid Content-Type', 400)
     }
 
-    const contentLength = parseInt(request.headers.get('Content-Length') || '0')
-    const MAX_SIZE = 8388608 // 8MB in bytes
+    const contentLength = parseInt(cdnRequest.request.headers.get('Content-Length') || '0')
+
+    const MAX_SIZE = 4_194_304 // 4MB in bytes
 
     if (contentLength > MAX_SIZE) {
         return jsonError('Payload Too Large', 413)
     }
 
-    if (await has_members(env, fileHash)) {
-        if (!await add_access(env, userId, fileHash)) {
+    if (await has_members(cdnRequest)) {
+        if (!await add_access(cdnRequest)) {
             return jsonError('Failed to add user to image', 500)
         }
 
@@ -106,39 +145,20 @@ async function handlePut(request: Request, env: Env, userId: string, fileHash: s
         })
     }
 
-    const fileData = await request.arrayBuffer()
+    const fileData = await cdnRequest.request.arrayBuffer()
     if (fileData.byteLength > MAX_SIZE) {
         return jsonError('Payload Too Large', 413)
     }
 
-    const s3Date = new Date().toUTCString()
-    const contentMD5 = await calculateMD5(fileData)
-    const signatureString = `PUT\n${contentMD5}\n${contentType}\n${s3Date}\n/plural-images/${fileHash}`
-    const signature = await createSignature(signatureString, env.S3_SECRET_ACCESS_KEY)
-
-    const s3Response = await fetch(
-        `https://${env.S3_URL}/${fileHash}`,
-        {
-            method: 'PUT',
-            headers: {
-                'Host': env.S3_URL,
-                'Date': s3Date,
-                'Content-Type': contentType,
-                'Content-MD5': contentMD5,
-                'Authorization': `AWS ${env.S3_ACCESS_KEY_ID}:${signature}`},
-            body: fileData
-        }
-    )
+    const s3Response = await s3_fetch('PUT', cdnRequest, fileData)
 
     if (!s3Response.ok) {
-        return jsonError('Failed to upload image', 500)
+        return jsonError(`Failed to upload image: ${await s3Response.text()}`, 500)
     }
 
-    await add_access(env, userId, fileHash)
+    await add_access(cdnRequest)
 
-    const cacheKey = new Request(request.url)
-    const cache = caches.default
-    await cache.delete(cacheKey)
+    await caches.default.delete(new Request(cdnRequest.request.url))
 
     return new Response(null, {
         status: 204,
@@ -148,43 +168,36 @@ async function handlePut(request: Request, env: Env, userId: string, fileHash: s
     })
 }
 
-async function handleDelete(request: Request, env: Env, userId: string, fileHash: string) {
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader || authHeader !== `Bearer ${env.API_TOKEN}`) {
+async function handleDelete(cdnRequest: CDNRequest): Promise<Response> {
+    const authHeader = cdnRequest.request.headers.get('Authorization')
+
+    if (!authHeader || authHeader !== `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`) {
         return jsonError('Unauthorized', 401)
     }
 
-    if (!await has_access(env, userId, fileHash)) {
+    if (!await has_access(cdnRequest)) {
         return jsonError('Not Found', 404)
     }
 
-    await remove_access(env, userId, fileHash)
+    await remove_access(cdnRequest)
 
-    if (!await has_members(env, fileHash)) {
-        const s3Date = new Date().toUTCString()
-        const signatureString = `DELETE\n\n\n${s3Date}\n/plural-images/${fileHash}`
-        const signature = await createSignature(signatureString, env.S3_SECRET_ACCESS_KEY)
-
-        const s3Response = await fetch(
-            `https://${env.S3_URL}/${fileHash}`,
-            {
-                method: 'DELETE',
-                headers: {
-                    'Host': env.S3_URL,
-                    'Date': s3Date,
-                    'Authorization': `AWS ${env.S3_ACCESS_KEY_ID}:${signature}`
-                }
-            }
-        )
+    if (!await has_members(cdnRequest)) {
+        const s3Response = await s3_fetch('DELETE', cdnRequest)
 
         if (!s3Response.ok) {
-            return jsonError('Failed to delete image', 500)
+            return jsonError(`Failed to upload image: ${await s3Response.text()}`, 500)
         }
     }
 
-    const cacheKey = new Request(request.url)
-    const cache = caches.default
-    await cache.delete(cacheKey)
+    await fetch(
+        `https://api.cloudflare.com/client/v4/zones/${cdnRequest.env.CLOUDFLARE_ZONE_ID}/purge_cache`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${cdnRequest.env.CLOUDFLARE_API_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ "files": [cdnRequest.request.url] })
+    })
 
     return new Response(null, {
         status: 204,
@@ -193,109 +206,173 @@ async function handleDelete(request: Request, env: Env, userId: string, fileHash
         }
     })
 }
-
 
 function handleOptions() {
     return new Response(null, {
         headers: {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+            'Access-Control-Allow-Methods': 'GET, PUT, DELETE, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Content-Length, Authorization',
             'Access-Control-Max-Age': '86400',
         }
     })
 }
 
-async function createSignature(stringToSign: string, secretKey: string): Promise<string> {
-    const encoder = new TextEncoder()
-    const keyData = encoder.encode(secretKey)
-    const messageData = encoder.encode(stringToSign)
+async function s3_fetch(
+    method: string,
+    cdnRequest: CDNRequest,
+    body: ArrayBuffer | null = null
+): Promise<Response> {
+    const url = `https://${cdnRequest.env.S3_URL}/${cdnRequest.env.S3_BUCKET}/${cdnRequest.fileHash}`
 
-    const key = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-1' },
-        false,
-        ['sign']
+    return fetch(
+        url,
+        await createSignedRequest(
+            method,
+            url,
+            body,
+            cdnRequest.env
+        )
     )
-
-    const signature = await crypto.subtle.sign(
-        'HMAC',
-        key,
-        messageData
-    )
-
-    return btoa(String.fromCharCode(...new Uint8Array(signature)))
 }
 
-async function calculateMD5(data: ArrayBuffer): Promise<string> {
-    const hash = await crypto.subtle.digest('MD5', data)
-    return btoa(String.fromCharCode(...new Uint8Array(hash)))
+// ? i don't understand most of this, i severely dislike s3
+async function createSignedRequest(
+    method: string,
+    url: string,
+    body: ArrayBuffer | null,
+    env: Env
+): Promise<RequestProps> {
+    const parsedUrl = new URL(url)
+
+    const sha256 = async (data: ArrayBuffer): Promise<string> => {
+        return hexEncode(await crypto.subtle.digest('SHA-256', data))
+    }
+
+    const hmac = async (key: ArrayBuffer, message: string): Promise<ArrayBuffer> => {
+        const encoder = new TextEncoder()
+        return await crypto.subtle.sign(
+            'HMAC',
+            await crypto.subtle.importKey(
+                'raw',
+                key,
+                { name: 'HMAC', hash: 'SHA-256' },
+                false,
+                ['sign']),
+            encoder.encode(message)
+        )
+    }
+
+    const hexEncode = (buffer: ArrayBuffer): string => {
+        return [...new Uint8Array(buffer)]
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('')
+    }
+
+    const now = new Date()
+    const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '')
+    const dateStamp = now.toISOString().slice(0, 10).replace(/-/g, '')
+
+    const payloadHash = body ? await sha256(body) : await sha256(new ArrayBuffer(0))
+
+    const signedHeaders = 'host;x-amz-content-sha256;x-amz-date'
+
+    const canonicalRequest = [
+        method,
+        parsedUrl.pathname,
+        parsedUrl.searchParams.toString() || '',
+        [
+            `host:${parsedUrl.hostname}`,
+            `x-amz-content-sha256:${payloadHash}`,
+            `x-amz-date:${amzDate}`,
+        ].join('\n') + '\n',
+        signedHeaders,
+        payloadHash
+    ].join('\n')
+
+    const credentialScope = `${dateStamp}/${env.S3_REGION}/s3/aws4_request`
+    const stringToSign = [
+        'AWS4-HMAC-SHA256',
+        amzDate,
+        credentialScope,
+        await sha256(new TextEncoder().encode(canonicalRequest))
+    ].join('\n')
+
+
+    // ? i miss elixir
+    const signatureKey = await hmac(
+        await hmac(
+            await hmac(
+                await hmac(
+                    new TextEncoder().encode('AWS4' + env.S3_SECRET_ACCESS_KEY),
+                    dateStamp),
+                env.S3_REGION),
+            's3'),
+        'aws4_request'
+    )
+
+    const signature = hexEncode(await hmac(signatureKey, stringToSign))
+
+    return {
+        method,
+        headers: new Headers({
+            'Host': parsedUrl.hostname,
+            'x-amz-content-sha256': payloadHash,
+            'x-amz-date': amzDate,
+            'Authorization': [
+                `AWS4-HMAC-SHA256 Credential=${env.S3_ACCESS_KEY_ID}/${credentialScope},`,
+                `SignedHeaders=${signedHeaders},`,
+                `Signature=${signature}`
+            ].join(''),
+            'Content-Type': 'image/webp'}),
+        body: body || undefined
+    }
 }
 
 function jsonError(message: string, status: number): Response {
+    const response = JSON.stringify({ detail: message } as ErrorResponse)
     return new Response(
-        JSON.stringify({ detail: message } as ErrorResponse),
-        {
-            status,
-            headers: {
-                'Access-Control-Allow-Origin': '*',
-                'Content-Type': 'application/json'
-            }
-        }
-    )
-}
-
-async function has_access(env: Env, userId: string, fileHash: string): Promise<boolean> {
-    const response = await fetch(`${env.UPSTASH_URL}/sismember/${fileHash}/${userId}`, {
+        response, {
+        status,
         headers: {
-            'Authorization': `Bearer ${env.UPSTASH_TOKEN}`
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json',
+            'Content-Length': `${response.length}`
         }
     })
-    
-    if (!response.ok) {
-        return false
-    }
-
-    return (
-        await response.json() as { result: number }
-    ).result === 1
 }
 
-async function add_access(env: Env, userId: string, fileHash: string): Promise<boolean> {
-    const response = await fetch(`${env.UPSTASH_URL}/sadd/${fileHash}/${userId}`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${env.UPSTASH_TOKEN}`
-        }
-    })
-
-    return response.ok
+function isNumber(value: any): boolean {
+    return typeof value === "number"
 }
 
-async function remove_access(env: Env, userId: string, fileHash: string): Promise<boolean> {
-    const response = await fetch(`${env.UPSTASH_URL}/srem/${fileHash}/${userId}`, {
-        method: 'DELETE',
-        headers: {
-            'Authorization': `Bearer ${env.UPSTASH_TOKEN}`
-        }
-    })
-
-    return response.ok
+async function has_access(cdnRequest: CDNRequest): Promise<boolean> {
+    return await cdnRequest.redis.sendRaw(
+        'SISMEMBER',
+        `avatar:${cdnRequest.fileHash}`,
+        cdnRequest.userId
+    ) as number === 1
 }
 
-async function has_members(env: Env, fileHash: string): Promise<boolean> {
-    const response = await fetch(`${env.UPSTASH_URL}/scard/${fileHash}`, {
-        headers: {
-            'Authorization': `Bearer ${env.UPSTASH_TOKEN}`
-        }
-    })
+async function add_access(cdnRequest: CDNRequest): Promise<boolean> {
+    return isNumber(await cdnRequest.redis.sendRaw(
+        'SADD',
+        `avatar:${cdnRequest.fileHash}`,
+        cdnRequest.userId
+    ))
+}
 
-    if (!response.ok) {
-        return false
-    }
+async function remove_access(cdnRequest: CDNRequest): Promise<boolean> {
+    return isNumber(await cdnRequest.redis.sendRaw(
+        'SREM',
+        `avatar:${cdnRequest.fileHash}`,
+        cdnRequest.userId
+    ))
+}
 
-    return (
-        await response.json() as { result: number }
-    ).result > 0
+async function has_members(cdnRequest: CDNRequest): Promise<boolean> {
+    return await cdnRequest.redis.sendRaw(
+        'SCARD',
+        `avatar:${cdnRequest.fileHash}`,
+    ) as number > 0
 }
