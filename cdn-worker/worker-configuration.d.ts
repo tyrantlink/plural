@@ -8,6 +8,6 @@ interface Env {
     S3_ACCESS_KEY_ID: string
     S3_BUCKET: string
     S3_SECRET_ACCESS_KEY: string
-    REDIS_URL: string
+    API_URL: string
     UPLOAD_TOKEN: string
 }

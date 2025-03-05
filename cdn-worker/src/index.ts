@@ -1,5 +1,3 @@
-import { RedisClient } from "@alloc/redis-on-workers"
-
 interface ErrorResponse {
     detail: string
 }
@@ -16,7 +14,6 @@ interface CDNRequest {
     ctx: ExecutionContext
     userId: string
     fileHash: string
-    redis: RedisClient
 }
 
 export default {
@@ -37,9 +34,7 @@ export default {
             env,
             ctx,
             userId,
-            fileHash,
-            redis: new RedisClient({
-                url: env.REDIS_URL})
+            fileHash
         } as CDNRequest
 
         let response
@@ -62,8 +57,6 @@ export default {
             default:
                 return jsonError('Method Not Allowed', 405)
         }
-
-        await cdnRequest.redis.close()
 
         return response
     }
@@ -342,37 +335,41 @@ function jsonError(message: string, status: number): Response {
     })
 }
 
-function isNumber(value: any): boolean {
-    return typeof value === "number"
-}
-
 async function has_access(cdnRequest: CDNRequest): Promise<boolean> {
-    return await cdnRequest.redis.sendRaw(
-        'SISMEMBER',
-        `avatar:${cdnRequest.fileHash}`,
-        cdnRequest.userId
-    ) as number === 1
+    const test = await fetch(
+        `${cdnRequest.env.API_URL}/__redis/SISMEMBER/avatar:${cdnRequest.fileHash}/${cdnRequest.userId}`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${cdnRequest.env.CLOUDFLARE_API_TOKEN}`}}
+    )
+
+    console.log(test)
+    return (test).status === 200
 }
 
 async function add_access(cdnRequest: CDNRequest): Promise<boolean> {
-    return isNumber(await cdnRequest.redis.sendRaw(
-        'SADD',
-        `avatar:${cdnRequest.fileHash}`,
-        cdnRequest.userId
-    ))
+    return (await fetch(
+        `${cdnRequest.env.API_URL}/__redis/SADD/avatar:${cdnRequest.fileHash}/${cdnRequest.userId}`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${cdnRequest.env.CLOUDFLARE_API_TOKEN}`}}
+    )).status === 200
 }
 
 async function remove_access(cdnRequest: CDNRequest): Promise<boolean> {
-    return isNumber(await cdnRequest.redis.sendRaw(
-        'SREM',
-        `avatar:${cdnRequest.fileHash}`,
-        cdnRequest.userId
-    ))
+    return (await fetch(
+        `${cdnRequest.env.API_URL}/__redis/SREM/avatar:${cdnRequest.fileHash}/${cdnRequest.userId}`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${cdnRequest.env.CLOUDFLARE_API_TOKEN}`}}
+    )).status === 200
 }
 
 async function has_members(cdnRequest: CDNRequest): Promise<boolean> {
-    return await cdnRequest.redis.sendRaw(
-        'SCARD',
-        `avatar:${cdnRequest.fileHash}`,
-    ) as number > 0
+    return (await fetch(
+        `${cdnRequest.env.API_URL}/__redis/SCARD/avatar:${cdnRequest.fileHash}/None`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${cdnRequest.env.CLOUDFLARE_API_TOKEN}`}}
+    )).status === 200
 }
