@@ -3,6 +3,7 @@ FROM python:3.13-slim
 WORKDIR /app
 
 COPY api api
+COPY .git .git
 COPY shared shared
 
 RUN pip install uv
