@@ -886,7 +886,7 @@ async def _process_proxy(
     if event.get('attachments'):
         publish_latency = False
 
-    if proxy.autoproxy is not None and proxy.reason != 'Reproxy command':
+    if proxy.autoproxy is not None:
         if event['content'].startswith('\\'):
             # ? if autoproxy is enabled and,
             # ? if message starts with single backslash, skip proxying this message,
