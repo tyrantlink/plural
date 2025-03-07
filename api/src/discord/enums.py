@@ -262,6 +262,8 @@ class ApplicationFlag(Flag):
     """Indicates if an app has registered global application commands"""
     ACTIVE = 1 << 24
     """Application has had at least one global application command used in the last 30 days"""
+    ACTIVE_GRACE_PERIOD = 1 << 25
+    """Application has not had any global application commands used in the last 30 days and has lost the `ACTIVE` flag"""
     IFRAME_MODAL = 1 << 26
     """Application can use IFrames within modals"""
     SOCIAL_LAYER_INTEGRATION = 1 << 27
