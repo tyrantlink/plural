@@ -336,15 +336,12 @@ function jsonError(message: string, status: number): Response {
 }
 
 async function has_access(cdnRequest: CDNRequest): Promise<boolean> {
-    const test = await fetch(
+    return (await fetch(
         `${cdnRequest.env.API_URL}/__redis/SISMEMBER/avatar:${cdnRequest.fileHash}/${cdnRequest.userId}`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`}}
-    )
-
-    console.log(test)
-    return (test).status === 200
+    )).ok
 }
 
 async function add_access(cdnRequest: CDNRequest): Promise<boolean> {
@@ -353,7 +350,7 @@ async function add_access(cdnRequest: CDNRequest): Promise<boolean> {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`}}
-    )).status === 200
+    )).ok
 }
 
 async function remove_access(cdnRequest: CDNRequest): Promise<boolean> {
@@ -362,7 +359,7 @@ async function remove_access(cdnRequest: CDNRequest): Promise<boolean> {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`}}
-    )).status === 200
+    )).ok
 }
 
 async function has_members(cdnRequest: CDNRequest): Promise<boolean> {
