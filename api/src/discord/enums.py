@@ -268,6 +268,8 @@ class ApplicationFlag(Flag):
     """Application can use IFrames within modals"""
     SOCIAL_LAYER_INTEGRATION = 1 << 27
     """Application can use the social layer integration"""
+    UNDOCUMENTED_28 = 1 << 28
+    """Unknown"""
     PROMOTED = 1 << 29
     """Application is promoted by Discord in the application directory"""
     PARTNER = 1 << 30
