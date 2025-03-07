@@ -30,6 +30,26 @@ class Reply(BaseDocument):
         username: str = Field(description='the author username')
         avatar: str | None = Field(description='the author avatar hash')
 
+        @property
+        def default_avatar_url(self) -> str:
+            avatar = (
+                (self.id >> 22) % 6
+                if self.discriminator in {None, '0000'} else
+                int(self.discriminator) % 5)
+
+            return f'https://cdn.discordapp.com/embed/avatars/{avatar}.png'
+
+        @property
+        def avatar_url(self) -> str:
+            if self.avatar is None:
+                return self.default_avatar_url
+
+            return 'https://cdn.discordapp.com/avatars/{id}/{avatar}.{format}?size=1024'.format(
+                id=self.id,
+                avatar=self.avatar,
+                format='gif' if self.avatar.startswith('a_') else 'png'
+            )
+
     id: PydanticObjectId = Field(
         default_factory=PydanticObjectId,
         description='the id of the reply')
