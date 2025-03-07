@@ -6,6 +6,8 @@ from .base import PAGES as BASE_PAGES
 from .edit import PAGES as EDIT_PAGES
 from .bio import PAGES as BIO_PAGES
 
+from .migration import PAGES as MIGRATION_PAGES
+
 
 __all__ = (
     'PAGES',
@@ -19,5 +21,6 @@ PAGES = (
     HELP_PAGES |
     BASE_PAGES |
     EDIT_PAGES |
-    BIO_PAGES
+    BIO_PAGES |
+    MIGRATION_PAGES
 )

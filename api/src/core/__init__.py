@@ -112,7 +112,8 @@ async def emoji_init() -> None:
 
     if EXPECTED:
         print(  # noqa: T201
-            f'WARNING: Bot is missing the following emojis: {'\n'.join(EXPECTED)}'
+            'WARNING: Bot is missing the following emojis:'
+            f'{'\n'.join(EXPECTED)}'
         )
 
 

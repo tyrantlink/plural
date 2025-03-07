@@ -8,6 +8,7 @@ from plural.env import env
 from .application import Application
 from .interaction import Interaction
 from .autoproxy import AutoProxy
+from .migration import Migration
 from .usergroup import Usergroup
 from .proxy_log import ProxyLog
 from .member import ProxyMember
@@ -25,6 +26,7 @@ __all__ = (
     'Guild',
     'Interaction',
     'Message',
+    'Migration',
     'ProxyLog',
     'ProxyMember',
     'Reply',
@@ -49,6 +51,7 @@ async def mongo_init() -> None:
                 Guild,
                 Interaction,
                 Message,
+                Migration,
                 ProxyLog,
                 ProxyMember,
                 Reply,

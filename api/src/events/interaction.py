@@ -67,6 +67,12 @@ async def on_interaction(interaction: Interaction, latency: int) -> None:
 
 async def _on_application_command(interaction: Interaction) -> None:
     assert isinstance(interaction.data, ApplicationCommandInteractionData)
+    ###! migration
+    from src.components import PAGES
+    if await PAGES['migrate'](interaction):
+        cx().update_name('MIGRATION OVERRIDE')
+        return
+    ###! migration
 
     scope = (
         ApplicationCommandScope.PRIMARY
