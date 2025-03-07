@@ -997,12 +997,6 @@ async def _process_proxy(
             'proxy.cloned_emojis': 0
         }
     ):
-        if (
-            event['author']['id'] != '250797109022818305' and
-            event['channel_id'] != '1340643118713671700'
-        ):
-            return ProxyResult(False, emojis)
-
         await redis.set(
             f'pending_proxy:{event['id']}',
             '1', ex=timedelta(seconds=30)
