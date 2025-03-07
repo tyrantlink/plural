@@ -1014,3 +1014,57 @@ async def slash_version(
             color=0x69ff69
         )]
     )
+
+
+@slash_command(
+    name='global_bulk_sync',
+    description='admin only',
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_global_bulk_sync(
+    interaction: Interaction
+) -> None:
+    if interaction.author_id not in env.admins:
+        raise InteractionError('You are not an admin')
+
+    await interaction.response.send_message(
+        content='Global bulk sync started'
+    )
+
+    from src.commands.userproxy import _userproxy_sync
+    from plural.otel import span
+
+    userproxies = [
+        userproxy
+        for userproxy in
+        await ProxyMember.find({
+            'userproxy': {'$ne': None}
+        }).to_list()
+        if userproxy.token
+    ]
+
+    with span(f'bulk syncing {len(userproxies)} userproxies'):
+        await gather(*(
+            _userproxy_sync(
+                interaction,
+                userproxy,
+                {
+                    'avatar',
+                    'commands',
+                    'event_webhooks_status',
+                    'event_webhooks_types',
+                    'event_webhooks_url',
+                    'guilds'
+                    'icon',
+                    'install_params',
+                    'integration_types_config',
+                    'interactions_endpoint_url',
+                    'username',
+                },
+                silent=True)
+            for group, userproxy in userproxies.items()
+        ))
+
+    await interaction.followup.send(
+        content='Global bulk sync complete'
+    )
