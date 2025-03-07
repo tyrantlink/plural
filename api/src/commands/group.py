@@ -238,7 +238,7 @@ async def slash_group_kick(
 async def slash_group_list(
     interaction: Interaction
 ) -> None:
-    await PAGES['pagination'](interaction, 'group')
+    await PAGES['pagination'](interaction, 'group', None)
 
 
 @group.command(
