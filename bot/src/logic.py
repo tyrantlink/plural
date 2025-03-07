@@ -1197,7 +1197,7 @@ async def webhook_handler(
         endpoint=f'/webhooks/{webhook['id']}/{webhook['token']}',
         json={
             'content': proxy.content,
-            'username': proxy.member.name + (proxy.group.tag or ''),
+            'username': ' '.join([proxy.member.name, (proxy.group.tag or '')]),
             'avatar_url': proxy.avatar_url,
             'allowed_mentions': parse_allowed_mentions(
                 original_content,
