@@ -1044,7 +1044,7 @@ async def slash_global_bulk_sync(
     ]
 
     with span(f'bulk syncing {len(userproxies)} userproxies'):
-        await gather(*(
+        responses = await gather(*(
             _userproxy_sync(
                 interaction,
                 userproxy,
@@ -1063,7 +1063,7 @@ async def slash_global_bulk_sync(
                 },
                 silent=True)
             for group, userproxy in userproxies.items()
-        ))
+        ), return_exceptions=True)
 
     await interaction.followup.send(
         content='Global bulk sync complete'
