@@ -315,12 +315,38 @@ class AttachmentFlag(Flag):
 
 
 class ChannelFlag(Flag):
+    GUILD_FEED_REMOVED = 1 << 0
+    """This guild channel is hidden from the guild's feed"""
     PINNED = 1 << 1
     """this thread is pinned to the top of its parent `GUILD_FORUM` or `GUILD_MEDIA` channel"""
+    ACTIVE_CHANNELS_REMOVED = 1 << 2
+    """This guild channel has been removed from the guild's active channels"""
     REQUIRE_TAG = 1 << 4
     """whether a tag is required to be specified when creating a thread in a `GUILD_FORUM` or a `GUILD_MEDIA` channel. Tags are specified in the `applied_tags` field."""
+    IS_SPAM = 1 << 5
+    """This channel is marked as spam"""
+    IS_GUILD_RESOURCE_CHANNEL = 1 << 7
+    """This guild channel is used as a read-only resource for onboarding and is not shown in the channel list"""
+    CLYDE_AI = 1 << 8
+    """This thread is created by Clyde AI, which has full access to all message content"""
+    IS_SCHEDULED_FOR_DELETION = 1 << 9
+    """This guild channel is scheduled for deletion and is not shown in the UI"""
+    IS_MEDIA_CHANNEL = 1 << 10
+    """This forum channel is a media channel"""
+    SUMMARIES_DISABLED = 1 << 11
+    """This guild channel has summaries disabled"""
+    APPLICATION_SHELF_CONSENT = 1 << 12
+    """This private channel's recipients consented to the application shelf"""
+    IS_ROLE_SUBSCRIPTION_TEMPLATE_PREVIEW_CHANNEL = 1 << 13
+    """This role subscription tier for this guild channel has not been published yet"""
+    IS_BROADCASTING = 1 << 14
+    """This group DM is used for broadcasting a live stream"""
     HIDE_MEDIA_DOWNLOAD_OPTIONS = 1 << 15
     """when set hides the embedded media download options. Available only for media channels"""
+    IS_JOIN_REQUEST_INTERVIEW_CHANNEL = 1 << 16
+    """This group DM is used for guild join request interviews"""
+    OBFUSCATED = 1 << 17
+    """This channel is unavailable for the current user and has its details obfuscated"""
 
 
 class ChannelType(Enum):
