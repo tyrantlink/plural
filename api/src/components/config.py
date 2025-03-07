@@ -613,7 +613,9 @@ async def _option(
                             SelectMenu.Option(
                                 label=option.label,
                                 value=option.value,
-                                description=insert_cmd_ref(option.description),
+                                description=(
+                                    insert_cmd_ref(option.description)
+                                    if option.description else MISSING),
                                 default=option.label == current_values[selected[0]][0])
                             for option in option.choices],
                         placeholder=option.name,
