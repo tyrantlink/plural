@@ -22,8 +22,8 @@ def _find_start_commit(
     if not start_commit:
         return commits
 
-    for index, commit in enumerate(commits.items()):  # noqa: B007
-        if commit == start_commit:
+    for index, (hash, _message) in enumerate(commits.items()):  # noqa: B007
+        if hash == start_commit:
             break
     else:
         raise ValueError('start commit not found')
@@ -58,8 +58,11 @@ def load_semantic_version(service: str) -> tuple[str, list[str]]:
     version = calculate_version(filtered_commits)
 
     return (
-        '.'.join(map(str, version)) + ('-dev' if environ['DEV'] else ''),
-        [
+        '.'.join(map(str, version)) + (
+            '-dev'
+            if environ.get('DEV', '1') != '0'
+            else ''
+        ), [
             f'[`{hash[:7]}`](<https://github.com/tyrantlink/plural/commit/{hash}>): {message}'
             for hash, message in
             commits.items()
