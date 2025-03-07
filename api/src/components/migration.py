@@ -108,8 +108,6 @@ async def migration_group_is_mine(
             GENERAL_SESSION
         ))
 
-    tasks.append(group.save())
-
     phase_1_migration = await Migration.find_one({
         'user': interaction.author_id,
         'phase': 1
@@ -120,11 +118,14 @@ async def migration_group_is_mine(
         index=0
     )
 
+    real_members = set()
+
     for member_id in group.members:
         member_data = migration.members[member_id]
         member_data.pop('id')
         avatar_url = member_data.pop('avatar', None)
         member = ProxyMember.model_validate(member_data)
+        real_members.add(member.id)
 
         if avatar_url:
             tasks.append(upload_avatar(
@@ -141,6 +142,10 @@ async def migration_group_is_mine(
             phase_1_migration.data.append(userproxy_data)
 
         tasks.append(member.save())
+
+    group.members = real_members
+
+    tasks.append(group.save())
 
     if phase_1_migration.data:
         await phase_1_migration.save()
