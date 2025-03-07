@@ -153,7 +153,7 @@ def _serialize(value: Any) -> Any:  # noqa: ANN401
     match value:
         case dict():
             return filter_missing(value)
-        case list():
+        case list() | set():
             return [
                 _serialize(i)
                 for i in value]

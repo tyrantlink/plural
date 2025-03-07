@@ -122,14 +122,14 @@ async def edit_message(
             content,
             webhook
         )
-    elif message.webhook_id is None:
-        await _edit_guild_userproxy_message(
+    elif message.webhook_id:
+        await _edit_webhook_message(
             interaction,
             message,
             content
         )
     else:
-        await _edit_webhook_message(
+        await _edit_guild_userproxy_message(
             interaction,
             message,
             content

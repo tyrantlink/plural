@@ -29,6 +29,7 @@ async def modal_edit(
 
     if not message.interaction_metadata:
         await edit_message(interaction, message, content)
+        return
 
     db_interaction = await DBInteraction.find_one({
         'author_id': interaction.author_id,
