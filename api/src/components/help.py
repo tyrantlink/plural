@@ -43,6 +43,9 @@ SUB_PAGES = {
         Userproxies are proxy members attached to a real Discord Bot, giving them the ability to be used in DMs, Group DMs, and servers without /plu/ral. They can also have bios and banner images right in their pop out.
 
         This feature is advanced and requires a lot of setup, if you want to use it, [follow the instructions on the wiki](<https://{env.domain}/guide/userproxies#creating-a-userproxy>).
+
+        Note: it is currently not possible to autoproxy with userproxies, you must use the command every time.
+        This may change in the future through client modding, but for now, it is not possible.
     ''').strip(),
     'info and support': dedent(f'''
         - for more information, check out the [wiki](https://{env.domain}),
