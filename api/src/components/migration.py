@@ -311,14 +311,14 @@ async def migration_loop(
             'accounts': usergroup.id
         }).to_list()
 
-        userproxies = await ProxyMember.find({
-            '_id': {
-                '$in': [
-                    member_id
-                    for group in groups
-                    for member_id in group.members]},
-            'userproxy': {'$ne': None}
-        }).to_list()
+        userproxies = {
+            group: member
+            for group in groups
+            for member in await ProxyMember.find({
+                '_id': {'$in': list(group.members)},
+                'userproxy': {'$ne': None}
+            }).to_list()
+        }
 
         with span(f'bulk syncing {len(userproxies)} userproxies'):
             await gather(*(
