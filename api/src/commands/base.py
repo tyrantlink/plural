@@ -1035,12 +1035,12 @@ async def slash_global_bulk_sync(
     from plural.otel import span
 
     userproxies = [
-        userproxy
-        for userproxy in
+        member
+        for member in
         await ProxyMember.find({
             'userproxy': {'$ne': None}
         }).to_list()
-        if userproxy.token
+        if member.userproxy.token
     ]
 
     with span(f'bulk syncing {len(userproxies)} userproxies'):
@@ -1062,7 +1062,7 @@ async def slash_global_bulk_sync(
                     'username',
                 },
                 silent=True)
-            for group, userproxy in userproxies.items()
+            for userproxy in userproxies
         ), return_exceptions=True)
 
     await interaction.followup.send(
