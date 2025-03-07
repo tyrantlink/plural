@@ -340,7 +340,7 @@ async function has_access(cdnRequest: CDNRequest): Promise<boolean> {
         `${cdnRequest.env.API_URL}/__redis/SISMEMBER/avatar:${cdnRequest.fileHash}/${cdnRequest.userId}`, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${cdnRequest.env.CLOUDFLARE_API_TOKEN}`}}
+                "Authorization": `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`}}
     )
 
     console.log(test)
@@ -352,7 +352,7 @@ async function add_access(cdnRequest: CDNRequest): Promise<boolean> {
         `${cdnRequest.env.API_URL}/__redis/SADD/avatar:${cdnRequest.fileHash}/${cdnRequest.userId}`, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${cdnRequest.env.CLOUDFLARE_API_TOKEN}`}}
+                "Authorization": `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`}}
     )).status === 200
 }
 
@@ -361,7 +361,7 @@ async function remove_access(cdnRequest: CDNRequest): Promise<boolean> {
         `${cdnRequest.env.API_URL}/__redis/SREM/avatar:${cdnRequest.fileHash}/${cdnRequest.userId}`, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${cdnRequest.env.CLOUDFLARE_API_TOKEN}`}}
+                "Authorization": `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`}}
     )).status === 200
 }
 
@@ -370,6 +370,6 @@ async function has_members(cdnRequest: CDNRequest): Promise<boolean> {
         `${cdnRequest.env.API_URL}/__redis/SCARD/avatar:${cdnRequest.fileHash}/None`, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${cdnRequest.env.CLOUDFLARE_API_TOKEN}`}}
+                "Authorization": `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`}}
     )).status === 200
 }
