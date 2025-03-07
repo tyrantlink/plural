@@ -302,6 +302,47 @@ async def migration_loop(
                 title='Migration Complete',
                 message='You are now ready for /plu/ral v3')],
             components=[])
+
+        from src.commands.userproxy import _userproxy_sync
+
+        usergroup = await Usergroup.get_by_user(interaction.author_id)
+
+        groups = await Group.find({
+            'accounts': usergroup.id
+        }).to_list()
+
+        userproxies = await ProxyMember.find({
+            '_id': {
+                '$in': [
+                    member_id
+                    for group in groups
+                    for member_id in group.members]},
+            'userproxy': {'$ne': None}
+        }).to_list()
+
+        with span(f'bulk syncing {len(userproxies)} userproxies'):
+            await gather(*(
+                _userproxy_sync(
+                    interaction,
+                    userproxy,
+                    {
+                        'avatar',
+                        'commands',
+                        'event_webhooks_status',
+                        'event_webhooks_types',
+                        'event_webhooks_url',
+                        'guilds'
+                        'icon',
+                        'install_params',
+                        'integration_types_config',
+                        'interactions_endpoint_url',
+                        'username',
+                    },
+                    silent=True,
+                    usergroup=usergroup,
+                    group=group)
+                for group, userproxy in userproxies.items()
+            ))
         return
 
     migration = migrations[0]
