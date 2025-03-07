@@ -122,8 +122,18 @@ async def edit_message(
             content,
             webhook
         )
+    elif message.webhook_id is None:
+        await _edit_guild_userproxy_message(
+            interaction,
+            message,
+            content
+        )
     else:
-        await _edit_webhook_message(interaction, message, content)
+        await _edit_webhook_message(
+            interaction,
+            message,
+            content
+        )
 
 
 async def _edit_response(
@@ -146,6 +156,27 @@ async def _edit_response(
 
     await interaction.response.send_message(
         embeds=[embed]
+    )
+
+
+async def _edit_guild_userproxy_message(
+    interaction: Interaction,
+    message: Message,
+    content: str
+) -> None:
+    userproxy = await ProxyMember.find_one({
+        'userproxy.bot_id': message.author.id
+    })
+
+    if userproxy is None:
+        raise InteractionError('userproxy not found')
+
+    await gather(
+        _edit_response(interaction, message, content),
+        message.edit(
+            content,
+            userproxy.userproxy.token
+        )
     )
 
 

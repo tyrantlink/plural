@@ -182,3 +182,26 @@ class Message(RawBaseModel):
             channel_id=channel_id,
             message_id=message_id
         )))
+
+    async def edit(
+        self,
+        content: str,
+        bot_token: str = env.bot_token
+    ) -> Message:
+        mentions = AllowedMentions.parse_content(content, False)
+
+        mentions.users &= {user.id for user in self.mentions}
+        mentions.roles &= set(self.mention_roles)
+
+        return Message(**await request(
+            Route(
+                'PATCH',
+                '/channels/{channel_id}/messages/{message_id}',
+                token=bot_token,
+                channel_id=self.channel_id,
+                message_id=self.id),
+            json={
+                'content': content,
+                'allowed_mentions': mentions.as_payload()
+            })
+        )
