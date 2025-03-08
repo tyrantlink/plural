@@ -59,7 +59,7 @@ async def _edit(
     pipeline = redis.pipeline()
     await pipeline.json().set(
         f'discord:pending_message:{message.id}',
-        message.as_payload())
+        '$', message.as_payload())
     await pipeline.expire(
         f'discord:pending_message:{message.id}',
         900)
