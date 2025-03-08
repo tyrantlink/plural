@@ -558,16 +558,18 @@ async def slash_member_tags_avatar(
 
     await interaction.response.defer()
 
+    tag_index, tag = proxy_tag, member.proxy_tags[proxy_tag]
+
     if avatar is not None:
         await set_avatar(
             member,
             avatar.url,
             interaction.author_id,
-            proxy_tag)
-        message = f'Set Proxy Tag {proxy_tag.name} avatar'
+            tag_index)
+        message = f'Set Proxy Tag {tag.name} avatar'
     else:
-        await delete_avatar(member, proxy_tag)
-        message = f'Removed Proxy Tag {proxy_tag.name} avatar'
+        await delete_avatar(member, tag_index)
+        message = f'Removed Proxy Tag {tag.name} avatar'
 
     await interaction.send(embeds=[Embed.success(
         title='Proxy Tag Edited',
