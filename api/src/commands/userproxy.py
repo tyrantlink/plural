@@ -535,7 +535,13 @@ async def slash_userproxy_new(
         '@original',
         embeds=[Embed.success(
             title='Userproxy Created',
-            message=f'Userproxy for {member.name} created successfully'
+            message=(
+                f'Userproxy for {member.name} created successfully\n\n'
+                '[Add the bot to your account]'
+                '(https://discord.com/oauth2/authorize?client_id='
+                f'{userproxy.userproxy.bot_id}&integration_type=1'
+                '&scope=applications.commands)'
+            )
         )]
     )
 
