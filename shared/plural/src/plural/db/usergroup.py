@@ -92,11 +92,15 @@ class Usergroup(BaseDocument):
         description='the user data')
 
     @classmethod
-    async def get_by_user(cls, user_id: int) -> Self:
+    async def get_by_user(
+        cls,
+        user_id: int,
+        use_cache: bool = True
+    ) -> Self:
         return (
             await Usergroup.find_one({
                 'users': user_id
-            }) or
+            }, ignore_cache=not use_cache) or
             await Usergroup(
                 users={user_id}
             ).save()

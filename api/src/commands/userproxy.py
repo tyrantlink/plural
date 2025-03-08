@@ -117,9 +117,14 @@ async def _userproxy_sync(
             'to reset the token'
         ) from e
 
-    usergroup = usergroup or await Usergroup.get_by_user(interaction.author_id)
+    usergroup = (
+        usergroup or
+        await Usergroup.get_by_user(
+            interaction.author_id,
+            use_cache=False)
+    )
 
-    group = group or await member.get_group()
+    group = group or await member.get_group(False)
 
     base_app_patch: dict = {
         'interactions_endpoint_url': (
@@ -169,6 +174,10 @@ async def _userproxy_sync(
             avatar = await group.fetch_avatar(GENERAL_SESSION)
         else:
             avatar = None
+
+        #! convert into png/gif before uploading
+        #! animated webp seems not supported
+        #! and webp is sometimes overcompressed
 
         avatar_data = (
             f'data:image/webp;base64,{b64encode(avatar).decode('ascii')}'

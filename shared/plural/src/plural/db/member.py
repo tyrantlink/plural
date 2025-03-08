@@ -149,10 +149,16 @@ class ProxyMember(BaseDocument):
             hash=self.avatar
         ) if self.avatar else None
 
-    async def get_group(self) -> Group:
+    async def get_group(
+        self,
+        use_cache: bool = True
+    ) -> Group:
         from plural.db.group import Group
 
-        group = await Group.find_one({'members': self.id})
+        group = await Group.find_one(
+            {'members': self.id},
+            ignore_cache=not use_cache
+        )
 
         if group is None:
             raise ValueError(f'member {self.id} is not in any group')
