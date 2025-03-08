@@ -4,7 +4,7 @@ from typing import Any
 
 from beanie import PydanticObjectId
 
-from plural.errors import InteractionError
+from plural.errors import InteractionError, Forbidden
 from plural.missing import is_not_missing
 from plural.db import ProxyMember, Group
 from plural.otel import span, cx
@@ -198,10 +198,14 @@ async def _on_message_component(interaction: Interaction) -> None:
 
 async def _on_modal_submit(interaction: Interaction) -> None:
     assert isinstance(interaction.data, ModalSubmitInteractionData)
-    component_name, args = await parse_custom_id(
-        interaction,
-        interaction.data.custom_id
-    )
+    try:
+        component_name, args = await parse_custom_id(
+            interaction,
+            interaction.data.custom_id)
+    except BaseException as e:  # noqa: BLE001
+        component_name = interaction.data.custom_id.split('.')[0]
+        cx().update_name(f'MODAL_SUBMIT {component_name}')
+        await on_interaction_error(interaction, e)
 
     cx().update_name(
         f'MODAL_SUBMIT {component_name}'
@@ -326,12 +330,14 @@ async def parse_custom_id(
 
                     bot_token = member.userproxy.token
 
-                args.append(
-                    await Message.fetch(
-                        *(Snowflake(i) for i in arg[1:].split(':')),
-                        bot_token=bot_token
-                    )
-                )
+                    try:
+                        args.append(await Message.fetch(
+                            *(Snowflake(i) for i in arg[1:].split(':')),
+                            bot_token=bot_token))
+                    except Forbidden as e:
+                        raise InteractionError(
+                            'Unable to fetch message'
+                        ) from e
             case _:
                 raise ValueError(f'invalid extra type `{arg}`')
 
