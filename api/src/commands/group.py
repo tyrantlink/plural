@@ -33,15 +33,10 @@ async def _set_tag(
 
     usergroup = await Usergroup.get_by_user(interaction.author_id)
 
-    if tag is None:
-        group.tag = None
-        await group.save()
-        return [Embed.success(
-            f'Removed group `{group.name}` tag'
-        )]
-
     embeds = [Embed.success(
         f'Set group `{group.name}` tag to `{tag}`'
+        if tag else
+        f'Removed group `{group.name}` tag'
     )]
 
     members = await group.get_members()
@@ -53,7 +48,7 @@ async def _set_tag(
             if usergroup.userproxy_config.include_group_tag else
             80
         )
-    ]
+    ] if tag else []
 
     if members_over_length:
         warning_message = 'The following members will have their names truncated:\n'
@@ -75,7 +70,9 @@ async def _set_tag(
     group.tag = tag
 
     userproxy_members = [
-        member for member in members
+        member
+        for member in
+        members
         if member.userproxy
     ]
 
