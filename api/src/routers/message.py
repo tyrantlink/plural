@@ -20,7 +20,7 @@ def _snowflake_to_age(snowflake: int) -> float:
 
 
 @router.head('/{message_id}')
-@trace('/messages/:message_id')
+# @trace('/messages/:message_id')
 async def head__message(
     request: Request,  # noqa: ARG001
     message_id: int
