@@ -572,24 +572,29 @@ async def slash_userproxy_remove(
 
     try:
         await _delete_userproxy(userproxy)
-        message = f'Userproxy for `{userproxy.name}` removed successfully'
+
+        await gather(
+            userproxy.save(),
+            interaction.followup.edit_message(
+                '@original',
+                embeds=[Embed.success(
+                    title='Userproxy Removed',
+                    message=f'Userproxy for `{userproxy.name}` removed successfully')]))
     except Unauthorized:
         userproxy.userproxy = None
-        message = (
-            'Userproxy removed, but the token was invalid.\n\n'
-            '/plu/ral was not able to remove the commands.'
-        )
 
-    await gather(
-        userproxy.save(),
-        interaction.followup.edit_message(
-            '@original',
-            embeds=[Embed.success(
-                title='Userproxy Removed',
-                message=message
-            )]
+        await gather(
+            userproxy.save(),
+            await interaction.send(
+                embeds=[Embed.success(
+                    title='Userproxy Removed',
+                    message=(
+                        'Userproxy removed, but the token was invalid.\n\n'
+                        '/plu/ral was not able to remove the commands.'
+                    )
+                )]
+            )
         )
-    )
 
 
 @userproxy.command(
