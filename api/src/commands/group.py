@@ -85,14 +85,14 @@ async def _set_tag(
             'to see changes to userproxy bots'
         )
 
-        await gather(
+        await gather(*[
             _userproxy_sync(
                 interaction,
                 userproxy,
                 {'username'},
                 silent=True)
             for userproxy in userproxy_members
-        )
+        ])
 
     return embeds
 
