@@ -341,7 +341,7 @@ async function has_access(cdnRequest: CDNRequest): Promise<boolean> {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${cdnRequest.env.UPLOAD_TOKEN}`}}
-    )).ok
+    )).status === 200
 }
 
 async function add_access(cdnRequest: CDNRequest): Promise<boolean> {
