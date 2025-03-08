@@ -1222,7 +1222,7 @@ async def userproxy_handler(
 ) -> ProxyResponse:
     publish_latency = True
 
-    if proxy.tag.avatar:
+    if proxy.tag and proxy.tag.avatar:
         debug_log.append(
             'Avatar proxy tag used, falling back to webhook.')
         return ProxyResponse.failure(publish_latency)
