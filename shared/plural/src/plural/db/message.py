@@ -37,6 +37,9 @@ class Message(BaseDocument):
     reason: ProxyReason | str = Field(
         default=ProxyReason.NONE,
         description='the reason the message was proxied')
+    webhook_id: int | None = Field(
+        None,
+        description='the webhook id of the message')
     ts: datetime = Field(
         default_factory=datetime.utcnow,
         description='the timestamp of the message'

@@ -454,7 +454,8 @@ async def _new_webhook(
 
 async def get_webhook(
     event: dict,
-    use_next: bool
+    use_next: bool,
+    webhook_id: str | None = None
 ) -> dict:
     channel = await Cache.get(f'discord:channel:{event['channel_id']}')
 
@@ -462,7 +463,9 @@ async def get_webhook(
         raise ValueError('Channel not found in cache.')
 
     if channel.data.get('type') in {11, 12}:
-        channel = await Cache.get(f'discord:channel:{channel.data['parent_id']}')
+        channel = await Cache.get(
+            f'discord:channel:{channel.data['parent_id']}'
+        )
 
         if channel is None:
             raise ValueError('Parent channel not found in cache.')
@@ -484,6 +487,18 @@ async def get_webhook(
         webhooks: list[dict] | None = await redis.json().get(
             f'discord:webhooks:{channel_id}'
         )
+
+    if webhook_id is not None:
+        webhook = next((
+            webhook
+            for webhook in webhooks
+            if webhook.get('id') == webhook_id
+        ), None)
+
+        if webhook is None:
+            raise ValueError(f'Webhook with id {webhook_id} not found.')
+
+        return webhook
 
     webhook_index = channel.data.get('__plural_last_webhook', 0)
 
@@ -1094,7 +1109,8 @@ async def _process_proxy(
             author_id=int(event['author']['id']),
             channel_id=int(event['channel_id']),
             member_id=proxy.member.id,
-            reason=proxy.reason
+            reason=proxy.reason,
+            webhook_id=message.get('webhook_id'),
         ).save()
 
         pipeline = redis.pipeline()

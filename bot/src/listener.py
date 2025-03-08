@@ -92,15 +92,23 @@ async def on_reaction_add(event: dict, start_time: int) -> None:
 
     with span('reaction delete', start_time=start_time):
         if event.get('message_author_id') is None:
-            webhook = await get_webhook(event)
+            webhook = await get_webhook(
+                event,
+                False,
+                (
+                    str(db_message.webhook_id)
+                    if db_message.webhook_id is not None
+                    else None
+                )
+            )
 
             await request(
                 Route(
                     'DELETE',
                     '/webhooks/{webhook_id}/{webhook_token}/messages/{message_id}',
                     token=env.bot_token,
-                    webhook_id=webhook.split('/')[-2],
-                    webhook_token=webhook.split('/')[-1],
+                    webhook_id=webhook['id'],
+                    webhook_token=webhook['token'],
                     message_id=event['message_id']),
                 params=(
                     {'thread_id': event['channel_id']}
