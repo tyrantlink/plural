@@ -206,6 +206,7 @@ async def _on_modal_submit(interaction: Interaction) -> None:
         component_name = interaction.data.custom_id.split('.')[0]
         cx().update_name(f'MODAL_SUBMIT {component_name}')
         await on_interaction_error(interaction, e)
+        return
 
     cx().update_name(
         f'MODAL_SUBMIT {component_name}'
