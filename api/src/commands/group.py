@@ -90,7 +90,8 @@ async def _set_tag(
                 interaction,
                 userproxy,
                 {'username'},
-                silent=True)
+                silent=True,
+                group=group)
             for userproxy in userproxy_members
         ])
 
