@@ -186,6 +186,8 @@ CONFIG_OPTIONS = CONFIG_OPTIONS = {
                 Whether to include the group tag in the member name.
 
                 Note: the total length of userproxy name and group tag must be less than 32 characters.
+
+                You may need to restart your client to see changes.
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
