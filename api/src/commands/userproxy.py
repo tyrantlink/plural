@@ -5,7 +5,6 @@ from base64 import b64encode
 from asyncio import gather
 from regex import compile
 
-from plural.errors import InteractionError, HTTPException, Forbidden, NotFound
 from plural.db.enums import ReplyType, ReplyFormat
 from plural.db import (
     Interaction as DBInteraction,
@@ -14,6 +13,13 @@ from plural.db import (
     Usergroup,
     Reply,
     Group
+)
+from plural.errors import (
+    InteractionError,
+    HTTPException,
+    Unauthorized,
+    Forbidden,
+    NotFound
 )
 
 from src.core.models import (
@@ -564,7 +570,15 @@ async def slash_userproxy_remove(
 ) -> None:
     await sync_response(interaction)
 
-    await _delete_userproxy(userproxy)
+    try:
+        await _delete_userproxy(userproxy)
+        message = f'Userproxy for `{userproxy.name}` removed successfully'
+    except Unauthorized:
+        userproxy.userproxy = None
+        message = (
+            'Userproxy removed, but the token was invalid.\n\n'
+            '/plu/ral was not able to remove the commands.'
+        )
 
     await gather(
         userproxy.save(),
@@ -572,7 +586,7 @@ async def slash_userproxy_remove(
             '@original',
             embeds=[Embed.success(
                 title='Userproxy Removed',
-                message=f'Userproxy for `{userproxy.name}` removed successfully'
+                message=message
             )]
         )
     )
