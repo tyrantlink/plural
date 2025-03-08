@@ -56,15 +56,6 @@ async def _edit(
     interaction: Interaction,
     message: Message
 ) -> None:
-    pipeline = redis.pipeline()
-    await pipeline.json().set(
-        f'discord:pending_message:{message.id}',
-        '$', message.as_payload())
-    await pipeline.expire(
-        f'discord:pending_message:{message.id}',
-        900)
-    await pipeline.execute()
-
     await interaction.response.send_modal(
         modal_edit.with_overrides(
             text_inputs=[TextInput(

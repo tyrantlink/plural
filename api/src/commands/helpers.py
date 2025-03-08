@@ -135,10 +135,6 @@ async def edit_message(
             content
         )
 
-    await redis.json().delete(
-        f'discord:pending_message:{message.id}', '$'
-    )
-
 
 async def _edit_response(
     interaction: Interaction,
