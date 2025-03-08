@@ -432,7 +432,7 @@ async def get_proxy_data(
 
 
 async def _new_webhook(
-    event: dict,
+    channel_id: str,
     name: str
 ) -> dict:
     webhook = await request(
@@ -440,7 +440,7 @@ async def _new_webhook(
             'POST',
             '/channels/{channel_id}/webhooks',
             token=env.bot_token,
-            channel_id=event['channel_id']),
+            channel_id=channel_id),
         json={
             'name': name
         }
@@ -508,7 +508,7 @@ async def get_webhook(
     )
 
     return webhook or await _new_webhook(
-        event,
+        channel_id,
         webhook_name
     )
 
