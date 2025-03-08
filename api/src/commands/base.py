@@ -390,7 +390,7 @@ async def slash_autoproxy(
         if not global_:
             embed.set_author(
                 name=interaction.guild.name,
-                icon_url=interaction.guild.icon_url
+                icon_url=interaction.guild.icon_url or MISSING
             )
 
         if (
