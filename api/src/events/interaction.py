@@ -331,14 +331,14 @@ async def parse_custom_id(
 
                     bot_token = member.userproxy.token
 
-                    try:
-                        args.append(await Message.fetch(
-                            *(Snowflake(i) for i in arg[1:].split(':')),
-                            bot_token=bot_token))
-                    except Forbidden as e:
-                        raise InteractionError(
-                            'Unable to fetch message'
-                        ) from e
+                try:
+                    args.append(await Message.fetch(
+                        *(Snowflake(i) for i in arg[1:].split(':')),
+                        bot_token=bot_token))
+                except Forbidden as e:
+                    raise InteractionError(
+                        'Unable to fetch message'
+                    ) from e
             case _:
                 raise ValueError(f'invalid extra type `{arg}`')
 

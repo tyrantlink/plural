@@ -117,10 +117,10 @@ async def _userproxy_sync(
 
     base_app_patch: dict = {
         'interactions_endpoint_url': (
-            f'https://api.{env.domain}/interaction'
+            f'https://{'testing' if env.dev else 'api'}.{env.domain}/interaction'
             if not usergroup.userproxy_config.self_hosted else
             None),
-        'event_webhooks_url': f'https://api.{env.domain}/event',
+        'event_webhooks_url': f'https://{'testing' if env.dev else 'api'}.{env.domain}/event',
         'event_webhooks_types': [
             EventWebhooksType.APPLICATION_AUTHORIZED.value],
         'event_webhooks_status': EventWebhooksStatus.ENABLED.value

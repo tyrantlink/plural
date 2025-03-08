@@ -177,6 +177,11 @@ class Message(RawBaseModel):
         message_id: Snowflake,
         bot_token: str = env.bot_token
     ) -> Message:
+        cached = await redis.json().get(f'discord:pending_edit:{message_id}')
+
+        if cached:
+            return cls(**cached)
+
         return cls(**await request(Route(
             'GET',
             '/channels/{channel_id}/messages/{message_id}',

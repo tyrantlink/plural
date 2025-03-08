@@ -1,6 +1,8 @@
 from plural.db import Interaction as DBInteraction, redis
 from plural.errors import InteractionError
 
+from src.commands.helpers import make_json_safe
+
 from src.discord import (
     TextInputStyle,
     Interaction,
@@ -56,6 +58,16 @@ async def _edit(
     interaction: Interaction,
     message: Message
 ) -> None:
+    pipeline = redis.pipeline()
+    pipeline.json().set(
+        f'discord:pending_edit:{message.id}', '$',
+        make_json_safe(
+            message.model_dump(
+                mode='json',
+                exclude_defaults=True)))
+    pipeline.expire(f'discord:pending_edit:{message.id}', 900)
+    await pipeline.execute()
+
     await interaction.response.send_modal(
         modal_edit.with_overrides(
             text_inputs=[TextInput(
