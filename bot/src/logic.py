@@ -250,6 +250,19 @@ async def get_proxy_data(
     event: dict,
     debug_log: list[str]
 ) -> ProxyData | None:
+    autoproxies = {
+        autoproxy.guild: autoproxy
+        for autoproxy in await AutoProxy.find({
+            'user': int(event['author']['id']),
+            'guild': {'$in': [int(event['guild_id']), None]},
+        }).to_list()
+    }
+
+    autoproxy = autoproxies.get(
+        int(event['guild_id'])
+    ) or autoproxies.get(None)
+    autoproxy_member: ProxyMember | None = None
+
     if event.get('__plural_member') is not None:
         debug_log.append(
             'Reproxy command used.'
@@ -268,7 +281,7 @@ async def get_proxy_data(
 
             return ProxyData(
                 member=member,
-                autoproxy=None,
+                autoproxy=autoproxy,
                 content=event['content'],
                 reason='Reproxy command',
                 group=group,
@@ -299,19 +312,6 @@ async def get_proxy_data(
         debug_log.append(
             'No groups found for account.')
         return None
-
-    autoproxies = {
-        autoproxy.guild: autoproxy
-        for autoproxy in await AutoProxy.find({
-            'user': int(event['author']['id']),
-            'guild': {'$in': [int(event['guild_id']), None]},
-        }).to_list()
-    }
-
-    autoproxy = autoproxies.get(
-        int(event['guild_id'])
-    ) or autoproxies.get(None)
-    autoproxy_member: ProxyMember | None = None
 
     if (
         autoproxy and
