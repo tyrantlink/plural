@@ -1,16 +1,34 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from contextlib import suppress
 from textwrap import dedent
 from asyncio import gather
 
+from pydantic import BaseModel, ValidationError
+
 from plural.errors import HTTPException, InteractionError, ConversionError
+from plural.missing import MISSING
 
 from plural.otel import cx
 
 
 if TYPE_CHECKING:
     from src.discord import Interaction
+
+
+class DiscordErrorResponse(BaseModel):
+    message: str
+    code: int
+    errors: dict[
+        str,
+        dict[
+            str,
+            list[
+                dict[str, str]
+            ]
+        ]
+    ]
 
 
 async def on_interaction_error(
@@ -33,23 +51,49 @@ async def on_interaction_error(
         NotImplementedError
     )
 
-    error_message = dedent(str(error)).strip()
+    error_embed = Embed.error(
+        dedent(str(error)).strip(),
+        expected=expected
+    )
 
     if isinstance(error, NotImplementedError):
-        error_message = 'This feature is not implemented yet.'
+        error_embed.description = 'This feature is not implemented yet.'
 
-    cx().set_attribute('response.error', error_message)
+    cx().set_attribute(
+        'response.error',
+        error_embed.description
+    )
+
+    if isinstance(error, HTTPException):
+        with suppress(ValidationError):
+            discord_error = DiscordErrorResponse.model_validate(
+                error.detail)
+            error_embed.description = MISSING
+            error_embed.title = 'Discord Error!'
+
+            for field, errors in discord_error.errors.items():
+                for error in errors.get('_errors', []):
+                    error_embed.add_field(
+                        name=f'{field}: {error['code']}',
+                        value=error['message']
+                    )
+
+            if len(error_embed.fields) == 0:
+                error_embed.description = discord_error.message
+
+            if len(error_embed.fields) > 25:
+                error_embed.fields = error_embed.fields[:25]
 
     responses = await gather(
         interaction.send(
-            embeds=[Embed.error(error_message, expected=expected)],
+            embeds=[error_embed],
             flags=MessageFlag.EPHEMERAL),
         return_exceptions=True
     )
 
     if isinstance(responses[-1], HTTPException):
         await interaction.followup.send(
-            embeds=[Embed.error(error_message, expected=expected)]
+            embeds=[error_embed]
         )
 
     if not expected:
