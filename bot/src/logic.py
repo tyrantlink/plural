@@ -1222,6 +1222,11 @@ async def userproxy_handler(
 ) -> ProxyResponse:
     publish_latency = True
 
+    if proxy.tag.avatar:
+        debug_log.append(
+            'Avatar proxy tag used, falling back to webhook.')
+        return ProxyResponse.failure(publish_latency)
+
     member = await Cache.get(
         f'discord:member:{event['guild_id']}:{proxy.member.userproxy.bot_id}'
     )
