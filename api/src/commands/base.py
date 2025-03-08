@@ -420,6 +420,23 @@ async def slash_autoproxy(
 
     embed = Embed.success(
         f'{'Global' if global_ else 'Server'} autoproxy enabled'
+    ).add_field(
+        name='Member',
+        value=(
+            member.name
+            if member else
+            'Next'
+        )
+    ).add_field(
+        name='Expires',
+        value=(
+            f'<t:{int(expiry_time.timestamp())}:R>'
+            if expiry is not None
+            else 'never'
+        )
+    ).add_field(
+        name='Mode',
+        value=mode.name.capitalize()
     )
 
     if not global_:
@@ -427,24 +444,6 @@ async def slash_autoproxy(
             name=interaction.guild.name,
             icon_url=interaction.guild.icon_url
         )
-
-    embed.add_field(
-        name='Member',
-        value=(
-            member.name
-            if member else
-            'Next'
-        )
-    )
-
-    embed.add_field(
-        name='Expires',
-        value=(
-            f'<t:{int(expiry_time.timestamp())}:R>'
-            if expiry is not None
-            else 'never'
-        )
-    )
 
     tasks = [
         AutoProxy(
