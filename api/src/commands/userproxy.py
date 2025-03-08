@@ -1000,6 +1000,7 @@ async def uslash_proxy(
                 for attachment in attachments],
             message_id=None,
             author=None,
+            webhook_id=None,
             ts=datetime.now(UTC) + timedelta(minutes=5)
         ).save(),
         interaction.send(embeds=[Embed.success(
