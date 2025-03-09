@@ -11,7 +11,7 @@ from orjson import loads, dumps
 
 from plural.db.enums import AutoProxyMode, SupporterTier, ShareType
 from plural.db.usergroup import AvatarOnlyGroup, AvatarOnlyMember
-from plural.errors import InteractionError
+from plural.errors import InteractionError, NotFound
 from plural.missing import MISSING
 from plural.otel import inject, cx
 from plural.db import (
@@ -854,10 +854,14 @@ async def slash_reproxy(
             'You can only reproxy your own messages'
         )
 
-    message = await Message.fetch(
-        interaction.channel_id,
-        interaction.channel.last_message_id
-    )
+    try:
+        message = await Message.fetch(
+            interaction.channel_id,
+            interaction.channel.last_message_id)
+    except NotFound as e:
+        raise InteractionError(
+            'Failed to fetch message. It may have been deleted'
+        ) from e
 
     message_event = message._raw
 
