@@ -4,9 +4,8 @@ from typing import ClassVar
 from beanie import PydanticObjectId
 from pydantic import Field
 
+from .base import BaseDocument, ttl
 from .enums import AutoProxyMode
-from .base import BaseDocument
-from .base import ttl
 
 
 class AutoProxy(BaseDocument):
@@ -16,6 +15,7 @@ class AutoProxy(BaseDocument):
         use_cache = True
         cache_expiration_time = timedelta(milliseconds=500)
         indexes: ClassVar = [
+            ('user', 'guild'),
             ttl()  # ? expire immediately
         ]
 
