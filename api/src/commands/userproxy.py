@@ -830,10 +830,8 @@ async def umessage_reply(
         await interaction.response.defer(MessageFlag.NONE)
 
     attachments = [
-        await Attachment(
-            url=attachment.url,
-            filename=attachment.filename,
-            description=attachment.description).to_file()
+        await Attachment.from_reply_attachment(
+            attachment).to_file()
         for attachment in reply.attachments
     ]
 

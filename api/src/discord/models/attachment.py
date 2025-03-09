@@ -11,6 +11,7 @@ from src.core.http import File, GENERAL_SESSION
 from src.discord.models.base import RawBaseModel
 
 if TYPE_CHECKING:
+    from plural.db import Reply
     from plural.missing import Optional, Nullable
 
     from src.discord.enums import AttachmentFlag
@@ -55,6 +56,20 @@ class Attachment(RawBaseModel):
     @property
     def spoiler(self) -> bool:
         return self.filename.startswith('SPOILER_')
+
+    @classmethod
+    def from_reply_attachment(
+        cls,
+        attachment: Reply.Attachment
+    ) -> Attachment:
+        return cls(
+            id=0,
+            filename=attachment.filename,
+            description=attachment.description,
+            size=0,
+            url=attachment.url,
+            proxy_url=attachment.url
+        )
 
     async def read(self, limit: int | None = None) -> bytes:
         async with GENERAL_SESSION.get(self.url) as response:

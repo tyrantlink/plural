@@ -93,7 +93,8 @@ async def on_interaction_error(
 
     if isinstance(responses[-1], HTTPException):
         await interaction.followup.send(
-            embeds=[error_embed]
+            embeds=[error_embed],
+            flags=MessageFlag.EPHEMERAL
         )
 
     if not expected:
