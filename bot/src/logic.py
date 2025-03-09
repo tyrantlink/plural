@@ -263,6 +263,21 @@ async def get_proxy_data(
     ) or autoproxies.get(None)
     autoproxy_member: ProxyMember | None = None
 
+    if autoproxy:
+        member = await ProxyMember.get(autoproxy.member)
+        debug_log.append(
+            f'{'Server' if autoproxy.guild else 'Global'} '
+            'Autoproxy found ' + (
+                'with no member'
+                if member is None else
+                f'for {member.name}'
+            )
+        )
+    else:
+        debug_log.append(
+            'No autoproxy found'
+        )
+
     if event.get('__plural_member') is not None:
         debug_log.append(
             'Reproxy command used.'
