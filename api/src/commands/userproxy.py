@@ -844,7 +844,7 @@ async def umessage_reply(
     )
 
     reply_insert, mention_ignore = format_reply(
-        reply.content,
+        reply.content or '',
         message,
         reply_format,
         interaction.guild_id or None
