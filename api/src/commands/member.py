@@ -77,6 +77,7 @@ async def slash_member_list(
             type=ApplicationCommandOptionType.STRING,
             name='meta',
             description='Custom identifier shown in autocomplete; Combination with name must be unique within a group',
+            max_length=50,
             required=False),
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.ATTACHMENT,
@@ -354,6 +355,55 @@ async def slash_member_set_group(
             {'username'},
             silent=True
         )
+
+
+@member_set.command(
+    name='meta',
+    description='Set a member\'s meta field',
+    options=[
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='member',
+            description='Member to give new meta field',
+            required=True,
+            autocomplete=True),
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='meta',
+            description='New member meta field (leave empty to remove)',
+            max_length=50,
+            required=False)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_member_set_meta(
+    interaction: Interaction,
+    member: ProxyMember,
+    meta: str | None
+) -> None:
+    group = await member.get_group()
+
+    group_edit_check(group, interaction.author_id)
+
+    if await group.get_member_by_name(member.name, meta) is not None:
+        raise InteractionError(
+            f'Member `{member.name}` with meta `{meta}` already exists in group `{group.name}`'
+            if meta else
+            f'Member `{member.name}` without meta field already exists in group `{group.name}`'
+        )
+
+    member.meta = meta or ''
+
+    await gather(
+        member.save(),
+        interaction.response.send_message(embeds=[Embed.success(
+            title='Member Meta Updated',
+            message=(
+                f'Member `{member.name}` meta field changed to `{meta}`'
+                if meta else
+                f'Member `{member.name}` meta field removed'
+            )
+        )])
+    )
 
 
 @member_set.command(
