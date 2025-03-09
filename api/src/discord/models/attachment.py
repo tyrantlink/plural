@@ -5,6 +5,7 @@ from base64 import b64encode
 from io import BytesIO
 
 from plural.errors import PluralException
+from plural.missing import MISSING
 
 from src.core.http import File, GENERAL_SESSION
 
@@ -65,7 +66,7 @@ class Attachment(RawBaseModel):
         return cls(
             id=0,
             filename=attachment.filename,
-            description=attachment.description,
+            description=attachment.description or MISSING,
             size=0,
             url=attachment.url,
             proxy_url=attachment.url
