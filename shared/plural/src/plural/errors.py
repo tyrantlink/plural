@@ -56,7 +56,16 @@ class ConversionError(BasePluralException):
 
 
 class InteractionError(BasePluralException):
-    ...
+    footer: str | None = None
+
+    def __init__(
+        self,
+        *args,  # noqa: ANN002
+        footer: str | None = None,
+        **kwargs  # noqa: ANN003
+    ) -> None:
+        self.footer = footer
+        super().__init__(*args, **kwargs)
 
 
 class DuplicateEventError(BasePluralException):

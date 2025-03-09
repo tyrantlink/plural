@@ -376,10 +376,20 @@ async def slash_autoproxy(
 
     if enable is False or (
         enable is None and
-        member is None
+        autoproxy is not None
     ):
         if autoproxy is None:
-            raise InteractionError('Autoproxy is already disabled')
+            raise InteractionError(
+                f'{'Global' if global_ else 'Server'} Autoproxy is already disabled',
+                footer=(
+                    'Global autoproxy still enabled; Messages will still be proxied'
+                    if (not global_ and
+                        (await AutoProxy.find_one(
+                            {'user': interaction.author_id, 'guild': None}
+                        )) is not None)
+                    else None
+                )
+            )
 
         await autoproxy.delete()
 

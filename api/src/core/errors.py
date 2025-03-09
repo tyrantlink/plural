@@ -56,6 +56,9 @@ async def on_interaction_error(
         expected=expected
     )
 
+    if isinstance(error, InteractionError) and error.footer:
+        error_embed.set_footer(text=error.footer)
+
     if isinstance(error, NotImplementedError):
         error_embed.description = 'This feature is not implemented yet.'
 
