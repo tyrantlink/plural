@@ -91,7 +91,7 @@ CONFIG_OPTIONS = CONFIG_OPTIONS = {
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
         'pagination_style': ConfigOption(
-            name='Pagination Button Style',
+            name='Button Style',
             description=dedent('''
                 The style of pagination buttons to use.
 
