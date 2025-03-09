@@ -88,7 +88,7 @@ class InteractionResponse(PydanticArbitraryType):
         tts: Optional[bool] = MISSING,
         embeds: Optional[Nullable[list[Embed]]] = MISSING,
         allowed_mentions: Optional[Nullable[AllowedMentions]] = MISSING,
-        flags: Optional[Nullable[MessageFlag]] = MessageFlag.EPHEMERAL,
+        flags: Optional[MessageFlag] = MISSING,
         components: Optional[Nullable[list[MessageComponent]]] = MISSING,
         attachments: Optional[Nullable[list[File]]] = MISSING,
         poll: Optional[Nullable[Poll]] = MISSING,
@@ -128,11 +128,7 @@ class InteractionResponse(PydanticArbitraryType):
                 MessageFlag.EPHEMERAL
             )
 
-        json['flags'] = (
-            flags.value
-            if flags
-            else flags
-        )
+        json['flags'] = flags.value
 
         if is_not_missing(components):
             match components:

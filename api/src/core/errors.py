@@ -52,7 +52,7 @@ async def on_interaction_error(
     )
 
     error_embed = Embed.error(
-        dedent(str(error)).strip(),
+        dedent(str(error)).strip()[:4095],
         expected=expected
     )
 
