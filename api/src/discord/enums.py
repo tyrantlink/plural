@@ -740,10 +740,20 @@ class MessageFlag(Flag):
     """this message is an Interaction Response and the bot is "thinking"""
     FAILED_TO_MENTION_SOME_ROLES_IN_THREAD = 1 << 8
     """this message failed to mention some roles and add their members to the thread"""
+    GUILD_FEED_HIDDEN = 1 << 9
+    """This message is hidden from the guild's feed"""
+    SHOULD_SHOW_LINK_NOT_DISCORD_WARNING = 1 << 10
+    """This message contains a link that impersonates Discord"""
     SUPPRESS_NOTIFICATIONS = 1 << 12
     """this message will not trigger push and desktop notifications"""
     IS_VOICE_MESSAGE = 1 << 13
     """this message is a voice message"""
+    HAS_SNAPSHOT = 1 << 14
+    """This message has a forwarded message snapshot attached"""
+    IS_COMPONENTS_V2 = 1 << 15
+    """This message contains components from version 2 of the UI kit"""
+    SENT_BY_SOCIAL_LAYER_INTEGRATION = 1 << 16
+    """This message was triggered by the social layer integration"""
 
 
 class MessageType(Enum):
