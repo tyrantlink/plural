@@ -11,7 +11,7 @@ from orjson import loads, dumps
 
 from plural.db.enums import AutoProxyMode, SupporterTier, ShareType
 from plural.db.usergroup import AvatarOnlyGroup, AvatarOnlyMember
-from plural.errors import InteractionError, NotFound
+from plural.errors import InteractionError, NotFound, Forbidden
 from plural.missing import MISSING
 from plural.otel import inject, cx
 from plural.db import (
@@ -543,10 +543,16 @@ async def slash_edit(
     if db_message is None:
         raise InteractionError('No messages found to edit')
 
-    message = await Message.fetch(
-        interaction.channel_id,
-        db_message.proxy_id
-    )
+    try:
+        message = await Message.fetch(
+            interaction.channel_id,
+            db_message.proxy_id
+        )
+    except Forbidden as e:
+        raise InteractionError(
+            'Unable to read messages in this channel, please use the /plu/ral edit message command'
+            '\n\n(right-click on the message -> Apps -> /plu/ral edit)'
+        ) from e
 
     if sed is None:
         await PAGES['edit'](interaction, message)
