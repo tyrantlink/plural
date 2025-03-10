@@ -996,7 +996,8 @@ async def _process_proxy(
 
     if total_filesize > filesize_limit:
         debug_log.append(
-            f'Attachments exceed {filesize_limit} bytes.')
+            f'Attachments exceed {filesize_limit / 1048576} MB. '
+            f'({total_filesize / 1048576} MB)')
         await save_debug_log(event, debug_log)
         return ProxyResult(False, emojis)
 
