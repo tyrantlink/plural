@@ -12,7 +12,7 @@ from regex import match, finditer, escape, sub, IGNORECASE
 from beanie import PydanticObjectId
 from orjson import dumps
 
-from plural.errors import PluralExceptionCritical, HTTPException
+from plural.errors import PluralExceptionCritical, HTTPException, Unauthorized
 from plural.db.enums import AutoProxyMode, ReplyFormat
 from plural.otel import span, cx
 from plural.db import (
@@ -1300,12 +1300,16 @@ async def userproxy_handler(
             'Userproxy bot cannot send messages in this channel.')
         return ProxyResponse.failure(publish_latency)
 
-    proxy.content = await insert_emojis(
-        proxy.content,
-        proxy.member.userproxy.token,
-        emojis,
-        force_clone=True
-    )
+    try:
+        proxy.content = await insert_emojis(
+            proxy.content,
+            proxy.member.userproxy.token,
+            emojis,
+            force_clone=True)
+    except Unauthorized:
+        debug_log.append(
+            'Userproxy bot token is invalid or expired.')
+        return ProxyResponse.failure(publish_latency)
 
     return ProxyResponse(
         success=True,
