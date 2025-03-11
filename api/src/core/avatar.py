@@ -6,9 +6,11 @@ from hashlib import md5
 from aiohttp import ClientSession, ClientResponse
 from pyvips import Image, Error as VipsError
 
+from plural.db import redis, Group, ProxyMember
 from plural.errors import PluralException
-from plural.db import redis
+from plural.otel import span
 
+from .http import GENERAL_SESSION
 from .models import env
 
 
@@ -218,3 +220,41 @@ async def delete_avatar(
             )
 
     return None
+
+
+def _convert_for_userproxy(
+    original_data: bytes
+) -> tuple[str, bytes]:
+    try:
+        image: Image = Image.new_from_buffer(
+            original_data,
+            '',
+            n=-1,
+            access='sequential')
+    except VipsError as e:
+        raise PluralException(
+            'failed to convert avatar for userproxy'
+        ) from e
+
+    return (
+        'image/png' if image.get_n_pages() == 1 else 'image/gif',
+        image.write_to_buffer(
+            '.png' if image.get_n_pages() == 1 else '.gif',
+            strip=True
+        )
+    )
+
+
+async def convert_for_userproxy(
+    parent: Group | ProxyMember
+) -> tuple[str | None, bytes | None]:
+    original_data = await parent.fetch_avatar(GENERAL_SESSION)
+
+    if original_data is None:
+        return None, None
+
+    with span('converting avatar for userproxy'):
+        return await to_thread(
+            _convert_for_userproxy,
+            original_data
+        )

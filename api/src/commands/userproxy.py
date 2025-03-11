@@ -31,10 +31,11 @@ from src.core.models import (
 
 from src.core.http import (
     get_bot_id_from_token,
-    GENERAL_SESSION,
     request,
     Route
 )
+
+from src.core.avatar import convert_for_userproxy
 
 from src.discord.commands import sync_commands
 from src.discord import (
@@ -169,19 +170,16 @@ async def _userproxy_sync(
 
     if not patch_filter or 'avatar' in patch_filter:
         if member.avatar:
-            avatar = await member.fetch_avatar(GENERAL_SESSION)
+            mime, avatar = await convert_for_userproxy(member)
         elif group.avatar:
-            avatar = await group.fetch_avatar(GENERAL_SESSION)
+            mime, avatar = await convert_for_userproxy(group)
         else:
-            avatar = None
-
-        #! convert into png/gif before uploading
-        #! animated webp seems not supported
-        #! and webp is sometimes overcompressed
+            mime, avatar = None, None
 
         avatar_data = (
-            f'data:image/webp;base64,{b64encode(avatar).decode('ascii')}'
-            if avatar else None
+            f'data:{mime};base64,{b64encode(avatar).decode('ascii')}'
+            if avatar else
+            None
         )
 
         bot_patch['avatar'] = avatar_data
