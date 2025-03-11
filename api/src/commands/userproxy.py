@@ -501,6 +501,11 @@ async def slash_userproxy_new(
             'Use {cmd_ref[userproxy remove]} to remove it'
         )
 
+    if not (2 <= len(member.name) <= 32):
+        raise InteractionError(
+            'Member name must be 2-32 characters long to create a userproxy'
+        )
+
     bot_token = bot_token.strip()  # ? discord does this, but just in case
     bot_id = get_bot_id_from_token(bot_token)
     proxy_command = proxy_command.lstrip('/').lower()

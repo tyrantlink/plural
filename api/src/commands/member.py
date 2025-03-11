@@ -447,9 +447,10 @@ async def slash_member_set_name(
             else ''
         )
 
-        if len(userproxy_name) > 32:
+        if not (2 <= len(userproxy_name) <= 32):
             raise InteractionError(
-                'Members with a userproxy cannot have a name longer than 32 characters (including group tag, if enabled)'
+                'Userproxy member names must be between 2 and 32 characters '
+                '(including group tag, if enabled)'
             )
 
     old_name, member.name = member.name, name
