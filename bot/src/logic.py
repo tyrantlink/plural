@@ -1116,7 +1116,8 @@ async def _process_proxy(
                     break
         else:
             raise RuntimeError(
-                'Proxy handlers failed but did not raise an exception.'
+                'Proxy handlers failed but did not raise an exception.',
+                str(debug_log)
             )
 
         await Message(
