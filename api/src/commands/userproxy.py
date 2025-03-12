@@ -697,6 +697,8 @@ async def slash_userproxy_set_banner(
         embeds=[Embed.success(
             title='Userproxy Banner Set',
             message='Userproxy banner set successfully'
+        ).set_footer(
+            'You may need to refresh Discord to see the changes'
         )]
     )
 
