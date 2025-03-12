@@ -852,7 +852,9 @@ async def create_request(
         form.append(file.as_form(index))
 
         if file.is_voice_message:  # ? is_voice_message flag
-            json['flags'] = json.get('flags', 0) | 1 << 13
+            json['flags'] = (
+                (json.get('flags', 0) or 0) | 1 << 13
+            )
 
     json['attachments'] = json_files
     form.insert(0, {
