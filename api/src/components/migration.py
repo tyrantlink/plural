@@ -105,7 +105,8 @@ async def migration_group_is_mine(
         tasks.append(upload_avatar(
             str(group.id),
             avatar_url,
-            GENERAL_SESSION
+            GENERAL_SESSION,
+            True
         ))
 
     phase_1_migration = await Migration.find_one({

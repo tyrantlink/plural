@@ -25,7 +25,8 @@ class Avatar:
 
 async def _response_check(
     url: str,
-    response: ClientResponse
+    response: ClientResponse,
+    bypass_limit: bool = False
 ) -> None:
     if response.status != 200:
         raise PluralException(
@@ -35,7 +36,7 @@ async def _response_check(
     if response.content_length is None:
         raise PluralException(f'avatar {url} has no content length')
 
-    if int(response.content_length) > env.max_avatar_size:
+    if not bypass_limit and int(response.content_length) > env.max_avatar_size:
         raise PluralException(f'avatar {url} too large')
 
     if response.content_type not in {
@@ -51,7 +52,8 @@ async def _response_check(
 
 async def _download_avatar(
     url: str,
-    session: ClientSession
+    session: ClientSession,
+    bypass_limit: bool = False
 ) -> Avatar:
     async with session.head(url) as response:
         await _response_check(url, response)
@@ -64,7 +66,7 @@ async def _download_avatar(
         async for chunk in response.content.iter_chunked(16384):
             data.extend(chunk)
 
-            if len(data) > env.max_avatar_size:
+            if not bypass_limit and len(data) > env.max_avatar_size:
                 raise PluralException(f'avatar {url} too large')
 
         image_hash = md5(data).hexdigest()
@@ -169,7 +171,8 @@ async def _upload_avatar(
 async def upload_avatar(
     parent_id: str,
     url: str,
-    session: ClientSession
+    session: ClientSession,
+    bypass_limit: bool = False
 ) -> str:
     """returns avatar hash"""
     return await _upload_avatar(
@@ -179,7 +182,8 @@ async def upload_avatar(
             _convert_avatar,
             await _download_avatar(
                 url,
-                session
+                session,
+                bypass_limit
             )
         )
     )
