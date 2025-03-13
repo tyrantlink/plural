@@ -132,7 +132,8 @@ async def migration_group_is_mine(
             tasks.append(upload_avatar(
                 str(member.id),
                 avatar_url,
-                GENERAL_SESSION
+                GENERAL_SESSION,
+                True
             ))
 
         if member.userproxy and not member.userproxy.token:

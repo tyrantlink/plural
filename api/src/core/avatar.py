@@ -56,10 +56,10 @@ async def _download_avatar(
     bypass_limit: bool = False
 ) -> Avatar:
     async with session.head(url) as response:
-        await _response_check(url, response)
+        await _response_check(url, response, bypass_limit)
 
     async with session.get(url) as response:
-        await _response_check(url, response)
+        await _response_check(url, response, bypass_limit)
 
         data = bytearray()
 
