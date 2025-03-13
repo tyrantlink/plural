@@ -190,7 +190,7 @@ async def _edit_webhook_message(
 ) -> None:
     channel_id = message.channel_id
 
-    channel = await redis.json().get(f'discord:channels:{channel_id}')
+    channel = await redis.json().get(f'discord:channel:{channel_id}')
 
     if channel is None:
         raise ValueError('Channel not found in cache.')
