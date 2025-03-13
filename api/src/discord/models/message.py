@@ -19,7 +19,12 @@ if TYPE_CHECKING:
 
     from plural.missing import Optional, Nullable
 
-    from src.discord.enums import MessageType, MessageFlag
+    from src.discord.enums import (
+        ApplicationIntegrationType,
+        InteractionType,
+        MessageFlag,
+        MessageType,
+    )
 
     from .expression import Reaction, StickerItem
     from .channel import Channel, ChannelMention
@@ -93,7 +98,20 @@ class Message(RawBaseModel):
         ...
 
     class InteractionMetadata(RawBaseModel):
-        ...
+        id: Snowflake
+        """ID of the interaction"""
+        type: InteractionType
+        """Type of interaction"""
+        user: User
+        """User who triggered the interaction"""
+        authorizing_integration_owners: dict[ApplicationIntegrationType, Snowflake]
+        """IDs for installation context(s) related to an interaction."""
+        original_response_message_id: Optional[Snowflake]
+        """ID of the original response message, present only on follow-up messages"""
+        target_user: Optional[User]
+        """The user the command was run on, present only on user command interactions"""
+        target_message_id: Optional[Snowflake]
+        """The ID of the message the command was run on, present only on message command interactions. The original response message will also have `message_reference` and `referenced_message` pointing to this message."""
 
     class RoleSubscriptionData(RawBaseModel):
         ...

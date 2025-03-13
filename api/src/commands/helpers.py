@@ -13,7 +13,14 @@ from datetime import timedelta
 from asyncio import gather
 
 from plural.db.enums import GroupSharePermissionLevel, ReplyFormat
-from plural.db import Group, ProxyMember, Usergroup, redis, Reply
+from plural.db import (
+    Message as DBMessage,
+    ProxyMember,
+    Usergroup,
+    Group,
+    Reply,
+    redis
+)
 from plural.errors import InteractionError, PluralException
 from plural.missing import MISSING
 from plural.otel import span, cx
@@ -116,6 +123,13 @@ async def edit_message(
     content: str,
     webhook: Webhook | None = None
 ) -> None:
+    if not await can_edit(interaction, message):
+        raise InteractionError(
+            'You cannot edit this message, '
+            'it is either not a /plu/ral message, older than 7 days, '
+            'or you are not the author of the message'
+        )
+
     if message.interaction_metadata:
         await _edit_userproxy_message(
             interaction,
@@ -244,6 +258,43 @@ async def _edit_userproxy_message(
     )
 
     await _edit_response(interaction, message, content)
+
+
+async def can_edit(
+    interaction: Interaction,
+    message: Message
+) -> bool:
+    # ? userproxy command message
+    if message.interaction_metadata:
+        return message.interaction_metadata.user.id == interaction.author_id
+
+    # ? webhook message
+    if message.webhook_id:
+        db_message = await DBMessage.find_one({
+            'author_id': interaction.author_id,
+            'webhook_id': message.webhook_id,
+            'channel_id': interaction.channel_id,
+            'proxy_id': message.id
+        })
+
+        return db_message is not None
+
+    # ? guild userproxy message
+    userproxy = await ProxyMember.find_one({
+        'userproxy.bot_id': message.author.id
+    })
+
+    if userproxy is None:
+        return False
+
+    usergroup = await Usergroup.get_by_user(interaction.author_id)
+
+    group = await userproxy.get_group()
+
+    return (
+        usergroup.id in group.accounts or
+        interaction.author_id in group.users
+    )
 
 
 def group_edit_check(

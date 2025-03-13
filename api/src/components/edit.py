@@ -58,6 +58,15 @@ async def _edit(
     interaction: Interaction,
     message: Message
 ) -> None:
+    from src.commands.helpers import can_edit
+
+    if not await can_edit(interaction, message):
+        raise InteractionError(
+            'You cannot edit this message, '
+            'it is either not a /plu/ral message, older than 7 days, '
+            'or you are not the author of the message'
+        )
+
     pipeline = redis.pipeline()
     pipeline.json().set(
         f'discord:pending_edit:{message.id}', '$',
