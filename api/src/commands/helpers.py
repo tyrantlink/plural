@@ -197,7 +197,7 @@ async def _edit_webhook_message(
 
     if channel.data.get('type') in {11, 12}:
         channel = await redis.json().get(
-            f'discord:channel:{channel.data['parent_id']}'
+            f'discord:channel:{channel['data']['parent_id']}'
         )
 
         if channel is None:
