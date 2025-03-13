@@ -230,7 +230,8 @@ class Webhook(RawBaseModel):
         allowed_mentions: Optional[Nullable[AllowedMentions]] = MISSING,
         components: Optional[Nullable[list[MessageComponent]]] = MISSING,
         attachments: Optional[Nullable[list[File]]] = MISSING,
-        poll: Optional[Nullable[Poll]] = MISSING
+        poll: Optional[Nullable[Poll]] = MISSING,
+        thread_id: Optional[Snowflake] = MISSING
     ) -> Message | None:
         json, form = {}, None
 
@@ -283,7 +284,11 @@ class Webhook(RawBaseModel):
                 'value': dumps(json).decode()
             })
 
-        request_args = {}
+        request_args = (
+            {'params': {'thread_id': thread_id}}
+            if is_not_missing(thread_id)
+            else {}
+        )
 
         request_args.update(
             {

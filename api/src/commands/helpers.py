@@ -15,6 +15,7 @@ from asyncio import gather
 from plural.db.enums import GroupSharePermissionLevel, ReplyFormat
 from plural.db import Group, ProxyMember, Usergroup, redis, Reply
 from plural.errors import InteractionError, PluralException
+from plural.missing import MISSING
 from plural.otel import span, cx
 
 from src.core.avatar import upload_avatar, delete_avatar as _delete_avatar
@@ -192,10 +193,14 @@ async def _edit_webhook_message(
 
     channel = await redis.json().get(f'discord:channel:{channel_id}')
 
+    thread_id = MISSING
+
     if channel is None:
         raise ValueError('Channel not found in cache.')
 
     if channel['data'].get('type') in {11, 12}:
+        thread_id = int(channel['data']['id'])
+
         channel = await redis.json().get(
             f'discord:channel:{channel['data']['parent_id']}'
         )
@@ -221,7 +226,8 @@ async def _edit_webhook_message(
         _edit_response(interaction, message, content),
         webhook.edit_message(
             message_id=message.id,
-            content=content
+            content=content,
+            thread_id=thread_id
         )
     )
 
