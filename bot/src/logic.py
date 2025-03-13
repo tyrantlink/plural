@@ -334,10 +334,16 @@ async def get_proxy_data(
         (member := await ProxyMember.get(autoproxy.member))
     ):
         group = next(
-            group
-            for group in groups
-            if member.id in group.members
+            (group
+             for group in groups
+             if member.id in group.members),
+            None
         )
+
+        if group is None:
+            debug_log.append(
+                'Member has is not in a group. This should not happen.')
+            return None
 
         return ProxyData(
             member=member,
@@ -364,10 +370,16 @@ async def get_proxy_data(
 
         if (result := check_member(event, member, debug_log)) is not None:
             group = next(
-                group
-                for group in groups
-                if member.id in group.members
+                (group
+                 for group in groups
+                 if member.id in group.members),
+                None
             )
+
+            if group is None:
+                debug_log.append(
+                    'Member has is not in a group. This should not happen.')
+                return None
 
             return ProxyData(
                 member=member,
@@ -421,10 +433,16 @@ async def get_proxy_data(
 
     if autoproxy is not None and autoproxy_member is not None:
         group = next(
-            group
-            for group in groups
-            if autoproxy_member.id in group.members
+            (group
+             for group in groups
+             if member.id in group.members),
+            None
         )
+
+        if group is None:
+            debug_log.append(
+                'Member has is not in a group. This should not happen.')
+            return None
 
         return ProxyData(
             member=autoproxy_member,
