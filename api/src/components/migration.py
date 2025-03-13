@@ -95,19 +95,19 @@ async def migration_group_is_mine(
         )).id
     }
 
-    tasks = []
+    objects, avatar_tasks = {}, {}
 
     avatar_url = group_data.pop('avatar', None)
 
     group = Group.model_validate(group_data)
 
     if avatar_url:
-        tasks.append(upload_avatar(
+        avatar_tasks[group.id] = upload_avatar(
             str(group.id),
             avatar_url,
             GENERAL_SESSION,
             True
-        ))
+        )
 
     phase_1_migration = await Migration.find_one({
         'user': interaction.author_id,
@@ -129,12 +129,12 @@ async def migration_group_is_mine(
         real_members.add(member.id)
 
         if avatar_url:
-            tasks.append(upload_avatar(
+            avatar_tasks[member.id] = upload_avatar(
                 str(member.id),
                 avatar_url,
                 GENERAL_SESSION,
                 True
-            ))
+            )
 
         if member.userproxy and not member.userproxy.token:
             userproxy_data = member.userproxy.model_dump()
@@ -143,11 +143,11 @@ async def migration_group_is_mine(
             member.userproxy = None
             phase_1_migration.data.append(userproxy_data)
 
-        tasks.append(member.save())
+        objects[member.id] = member
 
     group.members = real_members
 
-    tasks.append(group.save())
+    objects[group.id] = group
 
     if phase_1_migration.data:
         await phase_1_migration.save()
@@ -171,7 +171,18 @@ async def migration_group_is_mine(
         ]
     )
 
-    await gather(*tasks)
+    avatars = await gather(*avatar_tasks.values())
+
+    avatar_map = dict(zip(avatar_tasks.keys(), avatars, strict=True))
+
+    for obj in objects.values():
+        obj.avatar = avatar_map.get(obj.id)
+
+    await gather(*[
+        obj.save()
+        for obj in
+        objects.values()
+    ])
 
     migration.index += 1
     await migration.save()
