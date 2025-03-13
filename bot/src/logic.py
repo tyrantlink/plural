@@ -483,6 +483,8 @@ async def get_webhook(
     if channel is None:
         raise ValueError('Channel not found in cache.')
 
+    webhook_index = channel.data.get('__plural_last_webhook', 0)
+
     if channel.data.get('type') in {11, 12}:
         channel = await Cache.get(
             f'discord:channel:{channel.data['parent_id']}'
@@ -520,8 +522,6 @@ async def get_webhook(
             raise ValueError(f'Webhook with id {webhook_id} not found.')
 
         return webhook
-
-    webhook_index = channel.data.get('__plural_last_webhook', 0)
 
     if use_next:
         webhook_index += 1
