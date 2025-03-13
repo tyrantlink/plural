@@ -195,7 +195,7 @@ async def _edit_webhook_message(
     if channel is None:
         raise ValueError('Channel not found in cache.')
 
-    if channel.data.get('type') in {11, 12}:
+    if channel['data'].get('type') in {11, 12}:
         channel = await redis.json().get(
             f'discord:channel:{channel['data']['parent_id']}'
         )
