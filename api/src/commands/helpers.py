@@ -120,8 +120,7 @@ async def edit_message(
             interaction,
             message,
             content,
-            webhook
-        )
+            webhook)
     elif message.webhook_id:
         await _edit_webhook_message(
             interaction,
@@ -189,11 +188,26 @@ async def _edit_webhook_message(
     message: Message,
     content: str
 ) -> None:
+    channel_id = message.channel_id
+
+    channel = await redis.json().get(f'discord:channels:{channel_id}')
+
+    if channel is None:
+        raise ValueError('Channel not found in cache.')
+
+    if channel.data.get('type') in {11, 12}:
+        channel = await redis.json().get(
+            f'discord:channel:{channel.data['parent_id']}'
+        )
+
+        if channel is None:
+            raise ValueError('Parent channel not found in cache.')
+
     webhook = next((
         webhook
         for webhook in (
             (await redis.json().get(
-                f'discord:webhooks:{message.channel_id}'
+                f'discord:webhooks:{channel['data']['id']}'
             )) or [])
         if webhook['id'] == str(message.webhook_id)
     ), None)
