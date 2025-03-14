@@ -735,7 +735,7 @@ async def slash_import(
 
     cx().set_attribute(
         'import.source.name',
-        export.__class__.__name__.rstrip('Export').lower()
+        export.__class__.__name__.removesuffix('Export').lower()
     )
 
     export = export.to_standard()
