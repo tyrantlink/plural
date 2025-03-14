@@ -186,8 +186,6 @@ CONFIG_OPTIONS = CONFIG_OPTIONS = {
                 Whether to include the group tag in the member name.
 
                 Note: the total length of userproxy name and group tag must be less than 32 characters.
-
-                You may need to restart your client to see changes.
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
@@ -357,7 +355,7 @@ async def select_config_value(
             parent
         )
 
-    await _option(interaction, [option], category)
+    await _option(interaction, [option], category, True)
 
 
 @button(
@@ -427,7 +425,7 @@ async def _button_bool(
             parent
         )
 
-    await _option(interaction, [option], category)
+    await _option(interaction, [option], category, True)
 
 
 async def _home(
@@ -549,7 +547,8 @@ async def _category(
 async def _option(
     interaction: Interaction,
     selected: list[str],
-    category: str
+    category: str,
+    add_sync_footer: bool = False
 ) -> None:
     option = CONFIG_OPTIONS[category][selected[0]]
 
@@ -560,6 +559,14 @@ async def _option(
         message=option.description,
         insert_command_ref=True
     )
+
+    if add_sync_footer:
+        embed.set_footer(
+            text=(
+                'You may need to restart your client '
+                'to see changes to userproxies'
+            )
+        )
 
     match category:
         case 'user':
