@@ -126,11 +126,14 @@ async def sync_commands(
                     'user_id must be provided when syncing userproxy commands'
                 )
 
-            usergroup = await Usergroup.get_by_user(user_id)
+            usergroup = await Usergroup.get_by_user(
+                user_id,
+                False
+            )
 
             member = await ProxyMember.find_one({
                 'userproxy.bot_id': application_id
-            })
+            }, ignore_cache=True)
 
         live_commands = {
             command['name']: ApplicationCommand(**command)
