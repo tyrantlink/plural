@@ -347,7 +347,8 @@ async def slash_userproxy_edit(
     command: str | None = None,
     token: str | None = None
 ) -> None:
-    sync_filter = set()
+    assert isinstance(userproxy.userproxy, ProxyMember.UserProxy)
+    sync_filter: set[str] = set()
     warning = ''
 
     if token is not None:
@@ -404,6 +405,8 @@ async def slash_userproxy_edit(
 
         userproxy.userproxy.command = proxy_command
 
+    await userproxy.save()  # type: ignore[call-arg]
+
     await userproxy_sync(
         interaction,
         userproxy,
@@ -414,11 +417,13 @@ async def slash_userproxy_edit(
 
     embed = Embed.success(
         title='Userproxy Edited',
-        message='Userproxy edited successfully'
+        message=(
+            'Userproxy edited successfully' +
+            f'\n\n{warning}' if warning else ''
+        )
+    ).set_footer(
+        'You may need to refresh Discord to see the changes'
     )
-
-    if warning:
-        embed.set_footer(warning)
 
     await interaction.followup.edit_message(
         '@original',
