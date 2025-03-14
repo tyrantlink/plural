@@ -219,7 +219,9 @@ CONFIG_OPTIONS = CONFIG_OPTIONS = {
             description=dedent('''
                 Whether the proxy command requires the message parameter.
 
-                If enabled, you must always have some message content, even if you include attachments.
+                If enabled, you will lose the following features (Discord limitation):
+                - You cannot send attachments without message content, there must be some text
+                - You will no longer get the message pop-up when you leave everything blank, meaning you can no longer send messages with multiple lines
 
                 If disabled, you will have to manually select the message parameter, which can make the command harder to use, especially on mobile.
             ''').strip(),
