@@ -122,7 +122,8 @@ async def _userproxy_sync(
         usergroup or
         await Usergroup.get_by_user(
             interaction.author_id,
-            use_cache=False)
+            use_cache=False
+        )
     )
 
     group = group or await member.get_group(False)
@@ -485,6 +486,11 @@ async def slash_userproxy_invite(
             description='Command to use when proxying (Default: /proxy)',
             min_length=1,
             max_length=32,
+            required=False),
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.BOOLEAN,
+            name='keep_avatar',
+            description='Keep the bot\'s current avatar (Default: False)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -492,7 +498,8 @@ async def slash_userproxy_new(
     interaction: Interaction,
     member: ProxyMember,
     bot_token: str,
-    proxy_command: str = 'proxy'
+    proxy_command: str = 'proxy',
+    keep_avatar: bool = False
 ) -> None:
     group = await member.get_group()
 
@@ -550,7 +557,18 @@ async def slash_userproxy_new(
     await userproxy_sync(
         interaction,
         member,
-        set(),
+        {
+            'interactions_endpoint_url',
+            'event_webhooks_url',
+            'event_webhooks_types',
+            'event_webhooks_status',
+            'integration_types_config',
+            'install_params',
+            'commands',
+            'guilds',
+            'username',
+            'description',
+        } if keep_avatar else set(),
         app
     )
 
