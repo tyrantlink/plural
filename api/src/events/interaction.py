@@ -150,15 +150,10 @@ async def _on_application_command(interaction: Interaction) -> None:
         case ApplicationCommandType.USER:
             ...
 
-    cx().set_attributes({
-        'user.name': interaction.author_name,
-        'user.id': str(interaction.author_id),
-        'guild.id': str(interaction.guild_id or 'dm'),
-        'options': [  # ? value included in dev, only name in prod
-            (f'{option}: {value}' if env.dev else option)
-            for option, value in kwargs.items()
-        ]
-    })
+    cx().set_attribute('options', [  # ? value included in dev, only name in prod
+        (f'{option}: {value}' if env.dev else option)
+        for option, value in kwargs.items()
+    ])
 
     await callback(interaction, **kwargs)
 
@@ -186,12 +181,7 @@ async def _on_message_component(interaction: Interaction) -> None:
         case ComponentType.STRING_SELECT:
             args.insert(0, interaction.data.values)
 
-    cx().set_attributes({
-        'user.name': interaction.author_name,
-        'user.id': str(interaction.author_id),
-        'guild.id': str(interaction.guild_id) or 'dm',
-        'args': [str(arg) for arg in args]
-    })
+    cx().set_attribute('args', [str(arg) for arg in args])
 
     await triggered_component.callback(interaction, *args, **kwargs)
 
@@ -225,12 +215,7 @@ async def _on_modal_submit(interaction: Interaction) -> None:
         )[0].components
     }
 
-    cx().set_attributes({
-        'user.name': interaction.author_name,
-        'user.id': str(interaction.author_id),
-        'guild.id': str(interaction.guild_id) or 'dm',
-        'args': [str(arg) for arg in args]
-    })
+    cx().set_attribute('args', [str(arg) for arg in args])
 
     await triggered_component.callback(interaction, *args, **kwargs)
 

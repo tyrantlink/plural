@@ -1020,19 +1020,16 @@ async def _process_proxy(
         int(event['guild_id']) in proxy.member.userproxy.guilds
     )
 
-    with span(  # ? only start the span once we're likely proxying
+    with span(  # ? only start the span once we're proxying
         'proxying message',
         start_time=start_time,
         parent=proxy.traceparent,
         attributes={
             'proxy.member.id': str(proxy.member.id),
-            'proxy.member.name': proxy.member.name,
             'proxy.autoproxy': (
                 ('guild' if proxy.autoproxy.guild else 'global')
                 if proxy.autoproxy else 'none'),
             'proxy.reason': proxy.reason,
-            'proxy.user.id': event['author']['id'],
-            'proxy.user.name': event['author']['username'],
             'proxy.cloned_emojis': 0
         }
     ):
@@ -1145,7 +1142,10 @@ async def _process_proxy(
             ((int(event['id']) >> 22) + 1420070400000)
         )
 
-        cx().set_attribute('proxy.latency', latency)
+        cx().set_attributes({
+            'proxy.latency': latency,
+            'proxy.publish': publish_latency and not emojis
+        })
 
         if proxy.reason != 'Reproxy command':
             debug_log.append(f'Latency: {latency}ms')
