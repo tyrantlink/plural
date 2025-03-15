@@ -69,6 +69,21 @@ pub async fn cache_and_publish(
         return Ok(Response::Duplicate);
     }
 
+    let event_name = &json["t"]
+        .as_str()
+        .unwrap_or("UNKNOWN")
+        .to_string();
+
+    let meter = global::meter("gateway");
+
+    let counter = meter
+        .u64_counter("gateway.events.total")
+        .build();
+
+    counter.add(1, &[
+        opentelemetry::KeyValue::new("event", event_name.clone())
+    ]);
+
     let pipeline = redis.pipeline();
 
     //? cloning here so i don't have to deal with the lifetime issues of the guild create event futures
@@ -78,7 +93,7 @@ pub async fn cache_and_publish(
         Ok(Response::Unsupported)
     };
 
-    if PUBLISHED_EVENTS.contains(&json["t"].as_str().unwrap_or("UNKNOWN")) {
+    if PUBLISHED_EVENTS.contains(&event_name.as_str()) {
         publish(&pipeline, &json).await?;
         response = Ok(Response::Published);
     }
@@ -123,16 +138,6 @@ async fn cache(
         .as_str()
         .unwrap_or("UNKNOWN")
         .to_string();
-
-    let meter = global::meter("gateway");
-
-    let counter = meter
-        .u64_counter("gateway.events.total")
-        .build();
-
-    counter.add(1, &[
-        opentelemetry::KeyValue::new("event", event_name.clone())
-    ]);
 
     let key;
     let mut data;
