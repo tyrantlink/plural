@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
             emoji_init()
         )
 
-        from src.routers import discord, message, redis_proxy
+        from src.routers import discord, donation, message, redis_proxy
         # ? commands need to be imported after init
         from src.discord.commands import sync_commands
         import src.commands  # noqa: F401
@@ -35,6 +35,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         await sync_commands(env.bot_token)
 
         app.include_router(discord.router)
+        app.include_router(donation.router)
         app.include_router(message.router)
         app.include_router(redis_proxy.router)
 
