@@ -55,6 +55,27 @@ SUB_PAGES = {
         - [terms of service](<https://{env.domain}/terms-of-service>)
         - [github](https://github.com/tyrantlink/plural)
     ''').strip(),
+    'donate': dedent('''
+        If you want to support the project, you can donate to help with server costs, and development.
+
+        Benefits:
+        - Less money in your bank account
+        - 🌟/plu/ral supporter🌟 text on your proxy info page
+        - The supporter role in [the support server](https://discord.gg/4mteVXBDW7)
+
+        I don't plan on charging for features, and donation is permanent, even if you only donate $1, one time, you will keep your supporter status forever.
+
+        I *may* add an increased avatar limit as a benefit in the future, since that has a direct cost to me
+        (see {cmd_ref[stats]} for current usage/limit)
+
+        Feel free to donate through whichever source you prefer, all donations are appreciated.
+
+        - [GitHub Sponsors](https://github.com/sponsors/tyrantlink)
+        - [Ko-fi](https://ko-fi.com/tyrantlink)
+        - [LiberaPay](https://liberapay.com/tyrantlink)
+        - [Patreon](https://patreon.com/tyrantlink)
+        - [Discord](https://discord.com/application-directory/1291501048493768784/store)\\*
+    ''').strip(),
 }
 
 
@@ -98,32 +119,56 @@ async def button_help_info_and_support(
     await _help(interaction, 'info and support')
 
 
+@button(
+    custom_id='button_help_donate',
+    label='Donate',
+    style=ButtonStyle.SECONDARY)
+async def button_help_donate(
+    interaction: Interaction
+) -> None:
+    await _help(interaction, 'donate')
+
+
 async def _help(
     interaction: Interaction,
     page: str
 ) -> None:
+    embed = Embed.success(
+        title='Welcome to /plu/ral!',
+        message=SUB_PAGES[page],
+        insert_command_ref=True
+    )
+
+    # ? make this more dynamic if more options are added
+    if page == 'donate':
+        embed.set_footer(
+            text='* Discord takes a 15% cut, so the other options are preferred'
+        )
+
     await _send_or_update(
         interaction,
-        embed=Embed.success(
-            title='Welcome to /plu/ral!',
-            message=SUB_PAGES[page],
-            insert_command_ref=True),
+        embed=embed,
         components=[
-            ActionRow(
-                components=[
-                    help_button.with_overrides(
-                        style=(
-                            ButtonStyle.PRIMARY
-                            if help_button.label.lower() == page
-                            else ButtonStyle.SECONDARY
-                        ),
-                    ) for help_button in [
-                        button_help_main,
-                        button_help_getting_started,
-                        button_help_userproxies,
-                        button_help_info_and_support
-                    ]
+            ActionRow(components=[
+                help_button.with_overrides(
+                    style=(
+                        ButtonStyle.PRIMARY
+                        if help_button.label.lower() == page
+                        else ButtonStyle.SECONDARY),
+                ) for help_button in [
+                    button_help_main,
+                    button_help_getting_started,
+                    button_help_userproxies,
+                    button_help_info_and_support]]),
+            ActionRow(components=[
+                help_button.with_overrides(
+                    style=(
+                        ButtonStyle.PRIMARY
+                        if help_button.label.lower() == page
+                        else ButtonStyle.SECONDARY),
+                ) for help_button in [
+                    button_help_donate,
                 ]
-            )
+            ])
         ]
     )
