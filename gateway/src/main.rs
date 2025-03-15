@@ -54,23 +54,41 @@ async fn main() -> Result<(), Box<dyn Error>> {
         dev: !(dev_env == "false" || dev_env == "0")
     };
 
+    let otel_resource = Resource::new(vec![
+        KeyValue::new("service.name", "gateway"),
+        KeyValue::new("service.version", version.clone()),
+        KeyValue::new("deployment.environment.name", if env.dev { "dev" } else { "prod" })
+    ]);
+
     if false {
         // ? only set up tracing in dev mode, as it's a lot of unnecessary spans
-        let provider = opentelemetry_sdk::trace::TracerProvider::builder()
-            .with_resource(Resource::new(vec![
-                KeyValue::new("service.name", "gateway"),
-                KeyValue::new("service.version", version.clone()),
-                KeyValue::new("deployment.environment.name", if env.dev { "dev" } else { "prod" })
-            ]))
-            .with_batch_exporter(
-            opentelemetry_otlp::SpanExporter::builder()
+        global::set_tracer_provider(
+            opentelemetry_sdk::trace::TracerProvider::builder()
+                .with_resource(otel_resource.clone())
+                .with_batch_exporter(
+                opentelemetry_otlp::SpanExporter::builder()
+                    .with_http()
+                    .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
+                    .build()?,
+                opentelemetry_sdk::runtime::Tokio)
+                .build()
+        );
+    }
+
+    global::set_meter_provider(
+        opentelemetry_sdk::metrics::SdkMeterProvider::builder()
+            .with_resource(otel_resource)
+            .with_reader(opentelemetry_sdk::metrics::PeriodicReader::builder(
+                opentelemetry_otlp::MetricExporter::builder()
                 .with_http()
                 .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
+                .with_temporality(opentelemetry_sdk::metrics::Temporality::Delta)
                 .build()?,
-            opentelemetry_sdk::runtime::Tokio)
-            .build();
-        global::set_tracer_provider(provider);
-    }
+                opentelemetry_sdk::runtime::Tokio)
+            .with_interval(Duration::from_secs(60))
+            .build())
+            .build()
+    );
 
     let redis: RedisClient = RedisBuilder::from_config(
         RedisConfig::from_url(&env.redis_url)?)

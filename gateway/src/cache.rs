@@ -13,6 +13,7 @@ use fred::{
     types::{SetOptions, Expiration, streams::{XCapKind, XCapTrim}}
 };
 use futures::future::join_all;
+use opentelemetry::global;
 use lazy_static::lazy_static;
 use rustc_hash::FxHasher;
 use serde_json::{Value, json};
@@ -122,6 +123,16 @@ async fn cache(
         .as_str()
         .unwrap_or("UNKNOWN")
         .to_string();
+
+    let meter = global::meter("gateway");
+
+    let counter = meter
+        .u64_counter("gateway.events.total")
+        .build();
+
+    counter.add(1, &[
+        opentelemetry::KeyValue::new("event", event_name.clone())
+    ]);
 
     let key;
     let mut data;
