@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from src.discord.models.base import RawBaseModel
 
@@ -9,8 +9,27 @@ if TYPE_CHECKING:
 
     from plural.missing import Optional
 
-    from src.discord.enums import WebhookEventType, EventWebhooksType
     from src.discord.types import Snowflake
+    from src.discord.enums import (
+        ApplicationIntegrationType,
+        EventWebhooksType,
+        WebhookEventType
+    )
+
+    from src.discord.models.entitlement import Entitlement
+    from src.discord.models.guild import Guild
+    from src.discord.models.user import User
+
+
+class ApplicationAuthorizedEvent(RawBaseModel):
+    integration_type: Optional[ApplicationIntegrationType]
+    """Installation context for the authorization."""
+    user: User
+    """Installation context for the authorization."""
+    scopes: list[str]
+    """List of scopes the user authorized"""
+    guild: Optional[Guild]
+    """Server which app was authorized for (when integration type is `0`)"""
 
 
 class WebhookEvent(RawBaseModel):
@@ -19,7 +38,7 @@ class WebhookEvent(RawBaseModel):
         """Event type"""
         timestamp: datetime
         """Timestamp of when the event occurred in ISO8601 format"""
-        data: dict[str, Any]
+        data: ApplicationAuthorizedEvent | Entitlement
         """Data for the event. The shape depends on the event type"""
 
     version: int

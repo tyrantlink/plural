@@ -4,6 +4,7 @@ from fastapi.responses import Response, JSONResponse
 from fastapi import APIRouter, Depends
 
 from src.core.auth import discord_key_validator
+from src.core.models import env
 from src.discord import (
     EventWebhooksType,
     WebhookEventType,
@@ -12,8 +13,9 @@ from src.discord import (
     Interaction,
 )
 
+from plural.db import ProxyMember, Usergroup, redis
 from plural.utils import create_strong_task
-from plural.db import ProxyMember, redis
+from plural.db.enums import SupporterTier
 
 
 router = APIRouter(include_in_schema=False)
@@ -61,22 +63,35 @@ async def post__interaction(
 async def post__event(
     event: WebhookEvent
 ) -> Response:
-    if (
-        event.type == WebhookEventType.PING or
-        event.event.type != EventWebhooksType.APPLICATION_AUTHORIZED or
-        event.event.data.get('guild') is None
-    ):
+    if event.type == WebhookEventType.PING:
         return Response(status_code=204)
 
-    member = await ProxyMember.find_one({
-        'userproxy.bot_id': event.application_id
-    })
+    match event.event.type:
+        case EventWebhooksType.APPLICATION_AUTHORIZED:
+            if not event.event.data.guild:
+                return Response(status_code=204)
 
-    if member is None:
-        return Response(status_code=204)
+            member = await ProxyMember.find_one({
+                'userproxy.bot_id': event.application_id
+            })
 
-    member.userproxy.guilds.add(int(event.event.data['guild']['id']))
+            if member is None:
+                return Response(status_code=204)
 
-    await member.save()
+            member.userproxy.guilds.add(int(event.event.data['guild']['id']))
+
+            await member.save()
+        case EventWebhooksType.ENTITLEMENT_CREATE:
+            if (
+                event.application_id != env.application_id or
+                not event.event.data.user_id
+            ):
+                return Response(status_code=204)
+
+            usergroup = await Usergroup.get_by_user(event.event.data.user_id)
+
+            usergroup.data.supporter_tier = SupporterTier.SUPPORTER
+
+            await usergroup.save()
 
     return Response(status_code=204)
