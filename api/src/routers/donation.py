@@ -1,19 +1,38 @@
 from hmac import new as hmac, compare_digest
+from contextlib import suppress
 from typing import Annotated
 from hashlib import md5
 
 from fastapi import APIRouter, Depends, Request, Response, Header, HTTPException
 
+from plural.errors import HTTPException as PluralHTTPException
 from plural.db.enums import SupporterTier
 from plural.db import Usergroup
 from plural.otel import cx
 
+from src.core.http import request, Route
 from src.core.models import env
 
 from .otel import trace
 
 
 router = APIRouter(include_in_schema=False)
+
+
+async def make_donator(discord_id: int) -> None:
+    usergroup = await Usergroup.get_by_user(discord_id)
+
+    usergroup.data.supporter_tier = SupporterTier.SUPPORTER
+
+    await usergroup.save()
+
+    # ? hard-coded because i don't have the attention span
+    with suppress(PluralHTTPException):
+        await request(Route(
+            'POST',
+            f'/guilds/844127424526680084/members/{discord_id}/roles/1305047206994382939',
+            env.bot_token
+        ))
 
 
 async def patreon_validator(
@@ -79,10 +98,6 @@ async def post__donation_patreon(
             400, 'Invalid Discord ID'
         ) from e
 
-    usergroup = await Usergroup.get_by_user(discord_id)
-
-    usergroup.data.supporter_tier = SupporterTier.SUPPORTER
-
-    await usergroup.save()
+    await make_donator(discord_id)
 
     return Response(status_code=204)

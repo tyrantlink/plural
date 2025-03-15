@@ -36,7 +36,7 @@ class Env(BaseModel):
             'admins': (
                 set(map(int, environ.get('ADMINS', '').split(',')))
                 if environ.get('ADMINS') else set()),
-            'patreon_secret': environ.get('PATREON_SECRET', ''),
+            'patreon_secret': environ.get('PATREON_SECRET', '')
         })
 
     @property

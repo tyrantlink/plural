@@ -13,9 +13,10 @@ from src.discord import (
     Interaction,
 )
 
-from plural.db import ProxyMember, Usergroup, redis
 from plural.utils import create_strong_task
-from plural.db.enums import SupporterTier
+from plural.db import ProxyMember, redis
+
+from .donation import make_donator
 
 
 router = APIRouter(include_in_schema=False)
@@ -88,10 +89,6 @@ async def post__event(
             ):
                 return Response(status_code=204)
 
-            usergroup = await Usergroup.get_by_user(event.event.data.user_id)
-
-            usergroup.data.supporter_tier = SupporterTier.SUPPORTER
-
-            await usergroup.save()
+            await make_donator(event.event.data.user_id)
 
     return Response(status_code=204)

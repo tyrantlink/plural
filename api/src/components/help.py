@@ -68,14 +68,14 @@ SUB_PAGES = {
         I *may* add an increased avatar limit as a benefit in the future, since that has a direct cost to me
         (see {cmd_ref[stats]} for current usage/limit)
 
-        Feel free to donate through whichever source you prefer, all donations are appreciated.
+        Feel free to donate through whichever source you prefer, all donations are appreciated. Only Patreon and Discord rewards are automatic, the others require manual verification.
 
-        - [GitHub Sponsors](https://github.com/sponsors/tyrantlink)
-        - [Ko-fi](https://ko-fi.com/tyrantlink)
-        - [LiberaPay](https://liberapay.com/tyrantlink)
         - [Patreon](https://patreon.com/tyrantlink)
-        - [Discord](https://discord.com/application-directory/1291501048493768784/store)\\*
-    ''').strip(),
+        - [Ko-fi](https://ko-fi.com/tyrantlink)\\*
+        - [LiberaPay](https://liberapay.com/tyrantlink)\\*
+        - [GitHub Sponsors](https://github.com/sponsors/tyrantlink)\\*
+        - [Discord](https://discord.com/application-directory/1291501048493768784/store)\\*\\*
+    ''').strip()
 }
 
 
@@ -142,7 +142,10 @@ async def _help(
     # ? make this more dynamic if more options are added
     if page == 'donate':
         embed.set_footer(
-            text='* Discord takes a 15% cut, so the other options are preferred'
+            text=(
+                '* Rewards are not automatic, please contact the developer after you donate\n'
+                '** Discord takes a 15% cut, so the other options are preferred'
+            )
         )
 
     await _send_or_update(
