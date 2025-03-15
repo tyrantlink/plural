@@ -48,16 +48,15 @@ pub static UNSUPPORTED_EVENTS: [&str; 3] = [
 ];
 
 pub enum Response {
-    PUBLISHED,
-    DUPLICATE,
-    CACHED,
-    UNSUPPORTED
+    Published,
+    Duplicate,
+    Cached,
+    Unsupported
 }
 
 enum CacheHandler {
-    #[allow(non_camel_case_types)]
-    MERGE_CREATE,
-    DELETE
+    MergeCreate,
+    Delete
 }
 
 
@@ -66,21 +65,21 @@ pub async fn cache_and_publish(
     json: Value
 ) -> Result<Response, fred::error::Error> {
     if is_duplicate(&redis, &json).await? {
-        return Ok(Response::DUPLICATE);
+        return Ok(Response::Duplicate);
     }
 
     let pipeline = redis.pipeline();
 
     //? cloning here so i don't have to deal with the lifetime issues of the guild create event futures
     let mut response = if cache(&redis, &pipeline, json.clone()).await? {
-        Ok(Response::CACHED)
+        Ok(Response::Cached)
     } else {
-        Ok(Response::UNSUPPORTED)
+        Ok(Response::Unsupported)
     };
 
     if PUBLISHED_EVENTS.contains(&json["t"].as_str().unwrap_or("UNKNOWN")) {
         publish(&pipeline, &json).await?;
-        response = Ok(Response::PUBLISHED);
+        response = Ok(Response::Published);
     }
 
     let _: () = pipeline.all().await?;
@@ -136,7 +135,7 @@ async fn cache(
             key = format!("discord:message:{}", json["d"]["id"].as_str()
                 .expect("message id not found"));
             meta = json!([]);
-            handler = CacheHandler::MERGE_CREATE;
+            handler = CacheHandler::MergeCreate;
             expire = Some(3600);
 
             let author_id = json["d"]["author"]["id"].as_str()
@@ -184,14 +183,14 @@ async fn cache(
                 .expect("message id not found"));
             data = json["d"].clone();
             meta = json!([]);
-            handler = CacheHandler::DELETE;
+            handler = CacheHandler::Delete;
             expire = Some(3600);
         }
         "GUILD_CREATE" | "GUILD_UPDATE" => {
             key = format!("discord:guild:{}", json["d"]["id"].as_str()
                 .expect("guild id not found"));
             meta = json!(["channels", "emojis", "members", "roles"]);
-            handler = CacheHandler::MERGE_CREATE;
+            handler = CacheHandler::MergeCreate;
             expire = None;
 
             data = json["d"].clone();
@@ -383,7 +382,7 @@ async fn cache(
             );
             data = json["d"]["role"].clone();
             meta = json!([]);
-            handler = CacheHandler::MERGE_CREATE;
+            handler = CacheHandler::MergeCreate;
             expire = None;
 
             let _: () = pipeline.sadd(
@@ -403,7 +402,7 @@ async fn cache(
             );
             data = json["d"].clone();
             meta = json!([]);
-            handler = CacheHandler::DELETE;
+            handler = CacheHandler::Delete;
             expire = Some(86400);
 
             let _: () = pipeline.srem(
@@ -505,7 +504,7 @@ async fn cache(
             );
 
             meta = json!([]);
-            handler = CacheHandler::MERGE_CREATE;
+            handler = CacheHandler::MergeCreate;
             expire = None;
 
             let _: () = pipeline.sadd(
@@ -525,7 +524,7 @@ async fn cache(
             );
             data = json["d"].clone();
             meta = json!([]);
-            handler = CacheHandler::DELETE;
+            handler = CacheHandler::Delete;
             expire = Some(86400);
 
             if json["d"].get("guild_id").is_some() {
@@ -605,15 +604,15 @@ async fn cache(
     ).await?;
 
     match (handler, cached) {
-        (CacheHandler::MERGE_CREATE, Some(mut cached)) => {
+        (CacheHandler::MergeCreate, Some(cached)) => {
             let _: () = pipeline.json_mset(vec![
                 (&key, "deleted", Value::Bool(false)),
                 (&key, "error", Value::Number(0.into())),
                 (&key, "meta", meta),
-                (&key, "data", json_merge(&mut cached[0]["data"], &data))
+                (&key, "data", json_merge(&cached[0]["data"], &data))
             ]).await?;
         }
-        (CacheHandler::MERGE_CREATE, None) => {
+        (CacheHandler::MergeCreate, None) => {
             let _: () = pipeline.json_set(
                 &key,
                 "$",
@@ -621,7 +620,7 @@ async fn cache(
                 None,
             ).await?;
         }
-        (CacheHandler::DELETE, Some(_)) => {
+        (CacheHandler::Delete, Some(_)) => {
             let _: () = pipeline.json_mset(vec![
                 (&key, "deleted", Value::Bool(true)),
                 (&key, "error", Value::Number(0.into())),
@@ -629,7 +628,7 @@ async fn cache(
                 (&key, "meta", json!([]))
             ]).await?;
         }
-        (CacheHandler::DELETE, None) => {}
+        (CacheHandler::Delete, None) => {}
     }
 
     if let Some(expire) = expire {
@@ -661,7 +660,7 @@ async fn publish(
                     .duration_since(SystemTime::UNIX_EPOCH)
                     .expect("where we're going we won't need timestamps")
                     .as_millis()
-                    .saturating_sub(20_000 as u128)
+                    .saturating_sub(20_000_u128)
             ),
             None),
         "*",
@@ -736,11 +735,11 @@ async fn update_user(
     ).await?;
 
     match cached {
-        Some(mut cached) => {
+        Some(cached) => {
             let _: () = pipeline.json_set(
                 &key,
                 "data",
-                json_merge(&mut cached, json),
+                json_merge(&cached, json),
                 None,
             ).await?;
         }
@@ -799,11 +798,11 @@ async fn update_member(
     ).await?;
 
     match cached {
-        Some(mut cached) => {
+        Some(cached) => {
             let _: () = pipeline.json_set(
                 &key,
                 "data",
-                json_merge(&mut cached, json),
+                json_merge(&cached, json),
                 None,
             ).await?;
         }

@@ -49,7 +49,7 @@ fn calculate_version(commits: &[(String, String)]) -> String {
         .parse::<u32>()
         .unwrap_or(0);
 
-    let mut version = vec![0, 0, 0];
+    let mut version = [0, 0, 0];
 
     for (_, message) in commits {
         let prefix = message.trim().to_lowercase().chars().take(6).collect::<String>();
@@ -83,7 +83,7 @@ fn calculate_version(commits: &[(String, String)]) -> String {
 
 pub fn get_version(service: &str) -> String {
     calculate_version(
-        &find_start_commit(
+        find_start_commit(
             &read_commits(service)
         )
     )

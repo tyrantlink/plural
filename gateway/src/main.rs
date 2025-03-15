@@ -173,7 +173,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
         }
-    });
+    }).await?;
 
     signal::ctrl_c().await?;
 
@@ -222,19 +222,19 @@ async fn handle_message(json_str: String, redis: RedisClient) {
 
     match cache_and_publish(redis, json).await
     {
-        Ok(Response::PUBLISHED) => {
+        Ok(Response::Published) => {
             println!("published {}", event_name);
             span.set_attribute(KeyValue::new("result", "published"));
         }
-        Ok(Response::DUPLICATE) => {
+        Ok(Response::Duplicate) => {
             println!("duplicate {}", event_name);
             span.set_attribute(KeyValue::new("result", "duplicate"));
         }
-        Ok(Response::CACHED) => {
+        Ok(Response::Cached) => {
             println!("cached    {}", event_name);
             span.set_attribute(KeyValue::new("result", "cached"));
         }
-        Ok(Response::UNSUPPORTED) => {
+        Ok(Response::Unsupported) => {
             println!("unsupport {}", event_name);
             span.set_attribute(KeyValue::new("result", "unsupported"));
         }

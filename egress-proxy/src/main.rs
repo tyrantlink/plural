@@ -61,7 +61,7 @@ fn format_path(path: String) -> String {
     let path = path.strip_prefix("/api/v10").unwrap_or(&path);
 
     for (replacement, pattern) in PATH_PATTERNS.iter() {
-        if pattern.is_match(&path) {
+        if pattern.is_match(path) {
             return replacement.to_string();
         }
     }
@@ -195,7 +195,7 @@ async fn proxy_handler(
         let mut rate_limits = state.rate_limits.write();
         let token_buckets = rate_limits
             .entry(token.clone())
-            .or_insert_with(HashMap::new);
+            .or_default();
 
         if let Some(bucket) = &bucket {
             token_buckets
@@ -293,26 +293,15 @@ async fn proxy_handler(
                 let token_id = str::from_utf8(&_b64_token).unwrap();
 
                 let (limit, remaining, reset, bucket, content_encoding) = (
-                    match res.headers().get("X-RateLimit-Limit") {
-                        Some(limit) => limit.to_str().ok(),
-                        None => None,
-                    },
-                    match res.headers().get("X-RateLimit-Remaining") {
-                        Some(remaining) => remaining.to_str().ok(),
-                        None => None,
-                    },
-                    match res.headers().get("X-RateLimit-Reset") {
-                        Some(reset) => reset.to_str().ok(),
-                        None => None,
-                    },
-                    match res.headers().get("X-RateLimit-Bucket") {
-                        Some(bucket) => bucket.to_str().ok(),
-                        None => None,
-                    },
-                    match res.headers().get("Content-Encoding").cloned() {
-                        Some(encoding) => Some(encoding),
-                        None => None,
-                    }
+                    res.headers().get("X-RateLimit-Limit").and_then(
+                        |l| l.to_str().ok()),
+                    res.headers().get("X-RateLimit-Remaining").and_then(
+                        |r| r.to_str().ok()),
+                    res.headers().get("X-RateLimit-Reset").and_then(
+                        |r| r.to_str().ok()),
+                    res.headers().get("X-RateLimit-Bucket").and_then(
+                        |b| b.to_str().ok()),
+                    res.headers().get("Content-Encoding").cloned()
                 );
 
                 if bucket.is_some() {
@@ -407,10 +396,10 @@ async fn proxy_handler(
                         ));
                     }
 
-                    if bucket.is_some() {
+                    if let Some(bucket) = bucket {
                         attributes.push(KeyValue::new(
                             "rate_limit.bucket",
-                            bucket.unwrap().to_string()
+                            bucket.to_string()
                         ));
                     }
 
