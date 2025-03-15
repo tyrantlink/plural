@@ -153,9 +153,7 @@ async def save_debug_log(
         'proxy_debug',
         mapping={
             event['id']: log_dump,
-            **{
-                id: log_dump
-                for id in additional_ids}})
+            **dict.fromkeys(additional_ids, log_dump)})
     pipeline.hexpire(
         'proxy_debug',
         timedelta(hours=1),
