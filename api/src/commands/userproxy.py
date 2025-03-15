@@ -644,12 +644,11 @@ async def slash_userproxy_sync(
             'event_webhooks_types',
             'event_webhooks_url',
             'guilds'
-            'icon',
             'install_params',
             'integration_types_config',
             'interactions_endpoint_url',
             'username',
-        } | {'avatar'} if sync_avatar else set(),
+        } | ({'avatar', 'icon'} if sync_avatar else set()),
         None,
         False
     )
