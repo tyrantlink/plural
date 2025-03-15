@@ -161,7 +161,6 @@ async def message_plural_proxy_info(
     )
 
     if usergroup.data.supporter_tier == SupporterTier.SUPPORTER:
-        embed.fields[0].value = f'🌟{embed.fields[0].value}🌟'
         embed.footer.text += '\n🌟/plu/ral supporter🌟'
 
     await interaction.response.send_message(
