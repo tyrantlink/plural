@@ -223,20 +223,24 @@ async def _userproxy_sync(
             base_app_patch
         )
 
+    tasks = []
+
     if app_patch:
-        app = await app.patch(
+        tasks.append(app.patch(
             member.userproxy.token,
             app_patch
-        )
+        ))
 
     if bot_patch:
-        await request(
+        tasks.append(request(
             Route(
                 'PATCH',
                 '/users/@me',
                 member.userproxy.token),
             json=bot_patch
-        )
+        ))
+
+    await gather(*tasks)
 
 
 async def userproxy_sync(
