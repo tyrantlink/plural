@@ -654,14 +654,14 @@ async def slash_userproxy_sync(
     userproxy: ProxyMember,
     sync_avatar: bool = False
 ) -> None:
-    await _userproxy_sync(
+    await userproxy_sync(
         interaction,
         userproxy, {
             'commands',
             'event_webhooks_status',
             'event_webhooks_types',
             'event_webhooks_url',
-            'guilds'
+            'guilds',
             'install_params',
             'integration_types_config',
             'interactions_endpoint_url',
