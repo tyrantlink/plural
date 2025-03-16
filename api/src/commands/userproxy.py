@@ -159,6 +159,8 @@ async def _userproxy_sync(
             await app.bot.fetch_guilds(member.userproxy.token)
         }
 
+        await member.save()
+
     if not patch_filter or 'username' in patch_filter:
         bot_patch['username'] = (
             f'{member.name}' + (
