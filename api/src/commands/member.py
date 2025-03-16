@@ -379,7 +379,7 @@ async def slash_member_set_group(
 async def slash_member_set_meta(
     interaction: Interaction,
     member: ProxyMember,
-    meta: str | None
+    meta: str | None = None
 ) -> None:
     group = await member.get_group()
 
@@ -437,6 +437,8 @@ async def slash_member_set_name(
     if await group.get_member_by_name(name, member.meta) is not None:
         raise InteractionError(
             f'Member `{name}` with meta `{member.meta}` already exists in group `{group.name}`'
+            if member.meta else
+            f'Member `{name}` without meta field already exists in group `{group.name}`'
         )
 
     if member.userproxy is not None:
