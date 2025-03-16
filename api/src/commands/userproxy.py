@@ -785,7 +785,9 @@ async def slash_userproxy_set_nickname(
     if interaction.guild_id not in userproxy.userproxy.guilds:
         raise InteractionError(
             'Userproxy bot is not in this server.\n\n'
-            'Use {cmd_ref[userproxy invite]} to get an invite link'
+            'Use {cmd_ref[userproxy invite]} to get an invite link\n\n'
+            'If this error persists after running {cmd_ref[userproxy sync]}, '
+            'please wait a few minutes and try again'
         )
 
     try:
