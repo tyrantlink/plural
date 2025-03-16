@@ -266,14 +266,15 @@ async def button_delete_group(
         '_id': {'$in': list(group.members)}
     }, projection_model=DeletionMember).to_list()
 
-    await gather(
+    await gather(*[
         _delete_userproxy(userproxy)
         for userproxy in (
             member
             for member in members
             if member.userproxy
         )
-    )
+
+    ])
 
     for member in members:
         if member.avatar:
