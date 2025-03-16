@@ -152,10 +152,11 @@ async def message_plural_proxy_info(
         inline=False
     ).set_footer(
         'original message id: ' + (
-            db_message.original_id or (
-                'None (Userproxy command)'
-                if db_message.reason.startswith('Userproxy') else
-                'sent through /plu/ral api'))
+            str(db_message.original_id)
+            if db_message.original_id is not None else
+            'None (Userproxy command)'
+            if db_message.reason.startswith('Userproxy') else
+            'sent through /plu/ral api')
     ).set_thumbnail(
         message.author.avatar_url
     )
