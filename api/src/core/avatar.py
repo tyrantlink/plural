@@ -63,13 +63,18 @@ async def _download_avatar(
 
         data = bytearray()
 
-        async for chunk in response.content.iter_chunked(16384):
-            data.extend(chunk)
+        try:
+            async for chunk in response.content.iter_chunked(16384):
+                data.extend(chunk)
 
-            if not bypass_limit and len(data) > env.max_avatar_size:
-                raise PluralException(f'avatar {url} too large')
+                if not bypass_limit and len(data) > env.max_avatar_size:
+                    raise PluralException(f'avatar {url} too large')
 
-        image_hash = md5(data).hexdigest()
+            image_hash = md5(data).hexdigest()
+        except Exception as e:
+            raise PluralException(
+                f'failed to download avatar: {url} with reason {e}'
+            ) from e
 
     return Avatar(
         url=url,
