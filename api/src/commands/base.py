@@ -921,7 +921,7 @@ async def slash_stats(
     groups = await Group.find({
         '$or': [
             {'accounts': usergroup.id},
-            {'users': interaction.author_id}]
+            {f'users.{interaction.author_id}': {'$exists': True}}]
     }, projection_model=AvatarOnlyGroup).to_list()
 
     members = await ProxyMember.find({'_id': {'$in': list({

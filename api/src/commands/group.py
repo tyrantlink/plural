@@ -163,7 +163,7 @@ async def slash_group_accept(
     existing_group = await Group.find_one({
         '$or': [
             {'accounts': sharee.id},
-            {'users': interaction.author_id}],
+            {f'users.{interaction.author_id}': {'$exists': True}}],
         'name': group.name
     })
 
@@ -273,7 +273,7 @@ async def slash_group_new(
     if await Group.find_one({
         '$or': [
             {'accounts': usergroup.id},
-            {'users': interaction.author_id}],
+            {f'users.{interaction.author_id}': {'$exists': True}}],
         'name': name
     }):
         raise InteractionError(
@@ -635,7 +635,7 @@ async def slash_group_set_name(
     if await Group.find_one({
         '$or': [
             {'accounts': group.accounts},
-            {'users': interaction.author_id}],
+            {f'users.{interaction.author_id}': {'$exists': True}}],
         'name': name
     }):
         raise InteractionError(

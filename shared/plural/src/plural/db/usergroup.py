@@ -110,7 +110,7 @@ class Usergroup(BaseDocument):
         groups = await Group.find({
             '$or': [
                 {'accounts': self.id},
-                {'users': user_id}]
+                {f'users.{user_id}': {'$exists': True}}]
         }, projection_model=AvatarOnlyGroup).to_list()
 
         members = await ProxyMember.find({'_id': {'$in': list({

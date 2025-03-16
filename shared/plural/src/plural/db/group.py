@@ -96,7 +96,7 @@ class Group(BaseDocument):
             'name': 'default',
             '$or': [
                 {'accounts': usergroup_id},
-                {'users': user_id}]
+                {f'users.{user_id}': {'$exists': True}}]
         }) or Group(
             name='default',
             accounts={usergroup_id}

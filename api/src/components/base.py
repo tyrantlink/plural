@@ -111,7 +111,7 @@ async def button_delete_confirm(interaction: Interaction) -> None:
     groups = await Group.find({
         '$or': [
             {'accounts': usergroup.id},
-            {'users': interaction.author_id}]
+            {f'users.{interaction.author_id}': {'$exists': True}}]
     }).to_list()
 
     member_ids = set()

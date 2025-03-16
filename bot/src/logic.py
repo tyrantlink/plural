@@ -318,7 +318,7 @@ async def get_proxy_data(
     groups = await Group.find({
         '$or': [
             {'accounts': usergroup.id},
-            {'users': int(event['author']['id'])}]
+            {f'users.{event['author']['id']}': {'$exists': True}}]
     }).to_list()
 
     if not groups:
