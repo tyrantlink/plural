@@ -122,6 +122,7 @@ async def _on_application_command(interaction: Interaction) -> None:
                         options = subcommand.options or []
                     case ApplicationCommandOptionType.SUB_COMMAND:
                         qualified_name += f' {option.name}'
+                        command_options = option.options or []
                         options = subcommand.options or []
                         callback = option.callback
                     case _:
