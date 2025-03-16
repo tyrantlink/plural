@@ -1,9 +1,9 @@
 from dataclasses import dataclass
+from asyncio import gather, sleep
 from types import CoroutineType
 from datetime import timedelta
 from typing import Self, Any
 from hashlib import sha256
-from asyncio import gather
 from random import randint
 from time import time_ns
 from io import BytesIO
@@ -1073,16 +1073,18 @@ async def _process_proxy(
                 event.get('attachments', [])
             )]
 
-            if not original_deleted:
-                tasks.insert(0, request(
+            tasks.insert(0, (
+                request(
                     Route(
                         'DELETE',
                         '/channels/{channel_id}/messages/{message_id}',
                         token=env.bot_token,
                         channel_id=event['channel_id'],
                         message_id=event['id']),
-                    reason='/plu/ral proxy'
-                ))
+                    reason='/plu/ral proxy')
+                if not original_deleted else
+                sleep(0)
+            ))
 
             discord_responses = await gather(
                 *tasks,
