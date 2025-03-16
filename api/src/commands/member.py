@@ -4,6 +4,7 @@ from asyncio import gather
 
 from plural.db import Group, ProxyMember, Usergroup
 from plural.errors import InteractionError
+from plural.missing import MISSING
 
 from src.components import PAGES
 from src.core.models import env
@@ -714,7 +715,8 @@ async def slash_member_tags_list(
         name=member.name,
         icon_url=(
             member.avatar_url or
-                (await member.get_group()).avatar_url
+            (await member.get_group()).avatar_url or
+            MISSING
         )
     )
 
