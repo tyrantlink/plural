@@ -273,7 +273,6 @@ async def button_delete_group(
             for member in members
             if member.userproxy
         )
-
     ])
 
     for member in members:

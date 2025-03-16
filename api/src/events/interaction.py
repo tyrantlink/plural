@@ -114,7 +114,6 @@ async def _on_application_command(interaction: Interaction) -> None:
     while callback is None:
         subcommand = options[0]
         for option in command_options:
-
             if subcommand.name == option.name:
                 match option.type:
                     case ApplicationCommandOptionType.SUB_COMMAND_GROUP:
@@ -139,6 +138,13 @@ async def _on_application_command(interaction: Interaction) -> None:
     kwargs: dict[str, Any] = await parse_command_options(
         interaction, options
     )
+
+    for option in command_options:
+        if option.required and option.name not in kwargs:
+            raise InteractionError(
+                f'Option `{option.name}` is required',
+                footer='If you managed to submit this command without all required options, this is a Discord bug.'
+            )
 
     match command.type:
         case ApplicationCommandType.MESSAGE:
