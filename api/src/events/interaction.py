@@ -5,9 +5,9 @@ from typing import Any
 from beanie import PydanticObjectId
 
 from plural.errors import InteractionError, Forbidden
+from plural.otel import span, cx, get_counter
 from plural.missing import is_not_missing
 from plural.db import ProxyMember, Group
-from plural.otel import span, cx
 
 from src.core.errors import on_interaction_error
 from src.core.models import env
@@ -29,7 +29,7 @@ from src.discord import (
     Snowflake,
     Message,
     Channel,
-    User,
+    User
 )
 
 from .converter import member_converter, group_converter, proxy_tag_converter
@@ -135,6 +135,11 @@ async def _on_application_command(interaction: Interaction) -> None:
         f'{'/' if command.type == ApplicationCommandType.CHAT_INPUT else ''}{qualified_name}'
     )
 
+    get_counter('interaction.command').add(
+        1,
+        {'command': qualified_name}
+    )
+
     kwargs: dict[str, Any] = await parse_command_options(
         interaction, options
     )
@@ -176,6 +181,11 @@ async def _on_message_component(interaction: Interaction) -> None:
         f'{interaction.data.component_type.name} {component_name}'
     )
 
+    get_counter('interaction.component').add(
+        1,
+        {'component': component_name}
+    )
+
     triggered_component = components.get(component_name)
 
     if triggered_component is None or not is_not_missing(triggered_component.callback):
@@ -206,6 +216,11 @@ async def _on_modal_submit(interaction: Interaction) -> None:
 
     cx().update_name(
         f'MODAL_SUBMIT {component_name}'
+    )
+
+    get_counter('interaction.component').add(
+        1,
+        {'component': component_name}
     )
 
     triggered_component = components.get(component_name)

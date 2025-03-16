@@ -4,6 +4,7 @@ from logging import Filter, LogRecord, getLogger
 from typing import TYPE_CHECKING
 
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.propagate import set_global_textmap, extract, inject as _inject
 from opentelemetry.propagators.textmap import default_setter
@@ -25,6 +26,18 @@ from opentelemetry.trace import (
     set_tracer_provider,
     SpanKind,
     get_current_span
+)
+from opentelemetry.sdk.metrics.export import (
+    PeriodicExportingMetricReader,
+
+)
+from opentelemetry.sdk.metrics import (
+    MeterProvider,
+    Meter
+)
+from opentelemetry.metrics import (
+    get_meter as _get_meter,
+    set_meter_provider
 )
 
 from .env import env, INSTANCE
@@ -48,6 +61,8 @@ __all__ = (
 
 
 set_global_textmap(TraceContextTextMapPropagator())
+
+otel_resource: Resource
 
 
 class SuppressMissingModuleNameError(Filter):
@@ -80,35 +95,49 @@ class FakeServerError:
     text = 'Connection Reset by Peer'
 
 
+def _retry_export(self, serialized_data: bytes):  # noqa: ANN001, ANN202
+    from opentelemetry.exporter.otlp.proto.http import Compression
+    from io import BytesIO
+    import gzip
+    import zlib
+
+    data = serialized_data
+    if self._compression == Compression.Gzip:
+        gzip_data = BytesIO()
+        with gzip.GzipFile(fileobj=gzip_data, mode="w") as gzip_stream:
+            gzip_stream.write(serialized_data)
+        data = gzip_data.getvalue()
+    elif self._compression == Compression.Deflate:
+        data = zlib.compress(serialized_data)
+
+    try:
+        return self._session.post(
+            url=self._endpoint,
+            data=data,
+            verify=self._certificate_file,
+            timeout=self._timeout,
+            cert=self._client_cert)
+    except ConnectionError:
+        return FakeServerError()
+
+
 class RetryOTLPSpanExporter(OTLPSpanExporter):
-    def _export(self, serialized_data: bytes):  # noqa: ANN202
-        from opentelemetry.exporter.otlp.proto.http import Compression
-        from io import BytesIO
-        import gzip
-        import zlib
+    _export = _retry_export
 
-        data = serialized_data
-        if self._compression == Compression.Gzip:
-            gzip_data = BytesIO()
-            with gzip.GzipFile(fileobj=gzip_data, mode="w") as gzip_stream:
-                gzip_stream.write(serialized_data)
-            data = gzip_data.getvalue()
-        elif self._compression == Compression.Deflate:
-            data = zlib.compress(serialized_data)
 
-        try:
-            return self._session.post(
-                url=self._endpoint,
-                data=data,
-                verify=self._certificate_file,
-                timeout=self._timeout,
-                cert=self._client_cert)
-        except ConnectionError:
-            return FakeServerError()
+class RetryOTLPMetricExporter(OTLPMetricExporter):
+    _export = _retry_export
 
 
 def get_tracer(name: str | None = None) -> Tracer:
     return _get_tracer(name or '')
+
+
+def get_counter(name: str) -> Meter:
+    return _get_meter(
+        otel_resource.attributes.get('service.name'),
+        otel_resource.attributes.get('service.version')
+    ).create_counter(name)
 
 
 def span(
@@ -135,16 +164,32 @@ def span(
 
 
 def init_otel(name: str, version: str) -> None:
-    tracer_provider = TracerProvider(resource=Resource({
+    global otel_resource
+
+    otel_resource = Resource({
         'service.name': name,
         'service.version': version,
         'service.instance.id': INSTANCE,
         'deployment.environment.name': (
             'dev' if env.dev else 'prod'
-        ),
-    }))
+        )
+    })
+
+    tracer_provider = TracerProvider(resource=otel_resource)
 
     set_tracer_provider(tracer_provider)
+
+    meter_provider = MeterProvider(
+        resource=otel_resource,
+        metric_readers=[
+            PeriodicExportingMetricReader(
+                RetryOTLPMetricExporter(),
+                60000
+            )
+        ]
+    )
+
+    set_meter_provider(meter_provider)
 
     getLogger(
         'opentelemetry.sdk.trace'

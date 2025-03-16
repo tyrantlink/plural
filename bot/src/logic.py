@@ -14,7 +14,7 @@ from orjson import dumps
 
 from plural.errors import PluralExceptionCritical, HTTPException, Unauthorized
 from plural.db.enums import AutoProxyMode, ReplyFormat
-from plural.otel import span, cx
+from plural.otel import span, cx, get_counter
 from plural.db import (
     ProxyMember,
     Usergroup,
@@ -1028,7 +1028,8 @@ async def _process_proxy(
                 ('guild' if proxy.autoproxy.guild else 'global')
                 if proxy.autoproxy else 'none'),
             'proxy.reason': proxy.reason,
-            'proxy.cloned_emojis': 0
+            'proxy.cloned_emojis': 0,
+            'proxy.attachment_size': total_filesize,
         }
     ):
         await redis.set(
@@ -1172,6 +1173,11 @@ async def _process_proxy(
                     '$.data.__plural_last_webhook',
                     1
                 )
+
+        get_counter('proxies').add(
+            1,
+            {'type': name}
+        )
 
         await gather(
             pipeline.execute(),
