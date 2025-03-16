@@ -79,7 +79,7 @@ async def post__event(
             if member is None:
                 return Response(status_code=204)
 
-            member.userproxy.guilds.add(int(event.event.data['guild']['id']))
+            member.userproxy.guilds.add(int(event.event.data.guild.id))
 
             await member.save()
         case EventWebhooksType.ENTITLEMENT_CREATE:
