@@ -12,9 +12,14 @@ from regex import match, finditer, escape, sub, IGNORECASE
 from beanie import PydanticObjectId
 from orjson import dumps
 
-from plural.errors import PluralExceptionCritical, HTTPException, Unauthorized
 from plural.db.enums import AutoProxyMode, ReplyFormat
 from plural.otel import span, cx, get_counter
+from plural.errors import (
+    PluralExceptionCritical,
+    HTTPException,
+    Unauthorized,
+    NotFound
+)
 from plural.db import (
     ProxyMember,
     Usergroup,
@@ -1201,10 +1206,14 @@ async def webhook_handler(
         f'discord:channel:{event['channel_id']}'
     )
 
-    webhook = await get_webhook(
-        event,
-        channel.data.get('__plural_last_member') != proxy.last_member_string
-    )
+    try:
+        webhook = await get_webhook(
+            event,
+            channel.data.get('__plural_last_member') != proxy.last_member_string)
+    except NotFound:
+        _debug_log.append(
+            'Bot does not have permission to create webhooks.')
+        return ProxyResponse.failure(False)
 
     if webhook.get('application_id', '1') is not None:
         # ? webhooks created by users don't need emojis cloned
