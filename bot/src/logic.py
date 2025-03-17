@@ -1070,15 +1070,7 @@ async def _process_proxy(
             if not response.success:
                 continue
 
-            tasks = [await create_request(
-                response.endpoint,
-                response.token,
-                response.json,
-                response.params,
-                event.get('attachments', [])
-            )]
-
-            tasks.insert(0, (
+            tasks = [
                 request(
                     Route(
                         'DELETE',
@@ -1088,8 +1080,15 @@ async def _process_proxy(
                         message_id=event['id']),
                     reason='/plu/ral proxy')
                 if not original_deleted else
-                sleep(0)
-            ))
+                sleep(0),
+                await create_request(
+                    response.endpoint,
+                    response.token,
+                    response.json,
+                    response.params,
+                    event.get('attachments', [])
+                )
+            ]
 
             discord_responses = await gather(
                 *tasks,
@@ -1120,6 +1119,10 @@ async def _process_proxy(
                         raise PluralExceptionCritical(
                             'Proxy deleted original message but failed to send proxy.'
                         ) from discord_responses[1]
+
+                    debug_log.append(
+                        'Userproxy bot failed to send message in this channel.')
+                    await redis.delete(f'discord:member:{event['guild_id']}:{proxy.member.userproxy.bot_id}')
                 case (_delete, message):
                     debug_log.append(
                         'Successfully proxied message.')
