@@ -215,6 +215,8 @@ async def button_import_anyway(
 
     await redis.delete(f'pending_import:{key}')
 
+    log = '\n'.join(logs)
+
     await interaction.followup.edit_message(
         '@original',
         components=[],
@@ -224,7 +226,7 @@ async def button_import_anyway(
                 '\n'.join([
                     'Import produced the following logs:',
                     '```',
-                    *logs,
+                    log if len(log) < 4040 else f'{log[:4037]}...',
                     '```'])
                 if logs else
                 'No errors found'

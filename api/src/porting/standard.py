@@ -383,12 +383,20 @@ class StandardExport(BaseExport):
                     avatar.url,
                     GENERAL_SESSION)
                 for avatar in valid_avatars
-            ])
+            ], return_exceptions=True)
+
+        for hash in avatar_hashes:
+            if isinstance(hash, BaseException):
+                self.logs.append(str(hash))
 
         avatar_map = dict(zip([
             avatar.parent_id
             for avatar in valid_avatars],
-            avatar_hashes,
+            [
+            hash
+            if isinstance(hash, str) else
+            None
+            for hash in avatar_hashes],
             strict=True
         ))
 
