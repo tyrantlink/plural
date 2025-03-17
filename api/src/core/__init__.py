@@ -6,6 +6,9 @@ from typing import Any
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Response, Request
+from fastapi.routing import APIRoute
+from starlette.routing import Match
+from regex import compile
 
 from plural.db import mongo_init, redis_init
 from plural.utils import create_strong_task
@@ -15,6 +18,25 @@ from plural.otel import span
 
 from src.core.version import VERSION
 from src.core.models import env
+
+
+PATH_PATTERN = compile(
+    r'{(.*?)}'
+)
+
+PATH_OVERWRITES = {
+    '/messages/:message_id': '/messages/:id'
+}
+
+SUPPRESSED_PATHS = {
+    '/healthcheck',
+    '/swdocs',
+    '/docs',
+    '/userproxy/interaction',
+    '/discord/interaction',
+    '/interaction',
+    '/__redis/:command/:key/:value'
+}
 
 
 @asynccontextmanager
@@ -147,6 +169,45 @@ async def set_client_ip(
         request.scope['client'] = (client_ip, request.scope['client'][1])
 
     return await call_next(request)
+
+
+@app.middleware('http')
+async def otel_trace(
+    request: Request,
+    call_next: Callable[..., Awaitable[Any]]
+) -> Any:  # noqa: ANN401
+    for route in app.routes:
+        match, data = route.matches(request.scope)
+
+        if match == Match.FULL and isinstance(route, APIRoute):
+            break
+    else:
+        return await call_next(request)
+
+    raw_path = PATH_PATTERN.sub(r':\1', route.path)
+
+    if raw_path in SUPPRESSED_PATHS:
+        return await call_next(request)
+
+    with span(
+        f'{request.method} {PATH_OVERWRITES.get(raw_path, raw_path)}',
+        attributes={
+            'path': request.url.path,
+            'method': request.method,
+            'path_params': [
+                f'{key}={value}'
+                for key, value in data.get('path_params', {}).items()],
+            'query_params': [
+                f'{key}={value}'
+                for key, value in dict(request.query_params).items()
+            ]
+        }
+    ) as current_span:
+        response = await call_next(request)
+
+    response.headers['x-trace-id'] = f'{current_span.context.trace_id:x}'
+
+    return response
 
 
 @app.get('/')

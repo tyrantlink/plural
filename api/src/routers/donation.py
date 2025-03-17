@@ -13,8 +13,6 @@ from plural.otel import cx
 from src.core.http import request, Route
 from src.core.models import env
 
-from .otel import trace
-
 
 router = APIRouter(include_in_schema=False)
 
@@ -57,7 +55,6 @@ async def patreon_validator(
 @router.post(
     '/donation/patreon',
     dependencies=[Depends(patreon_validator)])
-@trace('/donation/patreon')
 async def post__donation_patreon(
     request: Request,
     data: dict

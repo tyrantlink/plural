@@ -1,11 +1,9 @@
 from datetime import datetime, UTC
 
 from fastapi.responses import Response
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 
 from plural.db import redis, Message
-
-from .otel import trace
 
 
 router = APIRouter(prefix='/messages', tags=['Messages'])
@@ -20,9 +18,7 @@ def _snowflake_to_age(snowflake: int) -> float:
 
 
 @router.head('/{message_id}')
-# @trace('/messages/:message_id')
 async def head__message(
-    request: Request,  # noqa: ARG001
     message_id: int
 ) -> Response:
     if _snowflake_to_age(message_id) > 604_800:  # 7 days
