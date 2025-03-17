@@ -28,12 +28,11 @@ from opentelemetry.trace import (
     get_current_span
 )
 from opentelemetry.sdk.metrics.export import (
-    PeriodicExportingMetricReader,
-
+    PeriodicExportingMetricReader
 )
 from opentelemetry.sdk.metrics import (
     MeterProvider,
-    Meter
+    Counter
 )
 from opentelemetry.metrics import (
     get_meter as _get_meter,
@@ -133,7 +132,7 @@ def get_tracer(name: str | None = None) -> Tracer:
     return _get_tracer(name or '')
 
 
-def get_counter(name: str) -> Meter:
+def get_counter(name: str) -> Counter:
     return _get_meter(
         otel_resource.attributes.get('service.name'),
         otel_resource.attributes.get('service.version')
