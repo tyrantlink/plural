@@ -140,17 +140,20 @@ async def autocomplete_member(
 
         responses = [
             ApplicationCommand.Option.Choice(
-                name=((
+                name=(base_name + (
+                    f' ({member.meta[:97-len(base_name)]})'
+                    if member.meta else
+                    ''
+                ))[:100],
+                value=str(member.id))
+            for member, group in members[:25]
+            if (
+                base_name := (
                     f'[{group.name}] '
                     if not hide_groups else
                     ''
-                ) + member.name + (
-                    f' ({member.meta})'
-                    if member.meta else
-                    ''
-                )),
-                value=str(member.id))
-            for member, group in members[:25]
+                ) + member.name
+            )
         ]
 
         if sort:

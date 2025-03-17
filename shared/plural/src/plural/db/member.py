@@ -126,7 +126,7 @@ class ProxyMember(BaseDocument):
     meta: str = Field(
         '',
         description='the meta information of the member; only shown in autocomplete',
-        max_length=20)
+        max_length=50)
     avatar: str | None = Field(
         None,
         description='the avatar hash of the member')

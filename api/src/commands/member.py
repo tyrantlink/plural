@@ -385,7 +385,7 @@ async def slash_member_set_meta(
 
     group_edit_check(group, interaction.author_id)
 
-    if await group.get_member_by_name(member.name, meta) is not None:
+    if await group.get_member_by_name(member.name, meta or '') is not None:
         raise InteractionError(
             f'Member `{member.name}` with meta `{meta}` already exists in group `{group.name}`'
             if meta else
