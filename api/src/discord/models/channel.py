@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 from src.discord.models.base import RawBaseModel
 
+from src.discord.enums import ChannelType
+
 if TYPE_CHECKING:
     from datetime import datetime
 
@@ -15,7 +17,6 @@ if TYPE_CHECKING:
         ForumLayoutType,
         OverwriteType,
         SortOrderType,
-        ChannelType,
         ChannelFlag,
         Permission
     )
@@ -159,6 +160,13 @@ class Channel(RawBaseModel):
     @property
     def mention(self) -> str:
         return f'<#{self.id}>'
+
+    @property
+    def is_thread(self) -> bool:
+        return self.type in (
+            ChannelType.PUBLIC_THREAD,
+            ChannelType.PRIVATE_THREAD
+        )
 
 
 class ChannelMention(RawBaseModel):

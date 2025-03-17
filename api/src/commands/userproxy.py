@@ -310,7 +310,13 @@ async def _permission_check(
 
     error = ''
 
-    if not interaction.member.permissions & Permission.SEND_MESSAGES:
+    if not (
+        interaction.member.permissions & Permission.SEND_MESSAGES or (
+            interaction.member.permissions & Permission.SEND_MESSAGES_IN_THREADS and
+            interaction.channel and
+            interaction.channel.is_thread
+        )
+    ):
         error = 'you do not have permission to send messages in this channel'
 
     if not interaction.member.permissions & Permission.USE_EXTERNAL_APPS:
