@@ -18,6 +18,7 @@ from plural.errors import (
     PluralExceptionCritical,
     HTTPException,
     Unauthorized,
+    Forbidden,
     NotFound
 )
 from plural.db import (
@@ -508,7 +509,7 @@ async def get_webhook(
         await on_webhooks_update({
             'channel_id': channel_id,
             'guild_id': event['guild_id']
-        }, time_ns())
+        }, time_ns(), True)
 
         webhooks: list[dict] | None = await redis.json().get(
             f'discord:webhooks:{channel_id}'
@@ -1200,7 +1201,7 @@ async def _process_proxy(
 async def webhook_handler(
     event: dict,
     proxy: ProxyData,
-    _debug_log: list[str],
+    debug_log: list[str],
     emojis: list[ClonedEmoji]
 ) -> ProxyResponse:
     original_content = proxy.content
@@ -1213,8 +1214,8 @@ async def webhook_handler(
         webhook = await get_webhook(
             event,
             channel.data.get('__plural_last_member') != proxy.last_member_string)
-    except NotFound:
-        _debug_log.append(
+    except (NotFound, Forbidden):
+        debug_log.append(
             'Bot does not have permission to create webhooks.')
         return ProxyResponse.failure(False)
 

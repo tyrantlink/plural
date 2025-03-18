@@ -1,8 +1,10 @@
-from asyncio import gather
+from asyncio import gather, sleep
+from contextlib import suppress
 
 from orjson import loads
 
 from plural.db import redis, Message, ProxyMember
+from plural.errors import Forbidden
 from plural.otel import span
 
 from .logic import process_proxy, get_webhook
@@ -39,6 +41,36 @@ def _preproxy_check(event: dict) -> bool:
         event.get('guild_id') is None or
         event.get('type') not in {0, 19}
     )
+
+
+async def _send_error_message(
+    channel_id: str,
+    message_id: str
+) -> None:
+    with suppress(Forbidden):
+        error_message = await request(
+            Route(
+                'POST',
+                '/channels/{channel_id}/messages',
+                token=env.bot_token,
+                channel_id=channel_id),
+            json={
+                'content': (
+                    'Failed to delete this message, missing permissions.\n\n'
+                    '(This message will be deleted in 10 seconds)'),
+                'message_reference': {'message_id': message_id}
+            }
+        )
+
+        await sleep(10)
+
+        await request(Route(
+            'DELETE',
+            '/channels/{channel_id}/messages/{message_id}',
+            token=env.bot_token,
+            channel_id=channel_id,
+            message_id=error_message['id']
+        ))
 
 
 async def on_message_create(event: dict, start_time: int) -> None:
@@ -102,20 +134,22 @@ async def on_reaction_add(event: dict, start_time: int) -> None:
                 )
             )
 
-            await request(
-                Route(
-                    'DELETE',
-                    '/webhooks/{webhook_id}/{webhook_token}/messages/{message_id}',
-                    token=env.bot_token,
-                    webhook_id=webhook['id'],
-                    webhook_token=webhook['token'],
-                    message_id=event['message_id']),
-                params=(
-                    {'thread_id': event['channel_id']}
-                    if channel.data.get('type') in {11, 12}
-                    else None
-                )
-            )
+            try:
+                await request(
+                    Route(
+                        'DELETE',
+                        '/webhooks/{webhook_id}/{webhook_token}/messages/{message_id}',
+                        token=env.bot_token,
+                        webhook_id=webhook['id'],
+                        webhook_token=webhook['token'],
+                        message_id=event['message_id']),
+                    params=(
+                        {'thread_id': event['channel_id']}
+                        if channel.data.get('type') in {11, 12}
+                        else None))
+            except Forbidden:
+                await _send_error_message(event['channel_id'], event['id'])
+
             return
 
         member = await ProxyMember.find_one({
@@ -132,7 +166,11 @@ async def on_reaction_add(event: dict, start_time: int) -> None:
         ))
 
 
-async def on_webhooks_update(event: dict, start_time: int) -> None:
+async def on_webhooks_update(
+    event: dict,
+    start_time: int,
+    internal: bool = False
+) -> None:
     with span(
         'webhooks update',
         start_time=start_time,
@@ -145,12 +183,16 @@ async def on_webhooks_update(event: dict, start_time: int) -> None:
 
         await pipeline.delete(f'discord:webhooks:{event['channel_id']}')
 
-        webhooks = await request(Route(
-            'GET',
-            '/channels/{channel_id}/webhooks',
-            token=env.bot_token,
-            channel_id=event['channel_id']
-        ))
+        try:
+            webhooks = await request(Route(
+                'GET',
+                '/channels/{channel_id}/webhooks',
+                token=env.bot_token,
+                channel_id=event['channel_id']))
+        except Forbidden:
+            if internal:
+                raise
+            return
 
         await pipeline.json().set(
             f'discord:webhooks:{event['channel_id']}',
