@@ -471,7 +471,9 @@ async def slash_userproxy_invite(
                 '[Invite the bot to a server]'
                 '(https://discord.com/oauth2/authorize?client_id='
                 f'{userproxy.userproxy.bot_id}&permissions=0'
-                '&integration_type=0&scope=bot)'
+                '&integration_type=0&scope=bot)\n\n'
+                '[See documentation](https://plural.gg/guide/userproxies#userproxies-in-servers)'
+                ' for more information about userproxies in servers'
             )
         )]
     )
