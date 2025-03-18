@@ -1,3 +1,6 @@
+from asyncio import Task, gather, create_task, get_event_loop
+from collections.abc import Coroutine
+from signal import SIGINT, SIGTERM
 from contextlib import suppress
 from traceback import print_exc
 from time import time_ns
@@ -12,19 +15,38 @@ from aiohttp.web import (
 )
 
 from plural.db import redis_init, mongo_init
-from plural.utils import create_strong_task
 from plural.env import INSTANCE
 from plural.otel import span
 
 
 READY = False
+SHUTDOWN = False
+RUNNING: set[Task] = set()
+
+
+def create_strong_task(coroutine: Coroutine) -> Task:
+    task = create_task(coroutine)
+
+    RUNNING.add(task)
+
+    task.add_done_callback(RUNNING.discard)
+
+    return task
+
+
+def shutdown() -> None:
+    global SHUTDOWN
+    SHUTDOWN = True
 
 
 async def event_listener() -> None:
-    global READY
+    global READY, SHUTDOWN
     with span(f'initializing bot instance {INSTANCE}'):
         await redis_init()
         await mongo_init()
+
+    for signal in (SIGINT, SIGTERM):
+        get_event_loop().add_signal_handler(signal, shutdown)
 
     from plural.db import redis
 
@@ -40,14 +62,14 @@ async def event_listener() -> None:
 
     READY = True
 
-    while True:
+    while not SHUTDOWN:
         try:
             data = await redis.xreadgroup(
                 groupname='plural_consumers',
                 consumername='plural_worker',
                 streams={'discord_events': '>'},
                 count=1,
-                block=5000,
+                block=2500,
             )
 
             if not data:
@@ -58,10 +80,19 @@ async def event_listener() -> None:
         except Exception:  # noqa: BLE001
             print_exc()
 
+    if RUNNING:
+        print(f'Waiting for {len(RUNNING)} tasks to finish...')  # noqa: T201
+
+    await gather(*RUNNING)
+
+    from src.http import GENERAL_SESSION, DISCORD_SESSION
+    await GENERAL_SESSION.close()
+    await DISCORD_SESSION.close()
+
 
 async def healthcheck(
     _request: Request
-) -> None:
+) -> Response:
     global READY
     return Response(status=204 if READY else 503)
 
