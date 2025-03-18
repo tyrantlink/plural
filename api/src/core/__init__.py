@@ -203,8 +203,11 @@ async def otel_trace(
             ]
         }
     ) as current_span:
-        response = await call_next(request)
-        current_span.set_attribute('http.status_code', response.status_code)
+        try:
+            response = await call_next(request)
+        except:
+            current_span.set_attribute('http.status_code', 500)
+            raise
 
     response.headers['x-trace-id'] = f'{current_span.context.trace_id:x}'
 
