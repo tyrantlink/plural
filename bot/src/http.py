@@ -200,17 +200,17 @@ async def request(
     if reason:
         headers['X-Audit-Log-Reason'] = quote(reason, safe='/ ')
 
-    if form:
-        form_data = FormData(quote_fields=False)
-        for param in form:
-            form_data.add_field(**param)
-        data = form_data
-
     response: ClientResponse | None = None
 
     for tries in range(5):
         for f in files or []:
             f.reset(seek=tries)
+
+        if form:
+            form_data = FormData(quote_fields=False)
+            for param in form:
+                form_data.add_field(**param)
+            data = form_data
 
         try:
             async with DISCORD_SESSION.request(
