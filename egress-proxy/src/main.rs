@@ -58,10 +58,12 @@ lazy_static! {
 }
 
 fn format_path(path: String) -> String {
-    let path = path.strip_prefix("/api/v10").unwrap_or(&path);
+    let path = path.strip_prefix("/api/v10")
+        .unwrap_or(&path)
+        .replace("@me", "1"); // 1 gets replaced with :id
 
     for (replacement, pattern) in PATH_PATTERNS.iter() {
-        if pattern.is_match(path) {
+        if pattern.is_match(&path) {
             return replacement.to_string();
         }
     }
