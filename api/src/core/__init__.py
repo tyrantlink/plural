@@ -192,18 +192,19 @@ async def otel_trace(
     with span(
         f'{request.method} {PATH_OVERWRITES.get(raw_path, raw_path)}',
         attributes={
-            'path': request.url.path,
-            'method': request.method,
-            'path_params': [
+            'http.path': request.url.path,
+            'http.method': request.method,
+            'http.path_params': [
                 f'{key}={value}'
                 for key, value in data.get('path_params', {}).items()],
-            'query_params': [
+            'http.query_params': [
                 f'{key}={value}'
                 for key, value in dict(request.query_params).items()
             ]
         }
     ) as current_span:
         response = await call_next(request)
+        current_span.set_attribute('http.status_code', response.status_code)
 
     response.headers['x-trace-id'] = f'{current_span.context.trace_id:x}'
 
