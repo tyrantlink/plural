@@ -1009,9 +1009,10 @@ async def slash_switch(
     expiry: str | None = None
 ) -> None:
     enable = (
-        isinstance(member, str) and
         member.lower() not in
         {'off', 'out', 'disable'}
+        if isinstance(member, str) else
+        True
     )
 
     await slash_autoproxy.callback(
