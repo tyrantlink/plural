@@ -7,11 +7,13 @@ from enum import Enum
 
 from plural.db import Usergroup, Guild, Group, ProxyMember
 from plural.db.enums import ReplyFormat, PaginationStyle
+from plural.db.member import DEFAULT_NAME_FORMAT
 from plural.missing import MISSING
 from plural.otel import span
 
 from src.discord import (
     insert_cmd_ref,
+    TextInputStyle,
     string_select,
     ButtonStyle,
     Interaction,
@@ -19,6 +21,7 @@ from src.discord import (
     Permission,
     SelectMenu,
     ActionRow,
+    TextInput,
     button,
     Embed,
     Emoji,
@@ -37,6 +40,7 @@ class ConfigOptionType(Enum):
     BOOLEAN = 0
     SELECT = 1
     CHANNEL = 2
+    STRING = 3
 
 
 @dataclass
@@ -48,6 +52,7 @@ class ConfigOption:
     docs: str | None = None
     parser: Callable[[str], Any] | None = None
     channel_types: list[ChannelType] | None = None
+    text_inputs: list[TextInput] | None = None
 
 
 CONFIG_OPTIONS = {
@@ -127,7 +132,25 @@ CONFIG_OPTIONS = {
                 If disabled, you'll only see the total value inserted into your original message
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
-            parser=lambda value: value == 'Enabled')},
+            parser=lambda value: value == 'Enabled'),
+        # 'name_format': ConfigOption(
+        #     name='Name Format',
+        #     description=dedent('''
+        #         The format for member names.
+
+        #         Available fields:
+        #         - name: The member's name (required)
+        #         - pronouns: The member's pronouns, if set (optional)
+        #         - tag: The group tag, if set (optional)
+
+        #         use curly braces, along with
+        #     ''').strip(),
+        #     type=ConfigOptionType.STRING,
+        #     text_inputs=[TextInput(
+        #         style=TextInputStyle.TEXT,
+        #         placeholder=DEFAULT_NAME_FORMAT)],
+        #     parser=lambda value: value)
+    },
     'userproxy': {
         'reply_format': ConfigOption(
             name='Server Reply Format',
@@ -364,6 +387,7 @@ async def select_config_value(
 
     await parent.save()
 
+    synced = False
     if category == 'userproxy':
         synced = await userproxy_sync(
             interaction,
@@ -434,6 +458,7 @@ async def _button_bool(
 
     await parent.save()
 
+    synced = False
     if category == 'userproxy':
         synced = await userproxy_sync(
             interaction,
