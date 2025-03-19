@@ -1,4 +1,5 @@
-use caith::{Roller, RollResultType};
+use caith::{Roller, RollResultType, RollHistory};
+use rand::{thread_rng, seq::SliceRandom};
 use pyo3::prelude::*;
 
 #[pyfunction]
@@ -11,12 +12,25 @@ fn roll(input: &str) -> PyResult<(String, String)> {
     match result.get_result() {
         RollResultType::Single(result) => {Ok((
             result.get_history().iter().map(|roll| {
-                roll.to_string()
+                match roll {
+                    RollHistory::Roll(rolls) => {
+                        let mut values = rolls.iter().map(|roll| {
+                            roll.res
+                        }).collect::<Vec<u64>>();
+
+                        values.shuffle(&mut thread_rng());
+
+                        format!("[{}]", values.iter().map(|r| {
+                            r.to_string()
+                        }).collect::<Vec<String>>().join(", "))}
+                    _ => roll.to_string()}
             }).collect::<Vec<String>>().join(""),
             result.get_total().to_string()
         ))}
         _ => {
-            Ok((String::from("Error"), String::new()))
+            Err(pyo3::exceptions::PyValueError::new_err(
+                "Only single rolls are supported",
+            ))
         }
     }
 }

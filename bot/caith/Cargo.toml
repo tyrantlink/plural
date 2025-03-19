@@ -10,5 +10,6 @@ crate-type = ["cdylib"]
 [dependencies]
 caith = "4.2.4 "
 pyo3 = { version = "0.24.0", features = ["extension-module"] }
+rand = "0.8.5"
 
 [workspace]
