@@ -1,4 +1,4 @@
-from asyncio import gather, sleep, to_thread
+from asyncio import gather, sleep, to_thread, timeout
 from urllib.parse import urlparse, parse_qs
 from dataclasses import dataclass
 from types import CoroutineType
@@ -872,16 +872,22 @@ async def insert_blocks(
         if len(rolls) >= 10:
             continue
 
-        rolls.append((block.group(0), to_thread(do_roll, block.group(1))))
+        rolls.append((
+            block.group(0),
+            to_thread(do_roll, block.group(1))
+        ))
 
     if not rolls:
         return content, {}, True
 
     st = perf_counter()
-    results = await gather(
-        *(roll[1] for roll in rolls),
-        return_exceptions=True
-    )
+    try:
+        async with timeout(1):
+            results = await gather(
+                *(roll[1] for roll in rolls),
+                return_exceptions=True)
+    except TimeoutError:
+        return content, {}, True
     et = perf_counter()
 
     final_results = []
@@ -1448,6 +1454,14 @@ async def userproxy_handler(
 
     publish_latency = publish_latency and block_publish_latency
 
+    embeds = []
+
+    if roll_embed:
+        usergroup = await Usergroup.get_by_user(int(event['author']['id']))
+
+        if usergroup.config.roll_embed:
+            embeds.append(roll_embed)
+
     return ProxyResponse(
         success=True,
         endpoint=f'/channels/{event['channel_id']}/messages',
@@ -1467,7 +1481,7 @@ async def userproxy_handler(
                 & int(event.get('flags', 0)) ^
                 1 << 12  # ? suppress notifications
             ) if event.get('mentions') else None,
-            'embeds': [roll_embed] if roll_embed else []},
+            'embeds': embeds},
         params={},
         token=proxy.member.userproxy.token,
         publish_latency=publish_latency
