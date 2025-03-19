@@ -1,3 +1,5 @@
+from collections.abc import Coroutine
+from asyncio import Task, create_task
 from time import time
 
 from fastapi.responses import Response, JSONResponse
@@ -13,7 +15,6 @@ from src.discord import (
     Interaction,
 )
 
-from plural.utils import create_strong_task
 from plural.db import ProxyMember, redis
 
 from .donation import make_donator
@@ -21,6 +22,17 @@ from .donation import make_donator
 
 router = APIRouter(include_in_schema=False)
 PONG = JSONResponse({'type': 1})
+RUNNING: set[Task] = set()
+
+
+def create_strong_task(coroutine: Coroutine) -> Task:
+    task = create_task(coroutine)
+
+    RUNNING.add(task)
+
+    task.add_done_callback(RUNNING.discard)
+
+    return task
 
 
 @router.post(

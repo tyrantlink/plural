@@ -29,6 +29,7 @@ PATH_OVERWRITES = {
 }
 
 SUPPRESSED_PATHS = {
+    '/',
     '/healthcheck',
     '/swdocs',
     '/docs',
@@ -66,6 +67,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     yield
 
     from src.core.http import DISCORD_SESSION, GENERAL_SESSION
+    from src.routers.discord import RUNNING
+
+    if RUNNING:
+        print(f'waiting for {len(RUNNING)} tasks to finish...')  # noqa: T201
+        await gather(*RUNNING)
 
     await DISCORD_SESSION.close()
     await GENERAL_SESSION.close()
