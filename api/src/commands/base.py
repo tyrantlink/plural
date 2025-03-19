@@ -977,7 +977,7 @@ async def slash_stats(
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.STRING,
             name='member',
-            description='Member to switch to, or "off" to disable',
+            description='Member to switch to, or "out" to disable',
             required=True,
             autocomplete=True),
         ApplicationCommand.Option(
@@ -1008,10 +1008,16 @@ async def slash_switch(
     mode: str | None = None,
     expiry: str | None = None
 ) -> None:
+    enable = (
+        isinstance(member, str) and
+        member.lower() not in
+        {'off', 'out', 'disable'}
+    )
+
     await slash_autoproxy.callback(
         interaction,
-        enable=member != 'off',
-        member=member if member != 'off' else None,
+        enable=enable,
+        member=member if enable else None,
         global_=True,
         mode=mode,
         expiry=expiry

@@ -13,9 +13,9 @@ async def member_converter(
 ) -> ProxyMember | str:
     if (
         interaction.data.name == 'switch' and
-        value == 'off'
+        value.lower() in {'out', 'off', 'disable'}
     ):
-        return 'off'
+        return 'out'
 
     try:
         parsed_value = PydanticObjectId(value)

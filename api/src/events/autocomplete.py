@@ -174,8 +174,8 @@ async def autocomplete_member(
 
             if interaction.data.name == 'switch':
                 responses.insert(1, ApplicationCommand.Option.Choice(
-                    name='Off (Disable Autoproxy)',
-                    value='off'))
+                    name='Out (Disable Autoproxy)',
+                    value='out'))
                 responses = responses[:25]
 
         await cache_add(redis_key, responses)
