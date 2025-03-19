@@ -924,7 +924,8 @@ async def insert_blocks(
             'name': f'{limit_string(input, (94-len(result)))}  ➜  {result}',
             'value': limit_string(history, 105),
             'inline': False}
-            for input, history, result, _ in final_results]},
+            for input, history, result, _ in final_results]}
+        if final_results else {},
         False
     )
 
