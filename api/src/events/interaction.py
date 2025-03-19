@@ -103,6 +103,8 @@ async def _on_application_command(interaction: Interaction) -> None:
     if command is None:
         cx().update_name(f'UNKNOWN_COMMAND {interaction.data.name}')
         raise InteractionError(
+            'you are using an outdated userproxy, please run {cmd_ref[userproxy sync]}'
+            if interaction.data.name == 'reply' else
             f'command `{interaction.data.name}` not found'
         )
 
