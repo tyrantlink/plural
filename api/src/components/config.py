@@ -177,6 +177,8 @@ CONFIG_OPTIONS = CONFIG_OPTIONS = {
             name='Ping Replies',
             description=dedent('''
                 Whether to ping when you reply to someone with a userproxy.
+
+                Only supports the inline reply format.
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),

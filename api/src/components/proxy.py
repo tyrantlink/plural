@@ -103,12 +103,12 @@ async def modal_proxy(
         usergroup.userproxy_config.dm_reply_format
     )
 
-    reply_insert, mention_ignore = format_reply(
+    reply_insert = format_reply(
         message,
         reply,
         reply_format,
         interaction.guild_id or None
-    )
+    )[0]
 
     embeds = []
 
@@ -120,8 +120,13 @@ async def modal_proxy(
 
     mentions = AllowedMentions.parse_content(
         reply.content,
-        False,
-        mention_ignore
+        False
+    )
+
+    mentions.users.update(
+        {reply.author.id}
+        if usergroup.userproxy_config.ping_replies else
+        set()
     )
 
     sent_message = await interaction.send(
