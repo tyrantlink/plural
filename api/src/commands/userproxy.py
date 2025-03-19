@@ -504,7 +504,7 @@ async def slash_userproxy_invite(
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.BOOLEAN,
             name='keep_avatar',
-            description='Keep the bot\'s current avatar (Default: False)',
+            description='Keep the bot\'s current avatar, otherwise sync with member (Default: False)',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
