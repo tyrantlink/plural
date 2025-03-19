@@ -602,9 +602,37 @@ async def slash_group_set_avatar(
         await delete_avatar(group)
         message = f'Removed group `{group.name}` avatar'
 
-    await interaction.send(embeds=[Embed.success(
-        message
-    )])
+    embed = Embed.success(message)
+
+    userproxy_members = [
+        member
+        for member in
+        await group.get_members()
+        if (
+            member.userproxy and
+            member.avatar is None
+        )
+    ]
+
+    if userproxy_members:
+        from .userproxy import _userproxy_sync
+
+        embed.set_footer(
+            'Note: you may need to refresh your Discord client '
+            'to see changes to userproxy bots'
+        )
+
+        await gather(*[
+            _userproxy_sync(
+                interaction,
+                userproxy,
+                {'avatar', 'icon'},
+                silent=True,
+                group=group)
+            for userproxy in userproxy_members
+        ])
+
+    await interaction.send(embeds=[embed])
 
 
 @group_set.command(
