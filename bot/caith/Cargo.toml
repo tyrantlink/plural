@@ -1,0 +1,14 @@
+[package]
+name = "caith"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "caith"
+crate-type = ["cdylib"]
+
+[dependencies]
+caith = "4.2.4 "
+pyo3 = { version = "0.24.0", features = ["extension-module"] }
+
+[workspace]

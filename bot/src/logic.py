@@ -1,8 +1,9 @@
+from asyncio import gather, sleep, to_thread
 from urllib.parse import urlparse, parse_qs
 from dataclasses import dataclass
-from asyncio import gather, sleep
 from types import CoroutineType
 from datetime import timedelta
+from time import perf_counter
 from typing import Self, Any
 from hashlib import sha256
 from random import randint
@@ -36,6 +37,7 @@ from .http import Route, request, File, bytes_to_base64_data, GENERAL_SESSION
 from .permission import Permission
 from .cache import Cache
 from .models import env
+from .caith import roll
 
 
 EMOJI_SHARDS = 10
@@ -46,9 +48,10 @@ INLINE_REPLY_PATTERN = compile(
 EMOJI_PATTERN = compile(r'<(a)?:(\w{2,32}):(\d+)>')
 ROLE_MENTION_PATTERN = compile(r'<@&(\d+)>')
 USER_MENTION_PATTERN = compile(r'<@!?(\d+)>')
+CHANNEL_MENTION_PATTERN = compile(r'<#(\d+)>')
 NQN_EMOJI_PATTERN = compile(
-    r'\[.+\]\((https://cdn\.discordapp\.com/emojis/\d+\..+size(?:.+animated)?.+name.+)\)'
-)
+    r'\[.+\]\((https://cdn\.discordapp\.com/emojis/\d+\..+size(?:.+animated)?.+name.+)\)')
+BLOCK_PATTERN = compile(r'{{(.+?)}}')
 
 
 @dataclass
@@ -851,6 +854,75 @@ def format_reply(
     return None, set()
 
 
+async def insert_blocks(
+    content: str
+) -> tuple[str, dict, bool]:
+    def do_roll(input: str) -> tuple[str, str, str, float]:
+        st = perf_counter()
+        history, result = roll(input)
+        et = perf_counter()
+        return input, result, history, round((et-st)*1000, 4)
+
+    rolls = []
+
+    for block in BLOCK_PATTERN.finditer(content):
+        if CHANNEL_MENTION_PATTERN.match(block.group(1).strip()):
+            continue  # ! do redirection
+
+        if len(rolls) >= 10:
+            continue
+
+        rolls.append((block.group(0), to_thread(do_roll, block.group(1))))
+
+    if not rolls:
+        return content, {}, True
+
+    st = perf_counter()
+    results = await gather(
+        *(roll[1] for roll in rolls),
+        return_exceptions=True
+    )
+    et = perf_counter()
+
+    final_results = []
+
+    for block, value in zip(
+        (roll[0] for roll in rolls),  # noqa: F402
+        results,
+        strict=True
+    ):
+        if isinstance(value, BaseException):
+            continue
+
+        input, result, history, time = value
+
+        content = content.replace(
+            block,
+            f'`🎲{result}`',
+            count=1
+        )
+
+        final_results.append((input, history, result, time))
+
+    cx().set_attributes({
+        'proxy.roll.times': [result[3] for result in final_results],
+        'proxy.roll.total_time': round((et-st)*1000, 4)
+    })
+
+    def limit_string(input: str, limit: int) -> str:
+        return input[:limit] + ('…' if len(input) > limit else '')
+
+    return (
+        content,
+        {'fields': [{
+            'name': f'{limit_string(input, (94-len(result)))}  ➜  {result}',
+            'value': limit_string(history, 105),
+            'inline': False}
+            for input, history, result, _ in final_results]},
+        False
+    )
+
+
 async def create_request(
     endpoint: str,
     token: str,
@@ -1255,6 +1327,10 @@ async def webhook_handler(
     embeds = []
     mention_ignore = set()
 
+    proxy.content, roll_embed, publish_latency = (
+        await insert_blocks(proxy.content)
+    )
+
     if event.get('referenced_message') is not None:
         usergroup = await Usergroup.get_by_user(int(event['author']['id']))
 
@@ -1269,6 +1345,9 @@ async def webhook_handler(
                 proxy.content = reply
             case dict():
                 embeds.append(reply)
+
+    if roll_embed:
+        embeds.append(roll_embed)
 
     params = {
         'wait': 'true'
@@ -1295,7 +1374,7 @@ async def webhook_handler(
             'embeds': embeds},
         params=params,
         token=env.bot_token,
-        publish_latency=True
+        publish_latency=publish_latency
     )
 
 
@@ -1363,6 +1442,12 @@ async def userproxy_handler(
             'Userproxy bot token is invalid or expired.')
         return ProxyResponse.failure(publish_latency)
 
+    proxy.content, roll_embed, block_publish_latency = (
+        await insert_blocks(proxy.content)
+    )
+
+    publish_latency = publish_latency and block_publish_latency
+
     return ProxyResponse(
         success=True,
         endpoint=f'/channels/{event['channel_id']}/messages',
@@ -1381,7 +1466,8 @@ async def userproxy_handler(
                 1 << 12  # ? suppress notifications
                 & int(event.get('flags', 0)) ^
                 1 << 12  # ? suppress notifications
-            ) if event.get('mentions') else None},
+            ) if event.get('mentions') else None,
+            'embeds': [roll_embed] if roll_embed else []},
         params={},
         token=proxy.member.userproxy.token,
         publish_latency=publish_latency

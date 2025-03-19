@@ -10,6 +10,20 @@ dependencies = [
     "version",
 ]
 
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+module-name = "src.caith"
+manifest-path = "caith/Cargo.toml"
+features = ["pyo3/extension-module"]
+include = ["*.pyi"]
+
+
+[tool.uv]
+cache-keys = [{file = "pyproject.toml"}, {file = "caith/Cargo.toml"}, {file = "**/*.rs"}]
+
 [tool.uv.sources]
 version = { path = "../shared/version" }
 plural = { path = "../shared/plural" }
