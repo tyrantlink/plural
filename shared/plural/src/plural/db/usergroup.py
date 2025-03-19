@@ -30,6 +30,10 @@ class Usergroup(BaseDocument):
         pagination_style: PaginationStyle = Field(
             default=PaginationStyle.BASIC_ARROWS,
             description='the style of pagination buttons to use')
+        roll_embed: bool = Field(
+            default=True,
+            description='whether to show for dice rolls'
+        )
 
     class UserproxyConfig(BaseModel):
         reply_format: ReplyFormat = Field(

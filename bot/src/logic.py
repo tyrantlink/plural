@@ -1327,13 +1327,13 @@ async def webhook_handler(
     embeds = []
     mention_ignore = set()
 
+    usergroup = await Usergroup.get_by_user(int(event['author']['id']))
+
     proxy.content, roll_embed, publish_latency = (
         await insert_blocks(proxy.content)
     )
 
     if event.get('referenced_message') is not None:
-        usergroup = await Usergroup.get_by_user(int(event['author']['id']))
-
         reply, mention_ignore = format_reply(
             proxy.content,
             event['referenced_message'] | {'guild_id': event['guild_id']},
@@ -1346,7 +1346,7 @@ async def webhook_handler(
             case dict():
                 embeds.append(reply)
 
-    if roll_embed:
+    if roll_embed and usergroup.config.roll_embed:
         embeds.append(roll_embed)
 
     params = {

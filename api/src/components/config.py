@@ -21,7 +21,7 @@ from src.discord import (
     ActionRow,
     button,
     Embed,
-    Emoji
+    Emoji,
 )
 
 from .pagination import PAGINATION_STYLE_MAP
@@ -50,7 +50,7 @@ class ConfigOption:
     channel_types: list[ChannelType] | None = None
 
 
-CONFIG_OPTIONS = CONFIG_OPTIONS = {
+CONFIG_OPTIONS = {
     'user': {
         'reply_format': ConfigOption(
             name='Reply Format',
@@ -113,7 +113,21 @@ CONFIG_OPTIONS = CONFIG_OPTIONS = {
                     label='Rem and Ram',
                     value='2',
                     description='Rem and Ram from Re:Zero')],
-            parser=lambda value: PaginationStyle(int(value)))},
+            parser=lambda value: PaginationStyle(int(value))),
+        'roll_embed': ConfigOption(
+            # ! add link to dice roll docs (once they exist)
+            name='Dice Roll Embed',
+            description=dedent('''
+                Whether to send dice roll results in an embed when using a dice roll block (e.g. {{2d20 + 6}}).
+
+                You will always see the total value of the roll in your original message.
+
+                If enabled, you'll see the value of each roll in an embed.
+
+                If disabled, you'll only see the total value inserted into your original message
+            ''').strip(),
+            type=ConfigOptionType.BOOLEAN,
+            parser=lambda value: value == 'Enabled')},
     'userproxy': {
         'reply_format': ConfigOption(
             name='Server Reply Format',
@@ -351,13 +365,13 @@ async def select_config_value(
     await parent.save()
 
     if category == 'userproxy':
-        await userproxy_sync(
+        synced = await userproxy_sync(
             interaction,
             option,
             parent
         )
 
-    await _option(interaction, [option], category, True)
+    await _option(interaction, [option], category, synced)
 
 
 @button(
@@ -421,13 +435,13 @@ async def _button_bool(
     await parent.save()
 
     if category == 'userproxy':
-        await userproxy_sync(
+        synced = await userproxy_sync(
             interaction,
             option,
             parent
         )
 
-    await _option(interaction, [option], category, True)
+    await _option(interaction, [option], category, synced)
 
 
 async def _home(
@@ -648,7 +662,7 @@ async def userproxy_sync(
     interaction: Interaction,
     option: str,
     usergroup: Usergroup
-) -> None:
+) -> bool:
     from src.commands.userproxy import _userproxy_sync
 
     patch_filter = set()
@@ -669,7 +683,7 @@ async def userproxy_sync(
         case 'name_in_reply_command':
             patch_filter.add('commands')
         case _:
-            return
+            return False
 
     groups = await Group.find({
         'accounts': usergroup.id
@@ -685,7 +699,7 @@ async def userproxy_sync(
     }
 
     if not userproxies:
-        return
+        return False
 
     await interaction.response.update_message(
         embeds=[interaction.message.embeds[0].set_footer(
@@ -713,3 +727,5 @@ async def userproxy_sync(
                 group=group)
             for group, userproxy in userproxies.items()
         ))
+
+    return True
