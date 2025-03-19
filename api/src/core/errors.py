@@ -75,10 +75,10 @@ async def on_interaction_error(
             error_embed.title = 'Discord Error!'
 
             for field, errors in discord_error.errors.items():
-                for error in errors.get('_errors', []):
+                for detail in errors.get('_errors', []):
                     error_embed.add_field(
-                        name=f'{field}: {error['code']}',
-                        value=error['message']
+                        name=f'{field}: {detail['code']}',
+                        value=detail['message']
                     )
 
             if len(error_embed.fields) == 0:
