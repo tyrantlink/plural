@@ -338,7 +338,11 @@ async def set_avatar(
         if proxy_tag is None else
         self.proxy_tags[proxy_tag].avatar
     ):
-        await delete_avatar(self, proxy_tag)
+        try:
+            await delete_avatar(self, proxy_tag)
+        except InteractionError as e:
+            if str(e) != 'No avatar to delete':
+                raise e
 
     if proxy_tag is not None and not isinstance(self, ProxyMember):
         raise PluralException('Proxy tag can only be set on ProxyMember')
