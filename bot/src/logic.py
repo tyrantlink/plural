@@ -1,3 +1,4 @@
+from urllib.parse import urlparse, parse_qs
 from dataclasses import dataclass
 from asyncio import gather, sleep
 from types import CoroutineType
@@ -8,7 +9,7 @@ from random import randint
 from time import time_ns
 from io import BytesIO
 
-from regex import match, finditer, escape, sub, IGNORECASE
+from regex import match, escape, sub, compile, IGNORECASE
 from beanie import PydanticObjectId
 from orjson import dumps
 
@@ -38,6 +39,16 @@ from .models import env
 
 
 EMOJI_SHARDS = 10
+MENTION_PATTERN = compile(
+    r'<(?:(?:[@#]|sound:|:[\S_]+|\/(?:\w+ ?){1,3}:)\d+|https?:\/\/[^\s]+)>')
+INLINE_REPLY_PATTERN = compile(
+    r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\)')
+EMOJI_PATTERN = compile(r'<(a)?:(\w{2,32}):(\d+)>')
+ROLE_MENTION_PATTERN = compile(r'<@&(\d+)>')
+USER_MENTION_PATTERN = compile(r'<@!?(\d+)>')
+NQN_EMOJI_PATTERN = compile(
+    r'\[.+\]\((https://cdn\.discordapp\.com/emojis/\d+\..+size(?:.+animated)?.+name.+)\)'
+)
 
 
 @dataclass
@@ -224,10 +235,7 @@ def check_member(
             continue
 
         # ? ensure mentions are preserved
-        for safety_match in finditer(
-            r'<(?:(?:[@#]|sound:|:[\S_]+|\/(?:\w+ ?){1,3}:)\d+|https?:\/\/[^\s]+)>',
-            check.string
-        ):
+        for safety_match in MENTION_PATTERN.finditer(check.string):
             if (
                 (check.end(1) and safety_match.start() < check.end(1)) or
                 ((check.start(3)-len(check.string)) and
@@ -561,11 +569,31 @@ async def insert_emojis(
 ) -> str:
     emojis_used: dict[int, list[ProbableEmoji]] = {}
 
-    for match_ in finditer(r'<(a)?:(\w{2,32}):(\d+)>', content):
+    for match_ in EMOJI_PATTERN.finditer(content):
         emoji = ProbableEmoji(
             name=str(match_.group(2)),
             id=int(match_.group(3)),
             animated=match_.group(1) is not None
+        )
+
+        emojis_used.setdefault(emoji.id % EMOJI_SHARDS, []).append(emoji)
+
+    for match_ in NQN_EMOJI_PATTERN.finditer(content):
+        url = urlparse(match_.group(1))
+        query = parse_qs(url.query)
+
+        if 'name' not in query:
+            continue
+
+        emoji_id = url.path.removeprefix('/emojis/').split('.')[0]
+
+        if not emoji_id.isdigit():
+            continue
+
+        emoji = ProbableEmoji(
+            name=query['name'][0],
+            id=int(emoji_id),
+            animated=query.get('animated', [''])[0].lower() == 'true'
         )
 
         emojis_used.setdefault(emoji.id % EMOJI_SHARDS, []).append(emoji)
@@ -666,17 +694,17 @@ async def insert_emojis(
 
 def handle_discord_markdown(text: str) -> str:
     markdown_patterns = {
-        '*':   r'\*([^*]+)\*',
-        '_':   r'_([^_]+)_',
-        '**':  r'\*\*([^*]+)\*\*',
-        '__':  r'__([^_]+)__',
-        '~~':  r'~~([^~]+)~~',
-        '`':   r'`([^`]+)`',
-        '```': r'```[\s\S]+?```'
+        '*':   compile(r'\*([^*]+)\*'),
+        '_':   compile(r'_([^_]+)_'),
+        '**':  compile(r'\*\*([^*]+)\*\*'),
+        '__':  compile(r'__([^_]+)__'),
+        '~~':  compile(r'~~([^~]+)~~'),
+        '`':   compile(r'`([^`]+)`'),
+        '```': compile(r'```[\s\S]+?```')
     }
 
     for pattern in markdown_patterns.values():
-        text = sub(pattern, r'\1', text)
+        text = pattern.sub(r'\1', text)
 
     for char in [
         '*', '_',
@@ -698,11 +726,11 @@ def parse_allowed_mentions(
 ) -> dict[str, list[str] | bool]:
     parsed = {
         'roles': {
-            match.group(1)
-            for match in finditer(r'<@&(\d+)>', content)},
+            match_.group(1)
+            for match_ in ROLE_MENTION_PATTERN.finditer(content)},
         'users': {
-            match.group(1)
-            for match in finditer(r'<@!?(\d+)>', content)
+            match_.group(1)
+            for match_ in USER_MENTION_PATTERN.finditer(content)
         }
     }
 
@@ -748,10 +776,7 @@ def format_reply(
                 f'`@{display_name}`'
             )
 
-            if match(
-                r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\)',
-                content
-            ):
+            if INLINE_REPLY_PATTERN.match(content):
                 content = '\n'.join(
                     content.split('\n')[1:]
                 )
