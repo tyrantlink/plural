@@ -727,7 +727,7 @@ async def userproxy_sync(
                 silent=True,
                 usergroup=usergroup,
                 group=group)
-            for group, userproxy in userproxies.items()
+            for userproxy, group in userproxies.items()
         ))
 
     return True
