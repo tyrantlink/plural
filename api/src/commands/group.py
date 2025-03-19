@@ -531,7 +531,7 @@ async def slash_group_channels_list(
 
     await interaction.send(embeds=[Embed.success(
         title=f'Channel restrictions for group `{group.name}`',
-        description=channels or 'No restrictions'
+        message=channels or 'No restrictions'
     )])
 
 
