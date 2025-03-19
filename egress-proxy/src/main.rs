@@ -53,7 +53,11 @@ lazy_static! {
         ("/guilds/:id/members/:id",
             Regex::new(r"^/guilds/\d+/members/\d+$").unwrap()),
         ("/channels/:id/messages",
-            Regex::new(r"^/channels/\d+/messages$").unwrap())
+            Regex::new(r"^/channels/\d+/messages$").unwrap()),
+        ("/users/:id",
+            Regex::new(r"^/users/\d+$").unwrap()),
+        ("/users/:id/guilds",
+            Regex::new(r"^/users/\d+/guilds$").unwrap())
     ].into();
 }
 
