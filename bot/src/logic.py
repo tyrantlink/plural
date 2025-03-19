@@ -1,5 +1,7 @@
-from asyncio import gather, sleep, to_thread, timeout
+from concurrent.futures import ProcessPoolExecutor
 from urllib.parse import urlparse, parse_qs
+from asyncio import gather, sleep, timeout
+from collections.abc import Callable
 from dataclasses import dataclass
 from types import CoroutineType
 from datetime import timedelta
@@ -151,6 +153,15 @@ def emoji_index() -> str:
         _emoji_index = -1
     _emoji_index += 1
     return f'{_emoji_index:03}'
+
+
+async def to_process[T](
+    func: Callable[..., T],
+    *args,  # noqa: ANN002
+    **kwargs  # noqa: ANN003
+) -> T:
+    with ProcessPoolExecutor() as pool:
+        return await pool.submit(func, *args, **kwargs)
 
 
 async def save_debug_log(
@@ -878,7 +889,7 @@ async def insert_blocks(
 
         rolls.append((
             block.group(0),
-            to_thread(do_roll, block.group(1))
+            to_process(do_roll, block.group(1))
         ))
 
     if not rolls:
