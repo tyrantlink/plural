@@ -692,7 +692,7 @@ async def userproxy_sync(
     }).to_list()
 
     userproxies = {
-        group: member
+        member: group
         for group in groups
         for member in await ProxyMember.find({
             '_id': {'$in': list(group.members)},
