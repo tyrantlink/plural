@@ -101,6 +101,7 @@ async def _on_application_command(interaction: Interaction) -> None:
                 ].get('Reply')
 
     if command is None:
+        cx().update_name(f'UNKNOWN_COMMAND {interaction.data.name}')
         raise InteractionError(
             f'command `{interaction.data.name}` not found'
         )
@@ -178,6 +179,12 @@ async def _on_message_component(interaction: Interaction) -> None:
         interaction.data.custom_id
     )
 
+    triggered_component = components.get(component_name)
+
+    if triggered_component is None or not is_not_missing(triggered_component.callback):
+        cx().update_name(f'UNKNOWN_COMPONENT {component_name}')
+        raise ValueError(f'no component found for {component_name}')
+
     cx().update_name(
         f'{interaction.data.component_type.name} {component_name}'
     )
@@ -186,11 +193,6 @@ async def _on_message_component(interaction: Interaction) -> None:
         1,
         {'component': component_name}
     )
-
-    triggered_component = components.get(component_name)
-
-    if triggered_component is None or not is_not_missing(triggered_component.callback):
-        raise ValueError(f'no component found for {component_name}')
 
     kwargs = {}
 
@@ -215,6 +217,12 @@ async def _on_modal_submit(interaction: Interaction) -> None:
         await on_interaction_error(interaction, e)
         return
 
+    triggered_component = components.get(component_name)
+
+    if triggered_component is None or not is_not_missing(triggered_component.callback):
+        cx().update_name(f'UNKNOWN_MODAL {component_name}')
+        raise ValueError(f'no component found for {component_name}')
+
     cx().update_name(
         f'MODAL_SUBMIT {component_name}'
     )
@@ -223,11 +231,6 @@ async def _on_modal_submit(interaction: Interaction) -> None:
         1,
         {'component': component_name}
     )
-
-    triggered_component = components.get(component_name)
-
-    if triggered_component is None or not is_not_missing(triggered_component.callback):
-        raise ValueError(f'no component found for {component_name}')
 
     kwargs = {
         component.custom_id: component.value
