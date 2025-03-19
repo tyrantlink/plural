@@ -858,6 +858,10 @@ async def insert_blocks(
     content: str
 ) -> tuple[str, dict, bool]:
     def do_roll(input: str) -> tuple[str, str, str, float]:
+        for forbidden in {'ir', 'ie'}:
+            if forbidden in input.split(':')[0]:
+                raise ValueError(f'Forbidden command: {forbidden}')
+
         st = perf_counter()
         history, result = roll(input)
         et = perf_counter()
