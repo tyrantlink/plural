@@ -77,7 +77,7 @@ async def on_message_create(event: dict, start_time: int) -> None:
     if _preproxy_check(event):
         return
 
-    await process_proxy(event, start_time, False)
+    await process_proxy(event, start_time)
 
 
 async def on_message_update(event: dict, start_time: int) -> None:
@@ -93,7 +93,7 @@ async def on_message_update(event: dict, start_time: int) -> None:
     ):
         return
 
-    await process_proxy(event, start_time, True)
+    await process_proxy(event, start_time)
 
 
 async def on_reaction_add(event: dict, start_time: int) -> None:

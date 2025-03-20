@@ -1102,10 +1102,9 @@ async def create_request(
 async def _process_proxy(
     event: dict,
     start_time: int,
-    is_edit: bool,
     emojis: list[ClonedEmoji]
 ) -> ProxyResult:
-    publish_latency = not is_edit
+    publish_latency = True
     debug_log: list[str] = []
 
     if not (
@@ -1363,10 +1362,17 @@ async def _process_proxy(
 
         pipeline = redis.pipeline()
 
+        print(event)
+        from datetime import datetime
+
         latency = (
             ((int(message['id']) >> 22) + 1420070400000) -
-            ((int(event['id']) >> 22) + 1420070400000)
+            int(datetime.fromisoformat(
+                event['edited_timestamp'] or event['timestamp']
+            ).timestamp() * 1000)
         )
+
+        print(latency)
 
         cx().set_attributes({
             'proxy.latency': latency,
@@ -1603,15 +1609,13 @@ async def userproxy_handler(
 
 async def process_proxy(
     event: dict,
-    start_time: int,
-    is_edit: bool
+    start_time: int
 ) -> ProxyResult:
     emojis = []
     try:
         result = await _process_proxy(
             event,
             start_time,
-            is_edit,
             emojis
         )
 
