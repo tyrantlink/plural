@@ -1,10 +1,10 @@
 from asyncio import gather, sleep, timeout, get_event_loop
 from concurrent.futures import ProcessPoolExecutor
 from urllib.parse import urlparse, parse_qs
+from datetime import timedelta, datetime
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import CoroutineType
-from datetime import timedelta
 from time import perf_counter
 from typing import Self, Any
 from hashlib import sha256
@@ -1362,17 +1362,12 @@ async def _process_proxy(
 
         pipeline = redis.pipeline()
 
-        print(event)
-        from datetime import datetime
-
         latency = (
             ((int(message['id']) >> 22) + 1420070400000) -
             int(datetime.fromisoformat(
                 event['edited_timestamp'] or event['timestamp']
             ).timestamp() * 1000)
         )
-
-        print(latency)
 
         cx().set_attributes({
             'proxy.latency': latency,
