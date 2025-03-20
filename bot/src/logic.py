@@ -1,6 +1,6 @@
+from asyncio import gather, sleep, timeout, get_event_loop
 from concurrent.futures import ProcessPoolExecutor
 from urllib.parse import urlparse, parse_qs
-from asyncio import gather, sleep, timeout
 from collections.abc import Callable
 from dataclasses import dataclass
 from types import CoroutineType
@@ -156,12 +156,16 @@ def emoji_index() -> str:
 
 
 async def to_process[T](
+    executor: ProcessPoolExecutor,
     func: Callable[..., T],
-    *args,  # noqa: ANN002
-    **kwargs  # noqa: ANN003
+    *args  # noqa: ANN002
 ) -> T:
-    with ProcessPoolExecutor() as pool:
-        return await pool.submit(func, *args, **kwargs)
+    return await get_event_loop(
+    ).run_in_executor(
+        executor,
+        func,
+        *args
+    )
 
 
 async def save_debug_log(
@@ -872,34 +876,45 @@ def format_reply(
     return None, set()
 
 
-async def insert_blocks(
-    content: str
-) -> tuple[str, dict, bool]:
-    def do_roll(input: str) -> tuple[str, str, str, float]:
-        for forbidden in {'ir', 'ie'}:
-            if forbidden in input.split(':')[0]:
-                raise ValueError(f'Forbidden command: {forbidden}')
+def do_roll(input: str) -> tuple[str, str, str, float]:
+    for forbidden in {'ir', 'ie'}:
+        if forbidden in input.split(':')[0]:
+            raise ValueError(f'Forbidden command: {forbidden}')
 
-        st = perf_counter()
-        history, result = roll(input)
-        et = perf_counter()
-        return input, result, history, round((et-st)*1000, 4)
+    st = perf_counter()
+    history, result = roll(input)
+    et = perf_counter()
+    return input, result, history, round((et-st)*1000, 4)
+
+
+async def insert_blocks(
+    content: str,
+    debug_log: list[str]
+) -> tuple[str, dict, bool]:
+    roll_log = []
 
     rolls = []
+
+    executor = ProcessPoolExecutor()
 
     for block in BLOCK_PATTERN.finditer(content):
         if CHANNEL_MENTION_PATTERN.match(block.group(1).strip()):
             continue  # ! do redirection
 
         if len(rolls) >= 10:
+            if 'Max rolls reached' not in roll_log:
+                roll_log.append('Max rolls reached')
             continue
 
         rolls.append((
             block.group(0),
-            to_process(do_roll, block.group(1))
+            to_process(executor, do_roll, block.group(1))
         ))
 
     if not rolls:
+        if roll_log:
+            debug_log.append('\n  '.join(roll_log))
+        executor.shutdown()
         return content, {}, True
 
     st = perf_counter()
@@ -909,7 +924,11 @@ async def insert_blocks(
                 *(roll[1] for roll in rolls),
                 return_exceptions=True)
     except TimeoutError:
+        roll_log.append('Rolls timed out.')
+        debug_log.append('\n  '.join(roll_log))
+        executor.shutdown()
         return content, {}, True
+    executor.shutdown()
     et = perf_counter()
 
     final_results = []
@@ -920,6 +939,7 @@ async def insert_blocks(
         strict=True
     ):
         if isinstance(value, BaseException):
+            roll_log.append(f'Error on {block}:\n    {value}')
             continue
 
         input, result, history, time = value
@@ -940,13 +960,27 @@ async def insert_blocks(
     def limit_string(input: str, limit: int) -> str:
         return input[:limit] + ('…' if len(input) > limit else '')
 
+    fields = [(
+        f'{limit_string(input, 94-len(result))}  ➜  {result}',
+        limit_string(history, 105))
+        for input, history, result, _ in final_results
+    ]
+
+    for field in fields:
+        roll_log.append(f'{field[0]}\n    {field[1]}')
+
+    if roll_log:
+        debug_log.append('\n  '.join(
+            ['Roll Log:', *roll_log]
+        ))
+
     return (
         content,
         {'fields': [{
-            'name': f'{limit_string(input, (94-len(result)))}  ➜  {result}',
-            'value': limit_string(history, 105),
+            'name': name,
+            'value': value,
             'inline': False}
-            for input, history, result, _ in final_results]}
+            for name, value in fields]}
         if final_results else {},
         False
     )
@@ -1359,7 +1393,7 @@ async def webhook_handler(
     usergroup = await Usergroup.get_by_user(int(event['author']['id']))
 
     proxy.content, roll_embed, publish_latency = (
-        await insert_blocks(proxy.content)
+        await insert_blocks(proxy.content, debug_log)
     )
 
     if event.get('referenced_message') is not None:
@@ -1472,7 +1506,7 @@ async def userproxy_handler(
         return ProxyResponse.failure(publish_latency)
 
     proxy.content, roll_embed, block_publish_latency = (
-        await insert_blocks(proxy.content)
+        await insert_blocks(proxy.content, debug_log)
     )
 
     publish_latency = publish_latency and block_publish_latency
