@@ -1244,7 +1244,6 @@ async def _process_proxy(
         start_time=start_time,
         parent=proxy.traceparent,
         attributes={
-            'proxy.member.id': str(proxy.member.id),
             'proxy.autoproxy': (
                 ('guild' if proxy.autoproxy.guild else 'global')
                 if proxy.autoproxy else 'none'),
@@ -1517,19 +1516,19 @@ async def userproxy_handler(
 
     if member is None:
         publish_latency = False
-        with span('userproxy guild member not in cache'):
-            member = await Cache(
-                await request(Route(
-                    'GET',
-                    '/guilds/{guild_id}/members/{user_id}',
-                    token=env.bot_token,
-                    guild_id=event['guild_id'],
-                    user_id=proxy.member.userproxy.bot_id)),
-                [], False, 0
-            ).save(
-                f'discord:member:{event['guild_id']}:{proxy.member.userproxy.bot_id}',
-                timedelta(minutes=10)
-            )
+
+        member = await Cache(
+            await request(Route(
+                'GET',
+                '/guilds/{guild_id}/members/{user_id}',
+                token=env.bot_token,
+                guild_id=event['guild_id'],
+                user_id=proxy.member.userproxy.bot_id)),
+            [], False, 0
+        ).save(
+            f'discord:member:{event['guild_id']}:{proxy.member.userproxy.bot_id}',
+            timedelta(minutes=10)
+        )
 
         debug_log.append(
             'Userproxy member not found in cache. Fetching...'
