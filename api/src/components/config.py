@@ -120,7 +120,7 @@ CONFIG_OPTIONS = {
             description=dedent('''
                 Whether to send dice roll results in an embed when using a dice roll block (e.g. {{2d20 + 6}}).
 
-                You will always see the total value of the roll in your original message.
+                You will always see the total value of the roll in your original message, and the value of each roll in the debug log
 
                 If enabled, you'll see the value of each roll in an embed.
 
