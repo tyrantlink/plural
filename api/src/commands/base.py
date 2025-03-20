@@ -8,6 +8,7 @@ from io import BytesIO
 from pydantic import ValidationError
 from beanie import PydanticObjectId
 from orjson import loads, dumps
+from regex import compile
 
 from plural.db.enums import AutoProxyMode, SupporterTier, ShareType
 from plural.db.usergroup import AvatarOnlyGroup, AvatarOnlyMember
@@ -58,6 +59,13 @@ from .helpers import (
 )
 
 
+RESTRICTED_GROUP_PATTERN = compile(
+    r'Group `.+?` is restricted to other channels\.')
+AUTOPROXY_FOUND_PATTERN = compile(
+    r'(?:Server|Global) Autoproxy found (?:with no member|for .+)'
+)
+
+
 account = SlashCommandGroup(
     name='account',
     description='Share your account',
@@ -85,9 +93,12 @@ async def message_plural_debug(
         debug_log[0] != str(interaction.author_id) and
         interaction.author_id not in env.admins
     ):
-        raise InteractionError(
-            'You can only view the debug logs of your own messages'
-        )
+        for entry in debug_log.copy():
+            if RESTRICTED_GROUP_PATTERN.match(entry):
+                debug_log.remove(entry)
+                continue
+            if AUTOPROXY_FOUND_PATTERN.match(entry):
+                debug_log.remove(entry)
 
     success = (
         debug_log[-1].startswith('Latency: ') or
