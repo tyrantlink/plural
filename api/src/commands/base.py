@@ -477,19 +477,19 @@ async def slash_autoproxy(
 @slash_command(
     name='config',
     description='Configure /plu/ral settings. Leave empty to use button menu',
-    options=[
-        ApplicationCommand.Option(
-            type=ApplicationCommandOptionType.STRING,
-            name='option',
-            description='Config option; Use the autocomplete',
-            required=False,
-            autocomplete=True),
-        ApplicationCommand.Option(
-            type=ApplicationCommandOptionType.STRING,
-            name='value',
-            description='Config value',
-            required=False,
-            autocomplete=True)],
+    # options=[
+    #     ApplicationCommand.Option(
+    #         type=ApplicationCommandOptionType.STRING,
+    #         name='option',
+    #         description='Config option; Use the autocomplete',
+    #         required=False,
+    #         autocomplete=True),
+    #     ApplicationCommand.Option(
+    #         type=ApplicationCommandOptionType.STRING,
+    #         name='value',
+    #         description='Config value',
+    #         required=False,
+    #         autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_config(
