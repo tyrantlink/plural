@@ -291,7 +291,7 @@ async def get_proxy_data(
     autoproxy = autoproxies.get(
         int(event['guild_id'])
     ) or autoproxies.get(None)
-    autoproxy_member: ProxyMember | None = None
+    autoproxy_members: dict[int | None, ProxyMember] = {}
 
     if autoproxy:
         member = await ProxyMember.get(autoproxy.member)
@@ -378,12 +378,17 @@ async def get_proxy_data(
         (member := await ProxyMember.get(autoproxy.member))
     ):
         group = next(
-            group
-            for group in groups
-            if member.id in group.members
+            (group
+             for group in groups
+             if member.id in group.members),
+            None
         )
 
-        if not (group.channels and not (channel_ids & group.channels)):
+        if group is None:
+            debug_log.append(
+                f'Member `{member.name}` not in any group. This should not happen.')
+
+        if group and not (group.channels and not (channel_ids & group.channels)):
             return ProxyData(
                 member=member,
                 autoproxy=autoproxy,
@@ -404,8 +409,9 @@ async def get_proxy_data(
     }).to_list()
 
     for member in recent_members:
-        if autoproxy and autoproxy.member == member.id:
-            autoproxy_member = member
+        for autoproxy_ in autoproxies.values():
+            if autoproxy_.member == member.id:
+                autoproxy_members[autoproxy_.guild] = member
 
         if (result := check_member(event, member, debug_log)) is not None:
             group = next(
@@ -421,7 +427,29 @@ async def get_proxy_data(
                 continue
 
             if group.channels and not (channel_ids & group.channels):
+                if autoproxy and autoproxy.guild is not None and autoproxies.get(None):
+                    debug_log.append(
+                        'Autoproxy member restricted to other channels. '
+                        'Falling back to global autoproxy.')
+                    autoproxy = autoproxies[None]
                 continue
+
+            if (
+                group.channels and
+                autoproxy and
+                autoproxy.guild is None and
+                autoproxy.member != member.id and
+                autoproxies.get(int(event['guild_id'])) is None
+            ):
+                debug_log.append(
+                    'Matched member in restricted group and different from autoproxy. '
+                    'Auto-creating server autoproxy.')
+                autoproxy = await AutoProxy(
+                    user=int(event['author']['id']),
+                    guild=int(event['guild_id']),
+                    member=member.id,
+                    ts=None
+                ).save()
 
             return ProxyData(
                 member=member,
@@ -438,6 +466,16 @@ async def get_proxy_data(
                 debug_log.append(f'Channel Stack: {channel_ids}')
             debug_log.append(
                 f'Group `{group.name}` is restricted to other channels.')
+            if (
+                autoproxy and
+                autoproxy.guild is not None and
+                autoproxies.get(None) and
+                autoproxy.member in group.members
+            ):
+                debug_log.append(
+                    'Server autoproxy member restricted to other channels. '
+                    'Falling back to global autoproxy.')
+                autoproxy = autoproxies[None]
             continue
 
         member_ids = group.members - {member.id for member in recent_members}
@@ -448,10 +486,28 @@ async def get_proxy_data(
         for member in await ProxyMember.find({
             '_id': {'$in': list(member_ids)}
         }).to_list():
-            if autoproxy and autoproxy.member == member.id:
-                autoproxy_member = member
+            for autoproxy_ in autoproxies.values():
+                if autoproxy_.member == member.id:
+                    autoproxy_members[autoproxy_.guild] = member
 
             if (result := check_member(event, member, debug_log)) is not None:
+                if (
+                    group.channels and
+                    autoproxy and
+                    autoproxy.guild is None and
+                    autoproxy.member != member.id and
+                    autoproxies.get(int(event['guild_id'])) is None
+                ):
+                    debug_log.append(
+                        'Matched member in restricted group and different from autoproxy. '
+                        'Auto-creating server autoproxy.')
+                    autoproxy = await AutoProxy(
+                        user=int(event['author']['id']),
+                        guild=int(event['guild_id']),
+                        member=member.id,
+                        ts=None
+                    ).save()
+
                 return ProxyData(
                     member=member,
                     autoproxy=autoproxy,
@@ -461,16 +517,16 @@ async def get_proxy_data(
                     tag=member.proxy_tags[result.proxy_tag]
                 )
 
-    if autoproxy is not None and autoproxy_member is not None:
+    if autoproxy is not None and autoproxy_members[autoproxy.guild] is not None:
         group = next(
             group
             for group in groups
-            if autoproxy_member.id in group.members
+            if autoproxy_members[autoproxy.guild].id in group.members
         )
 
         if not (group.channels and not (channel_ids & group.channels)):
             return ProxyData(
-                member=autoproxy_member,
+                member=autoproxy_members[autoproxy.guild],
                 autoproxy=autoproxy,
                 content=event['content'],
                 reason=f'{'Server' if autoproxy.guild else 'Global'} Autoproxy',
