@@ -384,6 +384,20 @@ async def get_proxy_data(
             )]}
     }).to_list()
 
+    channel_ids: set[int] = {
+        int(event['channel_id'])
+    }
+
+    channel = await Cache.get(f'discord:channel:{event['channel_id']}')
+
+    while channel is not None:
+        parent_id = channel.data.get('parent_id')
+        if parent_id is not None:
+            channel_ids.add(int(parent_id))
+            break
+
+        channel = await Cache.get(f'discord:channel:{parent_id}')
+
     for member in recent_members:
         if autoproxy and autoproxy.member == member.id:
             autoproxy_member = member
@@ -401,6 +415,9 @@ async def get_proxy_data(
                     f'Member `{member.name}` not in any group. This should not happen.')
                 continue
 
+            if group.channels and not (channel_ids & group.channels):
+                continue
+
             return ProxyData(
                 member=member,
                 autoproxy=autoproxy,
@@ -409,20 +426,6 @@ async def get_proxy_data(
                 group=group,
                 tag=member.proxy_tags[result.proxy_tag]
             )
-
-    channel_ids: set[int] = {
-        int(event['channel_id'])
-    }
-
-    channel = await Cache.get(f'discord:channel:{event['channel_id']}')
-
-    while channel is not None:
-        parent_id = channel.data.get('parent_id')
-        if parent_id is not None:
-            channel_ids.add(int(parent_id))
-            break
-
-        channel = await Cache.get(f'discord:channel:{parent_id}')
 
     for group in groups:
         if group.channels and not (channel_ids & group.channels):
@@ -458,13 +461,14 @@ async def get_proxy_data(
             if autoproxy_member.id in group.members
         )
 
-        return ProxyData(
-            member=autoproxy_member,
-            autoproxy=autoproxy,
-            content=event['content'],
-            reason=f'{'Server' if autoproxy.guild else 'Global'} Autoproxy',
-            group=group
-        )
+        if not (group.channels and not (channel_ids & group.channels)):
+            return ProxyData(
+                member=autoproxy_member,
+                autoproxy=autoproxy,
+                content=event['content'],
+                reason=f'{'Server' if autoproxy.guild else 'Global'} Autoproxy',
+                group=group
+            )
 
     if autoproxy is None or autoproxy.member is None:
         debug_log.append(
