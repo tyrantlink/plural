@@ -354,36 +354,6 @@ async def get_proxy_data(
             'No groups found for account.')
         return None
 
-    if (
-        autoproxy and
-        autoproxy.mode == AutoProxyMode.LOCKED and
-        (member := await ProxyMember.get(autoproxy.member))
-    ):
-        group = next(
-            group
-            for group in groups
-            if member.id in group.members
-        )
-
-        return ProxyData(
-            member=member,
-            autoproxy=autoproxy,
-            content=event['content'],
-            reason='Locked autoproxy',
-            group=group
-        )
-
-    recent_members = await ProxyMember.find({
-        '_id': {'$in': [
-            PydanticObjectId(member_id)
-            for member_id in
-            await redis.zrange(
-                f'recent_proxies:{event['author']['id']}',
-                0, -1,
-                desc=True
-            )]}
-    }).to_list()
-
     channel_ids: set[int] = {
         int(event['channel_id'])
     }
@@ -397,6 +367,37 @@ async def get_proxy_data(
             break
 
         channel = await Cache.get(f'discord:channel:{parent_id}')
+
+    if (
+        autoproxy and
+        autoproxy.mode == AutoProxyMode.LOCKED and
+        (member := await ProxyMember.get(autoproxy.member))
+    ):
+        group = next(
+            group
+            for group in groups
+            if member.id in group.members
+        )
+
+        if not (group.channels and not (channel_ids & group.channels)):
+            return ProxyData(
+                member=member,
+                autoproxy=autoproxy,
+                content=event['content'],
+                reason='Locked autoproxy',
+                group=group
+            )
+
+    recent_members = await ProxyMember.find({
+        '_id': {'$in': [
+            PydanticObjectId(member_id)
+            for member_id in
+            await redis.zrange(
+                f'recent_proxies:{event['author']['id']}',
+                0, -1,
+                desc=True
+            )]}
+    }).to_list()
 
     for member in recent_members:
         if autoproxy and autoproxy.member == member.id:
@@ -429,6 +430,8 @@ async def get_proxy_data(
 
     for group in groups:
         if group.channels and not (channel_ids & group.channels):
+            if not any(log.startswith('Channel Stack: ') for log in debug_log):
+                debug_log.append(f'Channel Stack: {channel_ids}')
             debug_log.append(
                 f'Group `{group.name}` is restricted to other channels.')
             continue
