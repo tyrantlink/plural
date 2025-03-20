@@ -361,10 +361,10 @@ async def get_proxy_data(
     channel = await Cache.get(f'discord:channel:{event['channel_id']}')
 
     while channel is not None:
-        parent_id = channel.data.get('parent_id')
-        if parent_id is not None:
-            channel_ids.add(int(parent_id))
+        if (parent_id := channel.data.get('parent_id')) is None:
             break
+
+        channel_ids.add(int(parent_id))
 
         channel = await Cache.get(f'discord:channel:{parent_id}')
 
