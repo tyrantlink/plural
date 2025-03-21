@@ -74,13 +74,21 @@ async def post__donation_patreon(
     if not isinstance(user, dict):
         raise HTTPException(400, 'Invalid user object')
 
-    discord_id = user.get(
+    discord = user.get(
         'attributes', {}
     ).get(
         'social_connections', {}
     ).get(
         'discord', {}
-    ).get('user_id')
+    )
+
+    if discord is None:
+        # ? user doesn't have discord connected
+        # ? should get member update event if they connect
+        # ? and update then
+        return Response(status_code=204)
+
+    discord_id = discord.get('user_id')
 
     if not isinstance(discord_id, str):
         raise HTTPException(400, 'Discord ID not provided')
