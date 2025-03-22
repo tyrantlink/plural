@@ -44,7 +44,7 @@ from .caith import roll
 
 EMOJI_SHARDS = 10
 MENTION_PATTERN = compile(
-    r'<(?:(?:[@#]|sound:|:[\S_]+|\/(?:\w+ ?){1,3}:)\d+|https?:\/\/[^\s]+)>')
+    r'<(?:(?:[@#]|sound:|a?:[\S_]+|\/(?:\w+ ?){1,3}:)\d+|https?:\/\/[^\s]+)>')
 INLINE_REPLY_PATTERN = compile(
     r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\)')
 EMOJI_PATTERN = compile(r'<(a)?:(\w{2,32}):(\d+)>')
