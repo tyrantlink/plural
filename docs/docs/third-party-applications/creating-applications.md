@@ -1,6 +1,6 @@
 # Creating Applications
 
-i'll add more to this page later
+This page is intended for developers who want to integrate with /plu/ral.
 
 ### Intent Calculator
 

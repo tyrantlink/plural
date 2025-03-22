@@ -4,6 +4,7 @@ from asyncio import gather
 from random import randint
 from typing import Any
 
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Response, Request
 from fastapi.routing import APIRoute
@@ -148,7 +149,7 @@ async def emoji_init() -> None:
 
 app = FastAPI(
     title='/plu/ral API',
-    description='get an API key by running /api on the bot',
+    description='Get an application token by running `/api` from the bot',
     lifespan=lifespan,
     docs_url='/swdocs',
     redoc_url='/docs',
@@ -222,13 +223,18 @@ async def otel_trace(
     return response
 
 
-@app.get('/')
-async def get__root() -> dict[str, str]:
-    return {
-        'message': 'hello from the /plu/ral api!',
+@app.get(
+    '/',
+    include_in_schema=False)
+async def get__root(request: Request) -> Response:
+    if 'text/html' in request.headers.get('accept', ''):
+        return RedirectResponse('/docs', 308)
+
+    return JSONResponse({
+        'message': 'Hello from the /plu/ral api!',
         'instance': INSTANCE,
         'version': VERSION
-    }
+    })
 
 
 @app.get(

@@ -1,28 +1,38 @@
 # Getting Started
 
-If you're coming from PluralKit or Tupperbox, see the [Importing](https://github.com/tyrantlink/plural/wiki/Importing) page
+If you're coming from PluralKit or Tupperbox, see the [importing](/guide/importing.md) page information on how to import, and the differences between the bots.
 
 ## Create a member
 
-- use `/member new` and specify a name
-  - this name must be unique within a member group, if you don't specify a group, "default" will be used
-  - you can also add an avatar, and proxy tag with this command
+- Use `/member new` and specify a name
+  - The combination of name and meta must be unique within a group
+  - If you don't specify a group, "default" will be used (or created if it doesn't exist)
+  - You can also add an avatar, and proxy tag with this command
+
+See [Members](/guide/members.md) for more information on members, and [Groups](/guide/groups.md) for more information on groups.
+
+```text :no-line-numbers
+/member new name:steve
+```
 
 ## Add some proxy tags
 
-- use `/member tags add` and specify a prefix, suffix, or both
-  - a tag must have a prefix or a suffix
-  - use the `regex` option to have your tags matched with regex, don't use this if you don't know what you're doing
-  - use the `case_sensitive` option to make your matches case sensitive, by default, tags are case insensitive
+- Use `/member tags add` and specify a prefix, suffix, or both
+  - A tag must have a prefix or a suffix
+  - Use the `regex` option to have your tags matched with regex, don't use this if you don't know what you're doing
+  - Use the `case_sensitive` option to make your matches case sensitive, by default, tags are case insensitive
 ```text :no-line-numbers
 /member tags add prefix:/st
 /member tags add suffix:--steve
-/member tags add prefix:< suffix:>
+/member tags add prefix:{ suffix:}
 ```
+
+See [Proxy Tags](/guide/members.md#proxy-tags) for more information.
 
 ## Set an avatar
 
-- use `/member set avatar` and upload an image
-  - the image must be a .jpg, .png, .webp, or .gif and must be under 8mb in size
-  - the image will be cropped to 4096x4096, if it's smaller than this, it will be left alone
-  - animated gif avatars will only been animated for userproxy accounts (see [Userproxies](https://github.com/tyrantlink/plural/wiki/Userproxies))
+- Use `/member set avatar` and upload an image
+  - The image must be a .jpg, .png, .webp, or .gif and must be under 4mb in size
+  - The image will be scaled down to 1024x1024, and converted to webp, if it isn't already.
+  - Animated avatars will only be animated for userproxy bots (see [Userproxies](/guide/userproxies.md)).
+    - This is a Discord limitation.

@@ -7,16 +7,36 @@ export const sidebarEn: SidebarOptions = {
         collapsible: true,
         children: [
             {
-                text: 'Importing',
-                link: '/guide/importing'
-            },
-            {
                 text: 'Getting Started',
                 link: '/guide/getting-started'
             },
             {
+                text: 'Importing',
+                link: '/guide/importing'
+            },
+            {
+                text: 'Config',
+                link: '/guide/config'
+            },
+            {
+                text: 'Members',
+                link: '/guide/members'
+            },
+            {
+                text: 'Groups',
+                link: '/guide/groups'
+            },
+            {
+                text: 'Proxying',
+                link: '/guide/proxying'
+            },
+            {
                 text: 'Userproxies',
                 link: '/guide/userproxies'
+            },
+            {
+                text: 'Multiple Accounts',
+                link: '/guide/multiple-accounts'
             },
             {
                 text: 'FAQ',
@@ -33,8 +53,8 @@ export const sidebarEn: SidebarOptions = {
         collapsible: true,
         children: [
             {
-                text: 'Logging',
-                link: '/server-guide/logging'
+                text: 'Config',
+                link: '/server-guide/config'
             },
             {
                 text: 'Automod',
@@ -46,18 +66,18 @@ export const sidebarEn: SidebarOptions = {
         text: 'Third Party Applications',
         collapsible: true,
         children: [
-            {
-                text: 'Creating Applications',
-                link: '/third-party-applications/creating-applications'
-            },
+            // {
+            //     text: 'Creating Applications',
+            //     link: '/third-party-applications/creating-applications'
+            // },
             {
                 text: 'API Reference',
                 link: '/third-party-applications/api-reference'
             },
-            {
-                text: 'Application Guide',
-                link: '/third-party-applications/application-guide'
-            },
+            // {
+            //     text: 'Application Guide',
+            //     link: '/third-party-applications/application-guide'
+            // },
             {
                 text: 'Adding Logging Support',
                 link: '/third-party-applications/logging-support'

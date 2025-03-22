@@ -1,1 +1,1 @@
-export * from './en.js'
+export * from './en.ts'

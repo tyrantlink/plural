@@ -4,27 +4,27 @@ If you like the bot and find it useful, consider supporting the development. I a
 
 #### Benefits
 - The supporter role in the [support server](https://discord.gg/4mteVXBDW7)
-- Stars next to your name when someone uses the `/plu/ral proxy info` command on one of your messages
-- Probably more at some point, but I will never charge for features unless they have a direct cost to me.
+- Recognition when someone uses `/plu/ral proxy info` command on one of your messages
+- Probably more at some point, but I will never charge for features unless they have a direct cost to me. (e.g. avatar limits)
 
-Once you donate, you'll keep the supporter role forever, even if it's just a one-time donation or you cancel a subscription.
+Once you donate, you'll keep the supporter status forever, even if it's just a one-time donation or you cancel a subscription.
 
 ### Donation Methods
-Methods are listed in order of my preference, based on how much of a cut the platform takes, but ultimately it's up to you.
+The only completely automatic methods are Patreon and Discord, to claim your benefits with any other method, you'll need to send the developer a DM with the platform you donated on and your username on that platform.
 
-#### [GitHub Sponsors](https://github.com/sponsors/tyrantlink)\*
-
-#### [LiberaPay](https://liberapay.com/tyrantlink)\*
-
-#### [Ko-fi](https://ko-fi.com/tyrantlink)
+Fees listed are fees that I pay, not fees that you pay, so if your goal is to maximize the amount of money that supports the project, you should choose a method with a lower fee. However your convenience is the highest priority, so choose whichever method you prefer.
 
 #### [Patreon](https://www.patreon.com/tyrantlink)
+Completely automatic with Discord linked, 8% fee.
 
-#### [Discord](https://discord.com/application-directory/1291501048493768784/store)\*
+#### [Ko-fi](https://ko-fi.com/tyrantlink)
+Non-automatic, 5% fee.
 
-#### [Cryptocurrency](/donate_crypto)\*
+#### [GitHub Sponsors](https://github.com/sponsors/tyrantlink)
+Non-automatic, 3% fee.
 
+#### [LiberaPay](https://liberapay.com/tyrantlink)
+Non-automatic, 0% fee.
 
-if you have another method you'd like to use, let me know in the development server and i'll see what i can do.
-
-\* These methods will NOT give you the supporter role automatically. If you donate through one of these methods, please send me a DM with your username on that platform and I will give you the role.
+#### [Discord](https://discord.com/application-directory/1291501048493768784/store)
+Completely automatic, 15% fee.

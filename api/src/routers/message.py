@@ -17,7 +17,32 @@ def _snowflake_to_age(snowflake: int) -> float:
     ).total_seconds()
 
 
-@router.head('/{message_id}')
+@router.head(
+    '/{message_id}',
+    description="""
+        Check if a message was either deleted or created by /plu/ral""",
+    responses={
+        200: {
+            'content': None,
+            'description': 'Message found',
+            'headers': {
+                'Cache-Control': 'public, max-age=604800'
+            }},
+        404: {
+            'content': None,
+            'description': 'Message was not found',
+            'headers': {
+                'Cache-Control': 'public, max-age=604800'
+            }},
+        410: {
+            'content': None,
+            'description': 'Message is older than 7 days; status is unknown',
+            'headers': {
+                'Cache-Control': 'public, max-age=604800'
+            }},
+        400: {
+            'content': None,
+            'description': 'Message is in the future; status is unknown'}})
 async def head__message(
     message_id: int
 ) -> Response:
