@@ -713,7 +713,7 @@ async def slash_import(
                 'Failed to fetch file. Please make sure the url is correct.'
             )
 
-        if int(response.content_length or 0) > env.max_avatar_size:
+        if int(response.content_length or 0) > 10_485_760:
             raise InteractionError('File too large (10MB max)')
 
         data = bytearray()
@@ -721,7 +721,7 @@ async def slash_import(
         async for chunk in response.content.iter_chunked(16384):
             data.extend(chunk)
 
-            if len(data) > env.max_avatar_size:
+            if len(data) > 10_485_760:
                 raise InteractionError('File too large (10MB max)')
 
         try:
