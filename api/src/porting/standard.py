@@ -352,7 +352,7 @@ class StandardExport(BaseExport):
         ):
             raise InteractionError('\n\n'.join([
                 f'You have {current_avatar_count} avatars '
-                'and are trying to import {len(pending_avatars)} more',
+                f'and are trying to import {len(pending_avatars)} more',
                 f'Your limit is {usergroup.data.image_limit} avatars',
                 f'Please delete {attempted_count - usergroup.data.image_limit} '
                 'avatars and try again',
