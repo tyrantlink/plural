@@ -649,12 +649,12 @@ async def slash_help(
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.STRING,
             name='file_url',
-            description='URL of your exported file. 4MB max',
+            description='URL of your exported file. 10MB max',
             required=False),
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.ATTACHMENT,
             name='file',
-            description='File to import. 4MB max',
+            description='File to import. 10MB max',
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
@@ -714,7 +714,7 @@ async def slash_import(
             )
 
         if int(response.content_length or 0) > env.max_avatar_size:
-            raise InteractionError('File too large (4MB max)')
+            raise InteractionError('File too large (10MB max)')
 
         data = bytearray()
 
@@ -722,7 +722,7 @@ async def slash_import(
             data.extend(chunk)
 
             if len(data) > env.max_avatar_size:
-                raise InteractionError('File too large (4MB max)')
+                raise InteractionError('File too large (10MB max)')
 
         try:
             json = loads(data)
