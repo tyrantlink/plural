@@ -1,4 +1,4 @@
-from asyncio import to_thread, sleep
+from asyncio import to_thread, sleep, Semaphore
 from dataclasses import dataclass
 from random import random
 from hashlib import md5
@@ -177,21 +177,33 @@ async def upload_avatar(
     parent_id: str,
     url: str,
     session: ClientSession,
-    bypass_limit: bool = False
+    bypass_limit: bool = False,
+    semaphore: Semaphore | None = None
 ) -> str:
     """returns avatar hash"""
-    return await _upload_avatar(
-        parent_id,
-        session,
-        await to_thread(
-            _convert_avatar,
-            await _download_avatar(
-                url,
-                session,
-                bypass_limit
-            )
-        )
-    )
+
+    if semaphore is not None:
+        await semaphore.acquire()
+
+    try:
+        hash = await _upload_avatar(
+            parent_id,
+            session,
+            await to_thread(
+                _convert_avatar,
+                await _download_avatar(
+                    url,
+                    session,
+                    bypass_limit)))
+    except BaseException as e:
+        if semaphore is not None:
+            semaphore.release()
+        raise e
+    finally:
+        if semaphore is not None:
+            semaphore.release()
+
+    return hash
 
 
 async def delete_avatar(

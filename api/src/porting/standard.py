@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from asyncio import gather, Semaphore
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from datetime import datetime
-from asyncio import gather
 
 from opentelemetry.trace import SpanKind
 from pydantic import Field
@@ -377,11 +377,13 @@ class StandardExport(BaseExport):
         with span(
             f'converting and uploading {len(valid_avatars)} avatars'
         ):
+            semaphore = Semaphore(100)
             avatar_hashes = await gather(*[
                 upload_avatar(
                     str(avatar.parent_id),
                     avatar.url,
-                    GENERAL_SESSION)
+                    GENERAL_SESSION,
+                    semaphore)
                 for avatar in valid_avatars
             ], return_exceptions=True)
 
