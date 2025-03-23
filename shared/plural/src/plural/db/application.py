@@ -1,6 +1,7 @@
 from datetime import timedelta
 from secrets import token_hex
 from typing import ClassVar
+from hashlib import sha256
 from typing import Self
 from time import time
 
@@ -35,6 +36,8 @@ class Application(BaseDocument):
         description='the icon hash of the application')
     developer: int = Field(
         description='the user id of the developer')
+    token: str = Field(
+        description='the api key of the application')
     scope: ApplicationScope = Field(
         description='the scope of the application')
     authorized_count: int = Field(
@@ -43,7 +46,12 @@ class Application(BaseDocument):
     )
 
     @classmethod
-    def new(cls, name: str, developer: str, scope: ApplicationScope) -> tuple[Self, str]:
+    def new(
+        cls,
+        name: str,
+        developer: int,
+        scope: ApplicationScope
+    ) -> tuple[Self, str]:
         id = PydanticObjectId()
 
         token = '.'.join([
@@ -57,7 +65,28 @@ class Application(BaseDocument):
                 id=id,
                 name=name,
                 developer=developer,
-                api_key=hashpw(token.encode(), gensalt()).decode(),
+                token=hashpw(token.encode(), gensalt()).decode(),
                 scope=scope),
             token
         )
+
+    async def update_token(self) -> str:
+        from . import redis
+
+        token = '.'.join([
+            encode_b66(int(self.id.binary(), 36)),
+            encode_b66(int((time()*1000)-TOKEN_EPOCH)),
+            encode_b66(int(token_hex(20), 16))
+        ])
+
+        await redis.delete(
+            'token:' + sha256(
+                '.'.join(self.token.split('.')[:2]).encode()
+            ).hexdigest()
+        )
+
+        self.token = hashpw(token.encode(), gensalt()).decode()
+
+        await self.save()
+
+        return token

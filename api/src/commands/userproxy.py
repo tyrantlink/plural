@@ -1017,14 +1017,20 @@ async def uslash_proxy(
             10_485_760
         )
 
+        total_filesize = sum(
+            attachment.size
+            for attachment in
+            attachments
+        )
+
         if sum(
             attachment.size
             for attachment in
             attachments
         ) > limit:
             raise InteractionError(
-                f'Attachments exceed the {limit / 1_048_576}MB limit'
-                ' for this channel'
+                f'Attachments exceed {round(limit / 1_048_576)} MB. '
+                f'({round(total_filesize / 1_048_576, 2)} MB)'
             )
 
         if not queue_for_reply:

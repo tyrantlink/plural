@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import NamedTuple, Annotated
 from asyncio import get_event_loop
 from re import match, escape
+from hashlib import sha256
 
 from fastapi import Security, HTTPException, Request, Header
 from fastapi.security.api_key import APIKeyHeader
@@ -11,8 +12,9 @@ from nacl.signing import VerifyKey
 from bcrypt import checkpw
 from orjson import loads
 
-from plural.db import ProxyMember, Usergroup, Application
+from plural.db import ProxyMember, Usergroup, Application, redis
 from plural.crypto import decode_b66, BASE66CHARS
+from beanie import PydanticObjectId
 from plural.otel import span
 
 from src.discord import Interaction, ApplicationIntegrationType, WebhookEvent
@@ -24,13 +26,31 @@ TOKEN_MATCH_PATTERN = ''.join([
     f'([{escape(BASE66CHARS)}]', r'{5,8})\.',
     f'([{escape(BASE66CHARS)}]', r'{20,27})$'])
 
-API_KEY = APIKeyHeader(name='token')
+API_KEY = APIKeyHeader(
+    name='Authorization',
+    scheme_name='Application Token',
+    description='Use `/api` from /plu/ral to get a token'
+)
+
+INVALID_TOKEN = HTTPException(400, {
+    'detail': {
+        'loc': ['header', 'Authorization'],
+        'msg': 'Invalid token',
+        'type': 'value_error'
+    }
+})
 
 
 class TokenData(NamedTuple):
-    pk: str
+    app_id: PydanticObjectId
     timestamp: int
     key: int
+
+    @property
+    def redis_key(self) -> str:
+        return 'token:' + sha256(
+            f'{int(self.app_id.binary(), 36)}.{self.timestamp}'.encode()
+        ).hexdigest()
 
 
 async def acheckpw(password: str, hashed: str) -> bool:
@@ -42,33 +62,31 @@ async def acheckpw(password: str, hashed: str) -> bool:
         )
 
 
-async def api_key_validator(api_key: str = Security(API_KEY)) -> TokenData:
-    regex = match(TOKEN_MATCH_PATTERN, api_key)
+async def api_key_validator(token: str = Security(API_KEY)) -> TokenData:
+    regex = match(TOKEN_MATCH_PATTERN, token)
 
     if regex is None:
-        raise HTTPException(400, 'api key not in correct format!')
+        raise INVALID_TOKEN
 
-    raise NotImplementedError
+    token_data = TokenData(
+        app_id=PydanticObjectId(decode_b66(regex.group(1)).to_bytes(12)),
+        timestamp=decode_b66(regex.group(2)),
+        key=decode_b66(regex.group(3))
+    )
 
-    # token = TokenData(
-    #     pk=RedisPKCreator.create_pk_from_int(decode_b66(regex.group(1))),
-    #     timestamp=decode_b66(regex.group(2)),
-    #     key=decode_b66(regex.group(3))
-    # )
+    if await redis.get(token_data.redis_key):
+        # ? token already validated, bcrypt is slow
+        return token_data
 
-    # if await Application.db().get(f'valid_token:{token.pk}') is not None:
-    #     # ? token already validated, bcrypt is slow
-    #     return token
+    if (application := await Application.get(token_data.app_id)) is None:
+        raise INVALID_TOKEN
 
-    # if (application := await Application.get(token.pk)) is None:
-    #     raise HTTPException(400, 'invalid api key!')
+    if not await acheckpw(token, application.token):
+        raise INVALID_TOKEN
 
-    # if not await acheckpw(api_key, application.api_key):
-    #     raise HTTPException(400, 'invalid api key!')
+    await redis.set(token_data.redis_key, '1', ex=3600)
 
-    # await Application.db().set(f'valid_token:{token.pk}', '1', ex=3600)
-
-    # return token
+    return token_data
 
 
 async def _discord_key_validator(
@@ -141,7 +159,7 @@ async def _discord_key_validator(
     group = await member.get_group()
 
     if (
-        usergroup.id not in group.accounts and
+        usergroup.id not in group.accounts or
         user_id not in group.users
     ):
         raise HTTPException(401, 'Invalid user id')

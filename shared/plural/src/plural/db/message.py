@@ -5,7 +5,6 @@ from beanie import PydanticObjectId
 from pydantic import Field
 
 from .base import BaseDocument, ttl
-from .enums import ProxyReason
 
 
 class Message(BaseDocument):
@@ -34,8 +33,8 @@ class Message(BaseDocument):
         description='the channel id')
     member_id: PydanticObjectId = Field(
         description='the member id')
-    reason: ProxyReason | str = Field(
-        default=ProxyReason.NONE,
+    reason: str = Field(
+        default='no reason given, this should never be seen',
         description='the reason the message was proxied')
     webhook_id: int | None = Field(
         None,
