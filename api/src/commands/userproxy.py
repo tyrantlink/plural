@@ -902,7 +902,7 @@ async def umessage_reply(
             embeds.append(reply_insert)
 
     mentions = AllowedMentions.parse_content(
-        reply.content,
+        reply.content or '',
         False,
         mention_ignore
     )
