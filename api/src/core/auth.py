@@ -159,7 +159,7 @@ async def _discord_key_validator(
     group = await member.get_group()
 
     if (
-        usergroup.id not in group.accounts or
+        usergroup.id not in group.accounts and
         user_id not in group.users
     ):
         raise HTTPException(401, 'Invalid user id')
