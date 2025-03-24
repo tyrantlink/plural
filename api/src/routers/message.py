@@ -94,9 +94,9 @@ async def head__message(
 @router.get(
     '/{channel_id}/{message_id}',
     description="""
-        Get a message by its id
+    Get a message by its id
 
-        Requires logging scope""",
+    Requires logging scope""",
     responses={
         200: {
             'description': 'Message found',
