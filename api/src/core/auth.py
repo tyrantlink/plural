@@ -16,7 +16,7 @@ from orjson import loads
 from plural.db import ProxyMember, Usergroup, Application, redis
 from plural.crypto import decode_b66, BASE66CHARS
 from beanie import PydanticObjectId
-from plural.otel import span
+from plural.otel import span, cx
 
 from src.discord import Interaction, ApplicationIntegrationType, WebhookEvent
 from src.core.models import env
@@ -85,6 +85,8 @@ async def api_key_validator(token: str = Security(API_KEY)) -> TokenData:
 
     if (application := await Application.get(token_data.app_id)) is None:
         raise INVALID_TOKEN
+
+    cx().set_attribute('application_id', str(application.id))
 
     token_data._application = application
 
