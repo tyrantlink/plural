@@ -77,8 +77,10 @@ async def event_listener() -> None:
 
             for key, event in data[0][1]:
                 await create_strong_task(on_event(key, event['data'], start_time=time_ns()))
-        except Exception:  # noqa: BLE001
-            print_exc()
+        except Exception as e:  # noqa: BLE001
+            with span('proxy error') as current_span:
+                current_span.record_exception(e)
+                print_exc()
 
     if RUNNING:
         print(f'Waiting for {len(RUNNING)} tasks to finish...')  # noqa: T201
