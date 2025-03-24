@@ -16,12 +16,41 @@ __all__ = (
 class ApplicationScope(Flag):
     NONE = 0
     LOGGING = 1 << 0
-    AUTHORIZE_USERS = 1 << 1
-    USER_EVENTS = 1 << 2
-    MODIFY_USER_DATA = 1 << 3
-    SEND_MESSAGES = 1 << 4  # ? requires approval
-    USERPROXY_TOKENS = 1 << 5  # ? requires approval
-    SP_TOKENS = 1 << 6  # ? requires approval
+    USER_EVENTS = 1 << 1
+    USER_WRITE = 1 << 2
+    SEND_MESSAGES = 1 << 3  # ? requires approval
+    USERPROXY_TOKENS = 1 << 4  # ? requires approval
+    SP_TOKENS = 1 << 5  # ? requires approval
+
+    @property
+    def pretty_name(self) -> str:
+        return {
+            ApplicationScope.LOGGING: 'Logging',
+            ApplicationScope.USER_EVENTS: 'User Events',
+            ApplicationScope.USER_WRITE: 'User Write',
+            ApplicationScope.SEND_MESSAGES: 'Send Messages',
+            ApplicationScope.USERPROXY_TOKENS: 'Userproxy Tokens',
+            ApplicationScope.SP_TOKENS: 'SimplyPlural Tokens',
+        }[self]
+
+    @property
+    def description(self) -> str:
+        return {
+            ApplicationScope.LOGGING: 'Access to /messages',
+            ApplicationScope.USER_EVENTS: 'Receive user update events',
+            ApplicationScope.USER_WRITE: 'Modify user data',
+            ApplicationScope.SEND_MESSAGES: 'Access to send messages; Requires approval',
+            ApplicationScope.USERPROXY_TOKENS: 'Userproxy tokens will be included in user data; Requires approval',
+            ApplicationScope.SP_TOKENS: 'SimplyPlural tokens will be included in user data; Requires approval',
+        }[self]
+
+    @property
+    def approval_required(self) -> bool:
+        return self in (
+            ApplicationScope.SEND_MESSAGES,
+            ApplicationScope.USERPROXY_TOKENS,
+            ApplicationScope.SP_TOKENS,
+        )
 
 
 class AutoProxyMode(Enum):

@@ -30,7 +30,9 @@ def modal(
         modal = Modal(
             title=title,
             custom_id=custom_id,
-            components=[ActionRow(components=text_inputs)],
+            components=[
+                ActionRow(components=[text_input])
+                for text_input in text_inputs],
             callback=callback
         )
 

@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
-from typing import NamedTuple, Annotated
 from asyncio import get_event_loop
+from dataclasses import dataclass
+from typing import Annotated
 from re import match, escape
 from hashlib import sha256
 
@@ -41,7 +42,8 @@ INVALID_TOKEN = HTTPException(400, {
 })
 
 
-class TokenData(NamedTuple):
+@dataclass
+class TokenData:
     app_id: PydanticObjectId
     timestamp: int
     key: int
@@ -49,8 +51,15 @@ class TokenData(NamedTuple):
     @property
     def redis_key(self) -> str:
         return 'token:' + sha256(
-            f'{int(self.app_id.binary(), 36)}.{self.timestamp}'.encode()
+            f'{int.from_bytes(self.app_id.binary)}.{self.timestamp}'.encode()
         ).hexdigest()
+
+    @property
+    def application(self) -> Application:
+        if not hasattr(self, '_application'):
+            raise AttributeError('Application not set')
+
+        return self._application
 
 
 async def acheckpw(password: str, hashed: str) -> bool:
@@ -74,12 +83,14 @@ async def api_key_validator(token: str = Security(API_KEY)) -> TokenData:
         key=decode_b66(regex.group(3))
     )
 
+    if (application := await Application.get(token_data.app_id)) is None:
+        raise INVALID_TOKEN
+
+    token_data._application = application
+
     if await redis.get(token_data.redis_key):
         # ? token already validated, bcrypt is slow
         return token_data
-
-    if (application := await Application.get(token_data.app_id)) is None:
-        raise INVALID_TOKEN
 
     if not await acheckpw(token, application.token):
         raise INVALID_TOKEN

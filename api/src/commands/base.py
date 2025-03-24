@@ -301,11 +301,9 @@ async def slash_account_share(
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_api(
-    interaction: Interaction  # noqa: ARG001
+    interaction: Interaction
 ) -> None:
-    raise InteractionError(
-        'API will be implemented in the future I just need v3 out now'
-    )
+    await PAGES['api'](interaction)
 
 
 @slash_command(

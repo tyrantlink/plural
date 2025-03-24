@@ -238,8 +238,12 @@ class Modal(RawBaseModel):
                         self.custom_id
                         if not extra
                         else parse_extra(self.custom_id, extra)),
-                    'title': title,
-                    'components': [ActionRow(components=text_inputs)]
+                    'title': title or self.title,
+                    'components': ([
+                        ActionRow(components=[text_input])
+                        for text_input in text_inputs]
+                        if text_inputs
+                        else self.components)
                 }.items()
                 if is_not_missing(v)},
             deep=True

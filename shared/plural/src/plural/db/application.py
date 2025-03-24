@@ -32,7 +32,7 @@ class Application(BaseDocument):
         description='the name of the application')
     description: str = Field(
         description='the description of the application')
-    icon: str = Field(
+    icon: str | None = Field(
         description='the icon hash of the application')
     developer: int = Field(
         description='the user id of the developer')
@@ -49,13 +49,14 @@ class Application(BaseDocument):
     def new(
         cls,
         name: str,
+        description: str,
         developer: int,
         scope: ApplicationScope
     ) -> tuple[Self, str]:
         id = PydanticObjectId()
 
         token = '.'.join([
-            encode_b66(int(id.binary(), 36)),
+            encode_b66(int.from_bytes(id.binary)),
             encode_b66(int((time()*1000)-TOKEN_EPOCH)),
             encode_b66(int(token_hex(20), 16))
         ])
@@ -64,6 +65,8 @@ class Application(BaseDocument):
             cls(
                 id=id,
                 name=name,
+                description=description,
+                icon=None,
                 developer=developer,
                 token=hashpw(token.encode(), gensalt()).decode(),
                 scope=scope),
@@ -74,7 +77,7 @@ class Application(BaseDocument):
         from . import redis
 
         token = '.'.join([
-            encode_b66(int(self.id.binary(), 36)),
+            encode_b66(int.from_bytes(self.id.binary)),
             encode_b66(int((time()*1000)-TOKEN_EPOCH)),
             encode_b66(int(token_hex(20), 16))
         ])

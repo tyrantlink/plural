@@ -25,7 +25,6 @@ from src.discord import (
     InteractionType,
     ComponentType,
     Interaction,
-    ActionRow,
     Snowflake,
     Message,
     Channel,
@@ -236,10 +235,8 @@ async def _on_modal_submit(interaction: Interaction) -> None:
 
     kwargs = {
         component.custom_id: component.value
-        for component in (
-            interaction.data.components or
-            [ActionRow(components=[])]
-        )[0].components
+        for action_row in interaction.data.components
+        for component in action_row.components
     }
 
     cx().set_attribute('args', [str(arg) for arg in args])

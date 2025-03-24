@@ -26,7 +26,7 @@ PATH_PATTERN = compile(
 )
 
 PATH_OVERWRITES = {
-    '/messages/:message_id': '/messages/:id'
+    '/messages/:channel_id/:message_id': '/messages/:id/:id'
 }
 
 SUPPRESSED_PATHS = {
