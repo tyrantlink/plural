@@ -517,7 +517,7 @@ async def get_proxy_data(
                     tag=member.proxy_tags[result.proxy_tag]
                 )
 
-    if autoproxy is not None and autoproxy_members[autoproxy.guild] is not None:
+    if autoproxy is not None and autoproxy_members.get(autoproxy.guild) is not None:
         group = next(
             group
             for group in groups
@@ -1223,8 +1223,8 @@ async def _process_proxy(
 
     if total_filesize > filesize_limit:
         debug_log.append(
-            f'Attachments exceed {filesize_limit / 1048576} MB. '
-            f'({total_filesize / 1048576} MB)')
+            f'Attachments exceed {round(filesize_limit / 1_048_576)} MB. '
+            f'({round(total_filesize / 1_048_576, 2)} MB)')
         await save_debug_log(event, debug_log)
         return ProxyResult(False, emojis)
 
