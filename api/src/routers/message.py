@@ -1,4 +1,4 @@
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, UTC
 
 from fastapi import APIRouter, Response, Security
 from orjson import dumps
@@ -8,6 +8,7 @@ from plural.db import redis, Message
 
 from src.core.auth import api_key_validator, TokenData
 from src.models import Message as MessageModel
+from src.core.ratelimit import ratelimit
 
 
 router = APIRouter(prefix='/messages', tags=['Messages'])
@@ -50,6 +51,7 @@ def _snowflake_to_age(snowflake: int) -> float:
         422: {
             'content': None,
             'description': 'Validation Error'}})
+@ratelimit(500, timedelta(seconds=1))
 async def head__message(
     channel_id: int,
     message_id: int
@@ -158,6 +160,7 @@ async def head__message(
             'description': 'Message is older than 7 days; status is unknown',
             'headers': {
                 'Cache-Control': 'public, max-age=604800'}}})
+@ratelimit(500, timedelta(seconds=1))
 async def get__message(
     channel_id: int,
     message_id: int,

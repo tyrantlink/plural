@@ -166,16 +166,42 @@ app.add_middleware(
 
 
 @app.middleware('http')
-async def set_client_ip(
+async def ratelimiter(
     request: Request,
     call_next: Callable[..., Awaitable[Any]]
 ) -> Any:  # noqa: ANN401
-    client_ip = request.headers.get('CF-Connecting-IP')
+    from src.core.ratelimit import ratelimit_check
 
-    if client_ip and request.client is not None:
-        request.scope['client'] = (client_ip, request.scope['client'][1])
+    for route in app.routes:
+        match, data = route.matches(request.scope)
 
-    return await call_next(request)
+        if match == Match.FULL and isinstance(route, APIRoute):
+            break
+    else:
+        return await call_next(request)
+
+    key = (
+        request.headers['Authorization'].split('.')[0].strip()
+        if 'Authorization' in request.headers
+        else request.scope['client'][0]
+    )
+
+    limit_response = await ratelimit_check(key, route.endpoint)
+
+    if limit_response and limit_response.block:
+        return Response(
+            status_code=429,
+            headers=limit_response.as_headers()
+        )
+
+    response = await call_next(request)
+
+    if limit_response:
+        response.headers.update(
+            limit_response.as_headers()
+        )
+
+    return response
 
 
 @app.middleware('http')
@@ -221,6 +247,19 @@ async def otel_trace(
     response.headers['x-trace-id'] = f'{current_span.context.trace_id:x}'
 
     return response
+
+
+@app.middleware('http')
+async def set_client_ip(
+    request: Request,
+    call_next: Callable[..., Awaitable[Any]]
+) -> Any:  # noqa: ANN401
+    client_ip = request.headers.get('CF-Connecting-IP')
+
+    if client_ip and request.client is not None:
+        request.scope['client'] = (client_ip, request.scope['client'][1])
+
+    return await call_next(request)
 
 
 @app.get(
