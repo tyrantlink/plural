@@ -1533,6 +1533,7 @@ async def userproxy_handler(
         except NotFound:
             debug_log.append(
                 'Userproxy member not found in server.')
+            return ProxyResponse.failure(publish_latency)
 
         member = await Cache(
             member_data, [], False, 0
