@@ -14,6 +14,9 @@ All config options have built-in descriptions when using the command, so this pa
 ### Groups in Autocomplete
 ### Button Style
 ### Dice Roll Embed
+### Tag Format
+### Pronoun Format
+### Display Name Order
 
 ## Userproxy Config
 ### Server Reply Format

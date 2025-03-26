@@ -1480,7 +1480,9 @@ async def webhook_handler(
         endpoint=f'/webhooks/{webhook['id']}/{webhook['token']}',
         json={
             'content': proxy.content,
-            'username': ' '.join([proxy.member.name, (proxy.group.tag or '')]),
+            'username': proxy.member.get_display_name(
+                usergroup,
+                proxy.group),
             'avatar_url': proxy.avatar_url,
             'allowed_mentions': parse_allowed_mentions(
                 original_content,
@@ -1517,21 +1519,26 @@ async def userproxy_handler(
     if member is None:
         publish_latency = False
 
-        member = await Cache(
-            await request(Route(
+        debug_log.append(
+            'Userproxy member not found in cache. Fetching...'
+        )
+
+        try:
+            member_data = await request(Route(
                 'GET',
                 '/guilds/{guild_id}/members/{user_id}',
                 token=env.bot_token,
                 guild_id=event['guild_id'],
-                user_id=proxy.member.userproxy.bot_id)),
-            [], False, 0
+                user_id=proxy.member.userproxy.bot_id))
+        except NotFound:
+            debug_log.append(
+                'Userproxy member not found in server.')
+
+        member = await Cache(
+            member_data, [], False, 0
         ).save(
             f'discord:member:{event['guild_id']}:{proxy.member.userproxy.bot_id}',
             timedelta(minutes=10)
-        )
-
-        debug_log.append(
-            'Userproxy member not found in cache. Fetching...'
         )
 
     member_permissions = await Permission.for_member(

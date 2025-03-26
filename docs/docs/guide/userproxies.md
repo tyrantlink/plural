@@ -46,7 +46,7 @@ For options beyond the token, bio, banner, and proxy command, see the [Userproxy
 #### Proxying without the userproxy invited to the server
 You can proxy in servers even without the userproxy invited to the server, with a few limitations
 - You can only proxy in servers where you have the `Use External Apps` permission
-- If the server uses automod to block masked links, you probably won't be able to properly reply. see [the automod page](./server-guide/automod.md) for more information
+- If the server uses automod to block masked links, you probably won't be able to properly reply. see [the automod page](/server-guide/automod.md) for more information
 
 
 #### Inviting the Userproxy to a server

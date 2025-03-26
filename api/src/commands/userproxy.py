@@ -162,13 +162,10 @@ async def _userproxy_sync(
         await member.save()
 
     if not patch_filter or 'username' in patch_filter:
-        bot_patch['username'] = (
-            f'{member.name}' + (
-                f' {group.tag}' if (
-                    group.tag and
-                    usergroup.userproxy_config.include_group_tag
-                ) else ''
-            )
+        bot_patch['username'] = member.get_display_name(
+            usergroup,
+            group,
+            True
         )
 
     if not patch_filter or 'avatar' in patch_filter:

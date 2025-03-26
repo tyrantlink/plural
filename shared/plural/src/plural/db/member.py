@@ -6,6 +6,7 @@ from re import sub, IGNORECASE
 
 from pydantic import Field, BaseModel, model_validator
 from beanie import PydanticObjectId
+from regex import compile
 
 from plural.env import env
 
@@ -14,7 +15,11 @@ from .base import BaseDocument
 if TYPE_CHECKING:
     from aiohttp import ClientSession
 
-    from plural.db.group import Group
+    from .usergroup import Usergroup
+    from .group import Group
+
+
+DOUBLESPACE = compile(r'\s{2,}')
 
 
 class ProxyMember(BaseDocument):
@@ -127,6 +132,9 @@ class ProxyMember(BaseDocument):
         '',
         description='the meta information of the member; only shown in autocomplete',
         max_length=50)
+    pronouns: str = Field(
+        '',
+        description='the pronouns of the member')
     avatar: str | None = Field(
         None,
         description='the avatar hash of the member')
@@ -148,6 +156,39 @@ class ProxyMember(BaseDocument):
             parent_id=self.id,
             hash=self.avatar
         ) if self.avatar else None
+
+    def get_display_name(
+        self,
+        usergroup: Usergroup,
+        group: Group,
+        userproxy: bool = False
+    ) -> str:
+        components = [
+            self.name, (
+                usergroup.config.tag_format.replace(
+                    '{tag}', group.tag)
+                if (
+                    group.tag and not (
+                        userproxy and not
+                        usergroup.userproxy_config.include_group_tag)
+                ) else ''), (
+                usergroup.config.pronoun_format.replace(
+                    '{pronouns}', self.pronouns)
+                if (
+                    self.pronouns and not (
+                        userproxy and not
+                        usergroup.userproxy_config.include_pronouns)
+                ) else ''
+            )
+        ]
+
+        return DOUBLESPACE.sub(
+            ' ', ' '.join([
+                components[index]
+                for index in
+                usergroup.config.display_name_order
+            ]).strip()[:80]
+        )
 
     async def get_group(
         self,

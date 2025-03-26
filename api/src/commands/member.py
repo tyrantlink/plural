@@ -483,6 +483,48 @@ async def slash_member_set_name(
         )
 
 
+@member_set.command(
+    name='pronouns',
+    description='Set a member\'s pronouns',
+    options=[
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='member',
+            description='Member to give new pronouns',
+            required=True,
+            autocomplete=True),
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='pronouns',
+            description='New member pronouns',
+            max_length=50,
+            required=False)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_member_set_pronouns(
+    interaction: Interaction,
+    member: ProxyMember,
+    pronouns: str = ''
+) -> None:
+    group = await member.get_group()
+
+    group_edit_check(group, interaction.author_id)
+
+    member.pronouns = pronouns
+
+    await gather(
+        member.save(),
+        interaction.response.send_message(embeds=[Embed.success(
+            title='Member Pronouns Updated',
+            message=(
+                f'Member `{member.name}` pronouns changed to `{pronouns}`'
+                if pronouns else
+                f'Member `{member.name}` pronouns removed'
+            )
+        )])
+    )
+
+
 @member_tags.command(
     name='add',
     description='Add a proxy tag to a member (15 max)',

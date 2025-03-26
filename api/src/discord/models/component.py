@@ -210,6 +210,37 @@ class TextInput(MessageComponent):
     placeholder: Optional[str]
     """Custom placeholder text if the input is empty; max 100 characters"""
 
+    def with_overrides(
+        self,
+        style: Optional[TextInputStyle] = MISSING,
+        label: Optional[str] = MISSING,
+        min_length: Optional[int] = MISSING,
+        max_length: Optional[int] = MISSING,
+        required: Optional[bool] = MISSING,
+        value: Optional[str] = MISSING,
+        placeholder: Optional[str] = MISSING,
+        extra: Optional[list[CustomIdExtraTypeType]] = MISSING
+    ) -> TextInput:
+        return self.model_copy(
+            update={
+                k: v
+                for k, v in {
+                    'custom_id': (
+                        self.custom_id
+                        if not extra
+                        else parse_extra(self.custom_id, extra)),
+                    'style': style,
+                    'label': label,
+                    'min_length': min_length,
+                    'max_length': max_length,
+                    'required': required,
+                    'value': value,
+                    'placeholder': placeholder
+                }.items()
+                if is_not_missing(v)},
+            deep=True
+        )
+
 
 class Modal(RawBaseModel):
     title: str

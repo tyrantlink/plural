@@ -32,7 +32,16 @@ class Usergroup(BaseDocument):
             description='the style of pagination buttons to use')
         roll_embed: bool = Field(
             default=True,
-            description='whether to show for dice rolls'
+            description='whether to show for dice rolls')
+        tag_format: str = Field(
+            default='{tag}',
+            description='the format for group tags in member names')
+        pronoun_format: str = Field(
+            default='({pronouns})',
+            description='the format for pronouns in member names')
+        display_name_order: list[int] = Field(
+            default_factory=lambda: [0, 1, 2],
+            description='the order of display name components'
         )
 
     class UserproxyConfig(BaseModel):
@@ -48,6 +57,9 @@ class Usergroup(BaseDocument):
         include_group_tag: bool = Field(
             default=False,
             description='whether to include the group tag in the member name')
+        include_pronouns: bool = Field(
+            default=False,
+            description='whether to include the pronouns in the member name')
         attachment_count: int = Field(
             default=1,
             description='the number of attachments options to include in the proxy command')

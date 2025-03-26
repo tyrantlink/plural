@@ -12,6 +12,7 @@ from plural.otel import span
 
 from src.discord import (
     insert_cmd_ref,
+    TextInputStyle,
     string_select,
     ButtonStyle,
     Interaction,
@@ -19,9 +20,11 @@ from src.discord import (
     Permission,
     SelectMenu,
     ActionRow,
+    TextInput,
     button,
     Embed,
     Emoji,
+    modal
 )
 
 from .pagination import PAGINATION_STYLE_MAP
@@ -37,6 +40,7 @@ class ConfigOptionType(Enum):
     BOOLEAN = 0
     SELECT = 1
     CHANNEL = 2
+    STRING = 3
 
 
 @dataclass
@@ -44,10 +48,12 @@ class ConfigOption:
     name: str
     description: str
     type: ConfigOptionType
+    parser: Callable[[str], Any]
     choices: list[SelectMenu.Option] | None = None
     docs: str | None = None
-    parser: Callable[[str], Any] | None = None
+    check: Callable[[Any], bool] | None = None
     channel_types: list[ChannelType] | None = None
+    text_input: TextInput | None = None
 
 
 CONFIG_OPTIONS = {
@@ -127,7 +133,70 @@ CONFIG_OPTIONS = {
                 If disabled, you'll only see the total value inserted into your original message
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
-            parser=lambda value: value == 'Enabled')},
+            parser=lambda value: value == 'Enabled'),
+        'tag_format': ConfigOption(
+            name='Group Tag Format',
+            description=dedent('''
+                The format for group tags
+
+                {tag} in your format will be replaced with your group tag.
+
+                Default: {tag}
+            ''').strip(),
+            type=ConfigOptionType.STRING,
+            text_input=TextInput(
+                custom_id='value',
+                label='Group Tag Format',
+                style=TextInputStyle.SHORT,
+                placeholder='{tag}'),
+            parser=lambda value: value,
+            check=lambda value: '{pronouns}' in value),
+        'pronoun_format': ConfigOption(
+            name='Pronoun Format',
+            description=dedent('''
+                The format for pronouns in member names.
+
+                {pronouns} in your format will be replaced with the member's pronouns.
+
+                Default: ({pronouns})
+            ''').strip(),
+            type=ConfigOptionType.STRING,
+            text_input=TextInput(
+                custom_id='value',
+                label='Pronoun Format',
+                style=TextInputStyle.SHORT,
+                placeholder='({pronouns})'),
+            parser=lambda value: value,
+            check=lambda value: '{pronouns}' in value),
+        'display_name_order': ConfigOption(
+            name='Display Name Order',
+            description=dedent('''
+                The order of display name components.
+
+                Default: Name, Group Tag, Pronouns
+            ''').strip(),
+            type=ConfigOptionType.SELECT,
+            choices=[
+                SelectMenu.Option(
+                    label='Name, Group Tag, Pronouns',
+                    value='0,1,2'),
+                SelectMenu.Option(
+                    label='Name, Pronouns, Group Tag',
+                    value='0,2,1'),
+                SelectMenu.Option(
+                    label='Group Tag, Name, Pronouns',
+                    value='1,0,2'),
+                SelectMenu.Option(
+                    label='Group Tag, Pronouns, Name',
+                    value='1,2,0'),
+                SelectMenu.Option(
+                    label='Pronouns, Name, Group Tag',
+                    value='2,0,1'),
+                SelectMenu.Option(
+                    label='Pronouns, Group Tag, Name',
+                    value='2,1,0')],
+            parser=lambda value: [
+                int(index) for index in value.split(',')])},
     'userproxy': {
         'reply_format': ConfigOption(
             name='Server Reply Format',
@@ -205,6 +274,15 @@ CONFIG_OPTIONS = {
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
+        'include_pronouns': ConfigOption(
+            name='Include Pronouns in Member Name',
+            description=dedent('''
+                Whether to include the pronouns in the member name.
+
+                Note: the total length of userproxy name and group tag must be less than 32 characters.
+            ''').strip(),
+            type=ConfigOptionType.BOOLEAN,
+            parser=lambda value: value == 'Enabled'),
         'attachment_count': ConfigOption(
             name='Attachment Count',
             description=dedent('''
@@ -273,6 +351,7 @@ CONFIG_OPTIONS = {
             ''').strip(),
             type=ConfigOptionType.CHANNEL,
             channel_types=[ChannelType.GUILD_TEXT],
+            parser=lambda value: int(value)
         )
     }
 }
@@ -303,6 +382,14 @@ def extract_values(config: dict) -> dict[str, tuple[str, Any]]:
                     value)
             case bool():
                 out[key] = ('Enabled' if value else 'Disabled', value)
+            case list() if key == 'display_name_order':
+                out[key] = (
+                    ', '.join([
+                        'Name',
+                        'Group Tag',
+                        'Pronouns'
+                    ][index] for index in value),
+                    value)
             case _:
                 out[key] = (str(value), value)
 
@@ -365,9 +452,10 @@ async def select_config_value(
     await parent.save()
 
     synced = False
-    if category == 'userproxy':
+    if category in {'user', 'userproxy'}:
         synced = await userproxy_sync(
             interaction,
+            category,
             option,
             parent
         )
@@ -436,14 +524,89 @@ async def _button_bool(
     await parent.save()
 
     synced = False
-    if category == 'userproxy':
+    if category in {'user', 'userproxy'}:
         synced = await userproxy_sync(
             interaction,
+            category,
             option,
             parent
         )
 
     await _option(interaction, [option], category, synced)
+
+
+@modal(
+    custom_id='modal_set',
+    title='Set',
+    text_inputs=[])
+async def modal_set(
+    interaction: Interaction,
+    category: str,
+    option: str,
+    value: str
+) -> None:
+    match category:
+        case 'user':
+            parent = await Usergroup.get_by_user(interaction.author_id)
+            config = parent.config
+        case 'userproxy':
+            parent = await Usergroup.get_by_user(interaction.author_id)
+            config = parent.userproxy_config
+        case 'guild':
+            parent = await Guild.get(interaction.guild_id) or Guild(
+                id=interaction.guild_id)
+            config = parent.config
+        case _:
+            raise ValueError(f'Invalid category: {category}')
+
+    setattr(config, option, value)
+
+    await parent.save()
+
+    synced = False
+    if category in {'user', 'userproxy'}:
+        synced = await userproxy_sync(
+            interaction,
+            category,
+            option,
+            parent
+        )
+
+    await _option(interaction, [option], category, synced)
+
+
+@button(
+    custom_id='button_set',
+    label='Set',
+    style=ButtonStyle.SECONDARY)
+async def button_set(
+    interaction: Interaction,
+    category: str,
+    option: str
+) -> None:
+    match category:
+        case 'user':
+            parent = await Usergroup.get_by_user(interaction.author_id)
+            config = parent.config
+        case 'userproxy':
+            parent = await Usergroup.get_by_user(interaction.author_id)
+            config = parent.userproxy_config
+        case 'guild':
+            parent = await Guild.get(interaction.guild_id) or Guild(
+                id=interaction.guild_id)
+            config = parent.config
+        case _:
+            raise ValueError(f'Invalid category: {category}')
+
+    await interaction.response.send_modal(
+        modal_set.with_overrides(
+            title=f'Set {CONFIG_OPTIONS[category][option].name}',
+            text_inputs=[
+                CONFIG_OPTIONS[category][option].text_input.with_overrides(
+                    value=getattr(config, option))],
+            extra=[category, option]
+        )
+    )
 
 
 async def _home(
@@ -654,6 +817,19 @@ async def _option(
                         label=arrow if isinstance(arrow, str) else '',
                         emoji=arrow if isinstance(arrow, Emoji) else None,
                         extra=['category', category])])]
+        case ConfigOptionType.STRING:
+            embed.add_field(
+                name='Current Value',
+                value=current_values[selected[0]][0],
+                inline=False)
+            components = [
+                ActionRow(components=[
+                    button_back.with_overrides(
+                        label=arrow if isinstance(arrow, str) else '',
+                        emoji=arrow if isinstance(arrow, Emoji) else None,
+                        extra=['category', category]),
+                    button_set.with_overrides(
+                        extra=[category, selected[0]])])]
         case ConfigOptionType.CHANNEL:
             raise NotImplementedError
 
@@ -662,6 +838,7 @@ async def _option(
 
 async def userproxy_sync(
     interaction: Interaction,
+    category: str,
     option: str,
     usergroup: Usergroup
 ) -> bool:
@@ -669,20 +846,28 @@ async def userproxy_sync(
 
     patch_filter = set()
 
-    match option:
-        case 'include_group_tag':
+    match category, option:
+        case ('user', 'tag_format'):
+            if usergroup.userproxy_config.include_group_tag:
+                patch_filter.add('username')
+        case ('user', 'pronoun_format'):
+            if usergroup.userproxy_config.include_pronouns:
+                patch_filter.add('username')
+        case ('user', 'display_name_order'):
             patch_filter.add('username')
-        case 'attachment_count':
+        case ('userproxy', 'include_group_tag'):
+            patch_filter.add('username')
+        case ('userproxy', 'attachment_count'):
             patch_filter.add('commands')
-        case 'self_hosted':
+        case ('userproxy', 'self_hosted'):
             patch_filter.update(
                 'interactions_endpoint_url',
                 'event_webhooks_url',
                 'event_webhooks_types',
                 'event_webhooks_status')
-        case 'required_message_parameter':
+        case ('userproxy', 'required_message_parameter'):
             patch_filter.add('commands')
-        case 'name_in_reply_command':
+        case ('userproxy', 'name_in_reply_command'):
             patch_filter.add('commands')
         case _:
             return False
