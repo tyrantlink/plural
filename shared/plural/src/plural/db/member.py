@@ -135,6 +135,10 @@ class ProxyMember(BaseDocument):
     pronouns: str = Field(
         '',
         description='the pronouns of the member')
+    bio: str = Field(
+        '',
+        description='the bio of the member',
+        max_length=4096)
     avatar: str | None = Field(
         None,
         description='the avatar hash of the member')

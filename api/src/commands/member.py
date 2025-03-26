@@ -284,6 +284,28 @@ async def slash_member_set_avatar(
 
 
 @member_set.command(
+    name='bio',
+    description='Set a member\'s bio',
+    options=[
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='member',
+            description='Member to give new bio (you\'ll type the bio in a prompt)',
+            required=True,
+            autocomplete=True)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_member_set_bio(
+    interaction: Interaction,
+    member: ProxyMember
+) -> None:
+    await PAGES['bio'](
+        interaction,
+        member
+    )
+
+
+@member_set.command(
     name='group',
     description='Set a member\'s group',
     options=[
@@ -548,10 +570,8 @@ async def slash_member_set_pronouns(
         )
 
     embeds[0].set_footer(
-        text=(
-            'You may need to restart your client '
-            'to see changes to userproxies'
-        )
+        'You may need to restart your client '
+        'to see changes to userproxies'
     )
 
     await interaction.followup.edit_message(

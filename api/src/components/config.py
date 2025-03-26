@@ -11,6 +11,7 @@ from plural.errors import InteractionError
 from plural.missing import MISSING
 from plural.otel import span
 
+from src.core.models import USERPROXY_FOOTER
 from src.discord import (
     insert_cmd_ref,
     TextInputStyle,
@@ -334,6 +335,15 @@ CONFIG_OPTIONS = {
                 If disabled, the reply command will be "Reply"
 
                 Either way, the userproxy icon will will be visible in the command.
+            ''').strip(),
+            type=ConfigOptionType.BOOLEAN,
+            parser=lambda value: value == 'Enabled'),
+        'include_attribution': ConfigOption(
+            name='Include Attribution',
+            description=dedent(f'''
+                Whether to include attribution at the end of bio.
+
+                If enabled, Userproxy bios will end with{USERPROXY_FOOTER}
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled')},
@@ -756,7 +766,10 @@ async def _option(
 
     embed = Embed.success(
         title=option.name,
-        message=option.description,
+        message=(
+            option.description.format(username=interaction.author_name)
+            if (category, selected[0]) == ('userproxy', 'include_attribution') else
+            option.description),
         insert_command_ref=True
     )
 
@@ -890,6 +903,8 @@ async def userproxy_sync(
             patch_filter.add('commands')
         case ('userproxy', 'name_in_reply_command'):
             patch_filter.add('commands')
+        case ('userproxy', 'include_attribution'):
+            patch_filter.add('description')
         case _:
             return False
 

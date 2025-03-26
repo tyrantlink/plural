@@ -5,10 +5,11 @@ from plural.otel import span
 
 
 LEGACY_FOOTERS = {
+    'a plural proxy for @{username} powered by /plu/ral\nhttps://plural.gg',
     'userproxy for @{username} powered by /plu/ral\nhttps://github.com/tyrantlink/plural',
     'a plural proxy for @{username} powered by /plu/ral\nhttps://github.com/tyrantlink/plural'
 }
-USERPROXY_FOOTER = '\n\na plural proxy for @{username} powered by /plu/ral\nhttps://plural.gg'
+USERPROXY_FOOTER = '\n\na plural proxy for @{username}\npowered by /plu/ral\nhttps://plural.gg'
 USERPROXY_FOOTER_LIMIT = 400 - len(USERPROXY_FOOTER.format(username='*' * 32))
 
 

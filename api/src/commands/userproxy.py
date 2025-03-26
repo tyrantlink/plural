@@ -23,9 +23,7 @@ from plural.errors import (
 )
 
 from src.core.models import (
-    USERPROXY_FOOTER_LIMIT,
     USERPROXY_FOOTER,
-    LEGACY_FOOTERS,
     env
 )
 
@@ -96,7 +94,6 @@ async def _userproxy_sync(
     member: ProxyMember,
     patch_filter: set,
     app: Application | None = None,
-    include_attribution: bool = True,
     silent: bool = False,
     usergroup: Usergroup | None = None,
     group: Group | None = None,
@@ -186,16 +183,14 @@ async def _userproxy_sync(
         app_patch['icon'] = avatar_data
 
     if not patch_filter or 'description' in patch_filter:
-        current = app.description
-        for footer in {USERPROXY_FOOTER, *LEGACY_FOOTERS}:
-            current = current.removesuffix(footer.format(
-                username=interaction.author_name
-            )).strip()
-
+        footer = USERPROXY_FOOTER.format(username=interaction.author_name)
         app_patch['description'] = (
-            f'{current}\n\n' + (USERPROXY_FOOTER.format(
-                username=interaction.author_name
-            ) if include_attribution else '')
+            member.bio + (
+                footer
+                if (
+                    usergroup.userproxy_config.include_attribution and
+                    len(member.bio + footer) <= 400)
+                else '')
         ).strip()[:400]
 
     base_app_patch = {
@@ -247,8 +242,9 @@ async def userproxy_sync(
     member: ProxyMember,
     patch_filter: set,
     app: Application | None = None,
-    include_attribution: bool = True,
-    silent: bool = False
+    silent: bool = False,
+    usergroup: Usergroup | None = None,
+    group: Group | None = None
 ) -> None:
     try:
         await _userproxy_sync(
@@ -256,8 +252,9 @@ async def userproxy_sync(
             member,
             patch_filter,
             app,
-            include_attribution,
-            silent)
+            silent,
+            usergroup,
+            group)
     except BaseException:
         await interaction.followup.edit_message(
             '@original',
@@ -421,8 +418,7 @@ async def slash_userproxy_edit(
         interaction,
         userproxy,
         sync_filter,
-        locals().get('app'),
-        False
+        locals().get('app')
     )
 
     embed = Embed.success(
@@ -525,6 +521,11 @@ async def slash_userproxy_new(
     if not (2 <= len(member.name) <= 32):
         raise InteractionError(
             'Member name must be 2-32 characters long to create a userproxy'
+        )
+
+    if len(member.bio) > 400:
+        raise InteractionError(
+            'Member bio must be 400 characters or less to create a userproxy'
         )
 
     bot_token = bot_token.strip()  # ? discord does this, but just in case
@@ -677,9 +678,7 @@ async def slash_userproxy_sync(
             'integration_types_config',
             'interactions_endpoint_url',
             'username',
-        } | ({'avatar', 'icon'} if sync_avatar else set()),
-        None,
-        False
+        } | ({'avatar', 'icon'} if sync_avatar else set())
     )
 
     await interaction.followup.edit_message(
@@ -733,36 +732,6 @@ async def slash_userproxy_set_banner(
         ).set_footer(
             'You may need to refresh Discord to see the changes'
         )]
-    )
-
-
-@userproxy_set.command(
-    name='bio',
-    description='Set a userproxy\'s bio',
-    options=[
-        ApplicationCommand.Option(
-            type=ApplicationCommandOptionType.STRING,
-            name='userproxy',
-            max_length=USERPROXY_FOOTER_LIMIT,
-            description='Userproxy to give new bio (you\'ll type the bio in a prompt)',
-            required=True,
-            autocomplete=True),
-        ApplicationCommand.Option(
-            type=ApplicationCommandOptionType.BOOLEAN,
-            name='include_attribution',
-            description='Whether to add /plu/ral attribution to the end of the bio (default: True)',
-            required=False)],
-    contexts=InteractionContextType.ALL(),
-    integration_types=ApplicationIntegrationType.ALL())
-async def slash_member_set_bio(
-    interaction: Interaction,
-    userproxy: ProxyMember,
-    include_attribution: bool = True
-) -> None:
-    await PAGES['bio'](
-        interaction,
-        userproxy,
-        include_attribution
     )
 
 

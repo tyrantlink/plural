@@ -342,8 +342,7 @@ async def migration_loop(
             await gather(*(
                 _userproxy_sync(
                     interaction,
-                    userproxy,
-                    {
+                    userproxy, {
                         'avatar',
                         'commands',
                         'event_webhooks_status',
@@ -354,8 +353,7 @@ async def migration_loop(
                         'install_params',
                         'integration_types_config',
                         'interactions_endpoint_url',
-                        'username',
-                    },
+                        'username'},
                     silent=True,
                     usergroup=usergroup,
                     group=group)

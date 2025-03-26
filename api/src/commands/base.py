@@ -152,11 +152,12 @@ async def message_plural_proxy_info(
 
     embed = Embed(
         title='Proxy Info',
+        description=member.bio,
         color=0x69ff69
     ).add_field(
         name='Author',
         value=f'<@{db_message.author_id}>',
-        inline=False
+        inline=True
     ).add_field(
         name='Proxy Reason',
         value=db_message.reason,
@@ -171,6 +172,13 @@ async def message_plural_proxy_info(
     ).set_thumbnail(
         message.author.avatar_url
     )
+
+    if member.pronouns:
+        embed.fields.insert(1, Embed.Field(
+            name='Pronouns',
+            value=member.pronouns,
+            inline=True
+        ))
 
     if usergroup.data.supporter_tier == SupporterTier.SUPPORTER:
         embed.footer.text += '\n🌟/plu/ral supporter🌟'

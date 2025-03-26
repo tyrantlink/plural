@@ -71,8 +71,10 @@ class Usergroup(BaseDocument):
             description='whether the proxy command requires the message parameter')
         name_in_reply_command: bool = Field(
             default=True,
-            description='whether the name should be included in the reply command'
-        )
+            description='whether the name should be included in the reply command')
+        include_attribution: bool = Field(
+            default=True,
+            description='whether to include attribution at the end of bio')
 
     class Data(BaseModel):
         supporter_tier: SupporterTier = Field(

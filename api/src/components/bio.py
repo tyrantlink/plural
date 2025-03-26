@@ -1,18 +1,14 @@
 from asyncio import gather
 
-from plural.errors import InteractionError
-from plural.missing import MISSING
 from plural.db import ProxyMember
 
 from src.core.models import (
-    USERPROXY_FOOTER_LIMIT,
     USERPROXY_FOOTER,
     LEGACY_FOOTERS
 )
 
 from src.discord import (
     TextInputStyle,
-    Application,
     Interaction,
     TextInput,
     Embed,
@@ -21,7 +17,7 @@ from src.discord import (
 
 
 PAGES = {
-    'bio': lambda interaction, userproxy, include_attribution: _bio(interaction, userproxy, include_attribution)
+    'bio': lambda interaction, member: _bio(interaction, member)
 }
 
 
@@ -31,59 +27,54 @@ PAGES = {
     text_inputs=[])
 async def modal_proxy(
     interaction: Interaction,
-    userproxy: ProxyMember,
-    include_attribution: bool,
+    member: ProxyMember,
     bio: str = ''
 ) -> None:
-    app = await Application.fetch(
-        userproxy.userproxy.token,
-        False
-    )
+    from src.commands.userproxy import _userproxy_sync
 
-    if include_attribution:
-        bio += USERPROXY_FOOTER.format(
-            username=interaction.author_name
-        )
+    member.bio = bio.strip()
 
-    bio = bio.strip()
+    embeds = [Embed.success(
+        title=f'Updated {member.name}\'s bio',
+        message=member.bio
+    )]
 
-    if bio == app.description:
-        raise InteractionError('no changes were made')
-
-    if len(bio) > 400:
-        raise InteractionError(
-            'Bio over character limit (400), '
-            'this shouldn\'t be possible'
+    if member.userproxy:
+        embeds[0].set_footer(
+            'Userproxy sync in progress...'
         )
 
     await gather(
-        app.patch(
-            userproxy.userproxy.token,
-            {'description': bio}),
+        member.save(),
         interaction.response.send_message(
-            embeds=[Embed.success(
-                title=f'Updated {app.bot.username}\'s bio',
-                message=bio
-            ).set_footer(
-                'Note: you may need to refresh your '
-                'Discord client to see changes'
-            )]
+            embeds=embeds
         )
+    )
+
+    if member.userproxy:
+        await _userproxy_sync(
+            interaction,
+            member,
+            {'description'},
+            silent=True
+        )
+
+    embeds[0].set_footer(
+        'You may need to restart your client '
+        'to see changes to userproxies'
+    )
+
+    await interaction.followup.edit_message(
+        '@original',
+        embeds=embeds
     )
 
 
 async def _bio(
     interaction: Interaction,
-    userproxy: ProxyMember,
-    include_attribution: bool
+    member: ProxyMember
 ) -> None:
-    app = await Application.fetch(
-        userproxy.userproxy.token,
-        False
-    )
-
-    current_bio = app.description
-
+    current_bio = member.bio
     for footer in [*LEGACY_FOOTERS, USERPROXY_FOOTER]:
         current_bio = current_bio.removesuffix(
             footer.format(
@@ -92,29 +83,22 @@ async def _bio(
         ).strip()
 
     max_length = (
-        USERPROXY_FOOTER_LIMIT
-        if include_attribution else
         400
+        if member.userproxy else
+        4000
     )
 
     await interaction.response.send_modal(
         modal_proxy.with_overrides(
-            title=f'Set {app.bot.username}\'s bio',
+            title=f'Set {member.name}\'s bio',
             text_inputs=[TextInput(
                 custom_id='bio',
                 style=TextInputStyle.PARAGRAPH,
                 label='Bio',
-                min_length=1,
+                min_length=0,
                 max_length=max_length,
                 required=True,
-                value=(
-                    current_bio[:max_length]
-                    if current_bio
-                    else MISSING
-                ))],
-            extra=[
-                userproxy,
-                include_attribution
-            ]
+                value=current_bio[:max_length])],
+            extra=[member]
         )
     )
