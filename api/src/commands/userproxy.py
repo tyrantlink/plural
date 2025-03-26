@@ -166,7 +166,7 @@ async def _userproxy_sync(
             usergroup,
             group,
             True
-        )
+        )[:32]
 
     if not patch_filter or 'avatar' in patch_filter:
         if member.avatar:
