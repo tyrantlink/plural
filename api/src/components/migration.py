@@ -89,11 +89,11 @@ async def migration_group_is_mine(
 
     group_data.pop('id')
 
-    group_data['accounts'] = {
-        (await Usergroup.get_by_user(
+    group_data['account'] = (
+        await Usergroup.get_by_user(
             interaction.author_id
-        )).id
-    }
+        )
+    ).id
 
     objects, avatar_tasks = {}, {}
 
@@ -326,7 +326,7 @@ async def migration_loop(
         usergroup = await Usergroup.get_by_user(interaction.author_id)
 
         groups = await Group.find({
-            'accounts': usergroup.id
+            'account': usergroup.id
         }).to_list()
 
         userproxies = {

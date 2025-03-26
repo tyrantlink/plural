@@ -60,7 +60,7 @@ class PluralExport(BaseExport):
         self = cls.default(usergroup)
 
         self.groups = await Group.find({
-            'accounts': usergroup.id
+            'account': usergroup.id
         }).to_list()
 
         self.members = await ProxyMember.find({

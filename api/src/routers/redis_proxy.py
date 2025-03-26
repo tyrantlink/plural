@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from plural.db import redis
 
 from src.core.auth import internal_key_validator
+from src.core.route import suppress
 
 
 router = APIRouter(include_in_schema=False)
@@ -21,6 +22,7 @@ class ValidRedisCommand(str, Enum):
 @router.post(
     '/__redis/{command}/{key}/{value}',
     dependencies=[Depends(internal_key_validator)])
+@suppress()
 async def post__redis(
     command: ValidRedisCommand,
     key: str,

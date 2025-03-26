@@ -127,7 +127,7 @@ class Usergroup(BaseDocument):
     async def get_avatar_count(self, user_id: int) -> int:
         groups = await Group.find({
             '$or': [
-                {'accounts': self.id},
+                {'account': self.id},
                 {f'users.{user_id}': {'$exists': True}}]
         }, projection_model=AvatarOnlyGroup).to_list()
 

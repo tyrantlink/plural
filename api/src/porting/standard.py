@@ -159,7 +159,7 @@ class StandardExport(BaseExport):
 
         groups = await ProxyGroup.find({
             '$or': [
-                {'accounts': usergroup.id},
+                {'account': usergroup.id},
                 {'users': user_id}]
         }).to_list()
 
@@ -248,7 +248,7 @@ class StandardExport(BaseExport):
 
             new_group = ProxyGroup(
                 name=group_name,
-                accounts={usergroup.id},
+                account=usergroup.id,
                 avatar=None,
                 channels={
                     channel
@@ -282,7 +282,7 @@ class StandardExport(BaseExport):
                 except StopIteration:
                     _default_group = ProxyGroup(
                         name='default',
-                        accounts={str(user_id)},
+                        account=usergroup.id,
                         avatar=None,
                         channels=set(),
                         tag=None,

@@ -151,8 +151,7 @@ async def slash_group_accept(
     sharee = await Usergroup.get_by_user(interaction.author_id)
 
     if (
-        sharer.id not in group.accounts or
-        sharee.id in group.accounts or
+        group.account in {sharer.id, sharee.id} or
         share.permission_level is None
     ):
         await share.delete()
@@ -162,7 +161,7 @@ async def slash_group_accept(
 
     existing_group = await Group.find_one({
         '$or': [
-            {'accounts': sharee.id},
+            {'account': sharee.id},
             {f'users.{interaction.author_id}': {'$exists': True}}],
         'name': group.name
     })
@@ -248,7 +247,7 @@ async def slash_group_kick(
 ) -> None:
     usergroup = await Usergroup.get_by_user(interaction.author_id)
 
-    if usergroup.id not in group.accounts:
+    if usergroup.id != group.account:
         raise InteractionError(
             'You must be an owner of this group to kick users.'
         )
@@ -312,7 +311,7 @@ async def slash_group_new(
 
     if await Group.find_one({
         '$or': [
-            {'accounts': usergroup.id},
+            {'account': usergroup.id},
             {f'users.{interaction.author_id}': {'$exists': True}}],
         'name': name
     }):
@@ -321,7 +320,7 @@ async def slash_group_new(
 
     group = Group(
         name=name,
-        accounts={usergroup.id}
+        account=usergroup.id
     )
 
     if avatar:
@@ -368,20 +367,6 @@ async def slash_group_remove(
         return
 
     group_edit_check(group, interaction.author_id, True)
-
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
-
-    if usergroup.id in group.accounts and len(group.accounts) > 1:
-        group.accounts.discard(usergroup.id)
-
-        await gather(
-            group.save(),
-            interaction.send(embeds=[Embed.success(
-                f'Removed group `{group.name}`'
-            )])
-        )
-
-        return
 
     await PAGES['delete_group'](interaction, group)
 
@@ -451,13 +436,13 @@ async def slash_group_share(
             'Your groups are inherently shared.'
         )
 
-    if sharer.id not in group.accounts:
+    if sharer.id != group.account:
         raise InteractionError(
             'You cannot share a group that has been shared with you.\n\n'
             'Ask a group owner to share the group.'
         )
 
-    if sharee.id in group.accounts:
+    if sharee.id == group.account:
         raise InteractionError(
             f'<@{user.id}> is already a group owner.'
         )
@@ -702,7 +687,7 @@ async def slash_group_set_name(
 
     if await Group.find_one({
         '$or': [
-            {'accounts': group.accounts},
+            {'account': group.account},
             {f'users.{interaction.author_id}': {'$exists': True}}],
         'name': name
     }):

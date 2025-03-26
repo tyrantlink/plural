@@ -33,7 +33,7 @@ async def member_converter(
     usergroup = await Usergroup.get_by_user(interaction.author_id)
 
     if (
-        usergroup.id not in group.accounts and
+        usergroup.id != group.account and
         interaction.author_id not in group.users
     ):
         raise InteractionError('Member not found')
@@ -59,7 +59,7 @@ async def group_converter(
 
     if (
         group is None or
-        (usergroup.id not in group.accounts and
+        (usergroup.id != group.account and
          interaction.author_id not in group.users)
     ):
         raise InteractionError('Group not found')

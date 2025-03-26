@@ -4,6 +4,12 @@ from typing import NamedTuple
 from time import time
 
 
+class RateLimit(NamedTuple):
+    limit: int
+    interval: int
+    keys: list[str]
+
+
 class RateLimitResponse(NamedTuple):
     block: bool
     limit: int
@@ -26,13 +32,20 @@ class RateLimitResponse(NamedTuple):
 
 RATELIMITS: dict[
     Callable,
-    tuple[int, int]
+    RateLimit
 ] = {}
 
 
-def ratelimit(limit: int, interval: timedelta) -> Callable:
+def ratelimit(
+    limit: int,
+    interval: timedelta,
+    keys: list[str] | None = None
+) -> Callable:
     def decorator(function: Callable) -> Callable:
-        RATELIMITS[function] = (limit, int(interval.total_seconds()))
+        RATELIMITS[function] = RateLimit(
+            limit,
+            int(interval.total_seconds()),
+            keys or [])
         return function
 
     return decorator
@@ -40,21 +53,28 @@ def ratelimit(limit: int, interval: timedelta) -> Callable:
 
 async def ratelimit_check(
     key: str,
-    function: Callable
+    function: Callable,
+    params: dict[str, str]
 ) -> RateLimitResponse | None:
     from plural.db import redis
 
     if function not in RATELIMITS:
         return None
 
-    limit, interval = RATELIMITS.get(function)
+    limit = RATELIMITS.get(function)
+
+    keys = ':'.join([
+        value
+        for key, value in params.items()
+        if key in limit.keys
+    ])
 
     response = await redis.execute_command(
         'CL.THROTTLE',
-        f'ratelimit:{key}:{function.__name__}',
-        limit-1,
-        limit,
-        interval
+        f'ratelimit:{key}:{function.__name__}:{keys}',
+        limit.limit - 1,
+        limit.limit,
+        limit.interval
     )
 
     return RateLimitResponse(
@@ -62,5 +82,5 @@ async def ratelimit_check(
         limit=response[1],
         remaining=response[2],
         retry_after=response[3],
-        reset=int(time()+response[4])
+        reset=int(time() + response[4])
     )

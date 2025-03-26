@@ -418,3 +418,62 @@ async def _application(
             ])
         ]
     )
+
+
+@button(
+    custom_id='button_authorize',
+    label='Authorize',
+    style=ButtonStyle.PRIMARY)
+async def button_authorize(
+    interaction: Interaction,
+    app_id: str,
+    scope: str
+) -> None:
+    application = await Application.get(
+        PydanticObjectId(app_id)
+    )
+
+    if application is None:
+        raise InteractionError('Application not found')
+
+    usergroup = await Usergroup.get_by_user(interaction.author_id)
+
+    set_scope = ApplicationScope(int(scope))
+
+    usergroup.data.applications[app_id] = set_scope
+
+    await gather(
+        usergroup.save(),
+        interaction.response.update_message(
+            components=[],
+            embeds=[
+                Embed.success(
+                    title='Authorization Granted',
+                    message=(
+                        f'You have granted {application.name} '
+                        'access to your /plu/ral data.')
+                ).add_field(
+                    'Scopes',
+                    '\n'.join(
+                        scope.pretty_name
+                        for scope in
+                        ApplicationScope
+                        if scope & set_scope)
+                    or 'None'
+                )
+            ]
+        )
+    )
+
+
+@button(
+    custom_id='button_deny',
+    label='Deny',
+    style=ButtonStyle.DANGER)
+async def button_deny(
+    interaction: Interaction
+) -> None:
+    await gather(
+        interaction.response.ack(),
+        interaction.message.delete()
+    )

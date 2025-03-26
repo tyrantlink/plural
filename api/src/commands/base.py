@@ -230,7 +230,7 @@ async def slash_account_accept(
         )
 
     existing_groups = await Group.find({
-        '$or': [{'accounts': sharee.id}]
+        '$or': [{'account': sharee.id}]
     }).to_list()
 
     if existing_groups:
@@ -945,7 +945,7 @@ async def slash_stats(
 
     groups = await Group.find({
         '$or': [
-            {'accounts': usergroup.id},
+            {'account': usergroup.id},
             {f'users.{interaction.author_id}': {'$exists': True}}]
     }, projection_model=AvatarOnlyGroup).to_list()
 

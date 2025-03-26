@@ -230,3 +230,15 @@ class Message(RawBaseModel):
                 'allowed_mentions': mentions.as_payload()
             })
         )
+
+    async def delete(
+        self,
+        bot_token: str = env.bot_token
+    ) -> None:
+        await request(Route(
+            'DELETE',
+            '/channels/{channel_id}/messages/{message_id}',
+            token=bot_token,
+            channel_id=self.channel_id,
+            message_id=self.id
+        ))

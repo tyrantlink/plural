@@ -292,7 +292,7 @@ async def can_edit(
     group = await userproxy.get_group()
 
     return (
-        usergroup.id in group.accounts or
+        usergroup.id == group.account or
         interaction.author_id in group.users
     )
 

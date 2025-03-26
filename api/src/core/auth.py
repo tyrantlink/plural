@@ -61,6 +61,14 @@ class TokenData:
 
         return self._application
 
+    @property
+    def internal(self) -> bool:
+        return all((
+            self.app_id == PydanticObjectId(b'\0' * 12),
+            self.timestamp == 0,
+            self.key == 0
+        ))
+
 
 async def acheckpw(password: str, hashed: str) -> bool:
     with ThreadPoolExecutor() as executor:
@@ -72,6 +80,13 @@ async def acheckpw(password: str, hashed: str) -> bool:
 
 
 async def api_key_validator(token: str = Security(API_KEY)) -> TokenData:
+    if token == f'Bearer {env.cdn_upload_token}':
+        return TokenData(
+            app_id=PydanticObjectId(b'\0' * 12),
+            timestamp=0,
+            key=0
+        )
+
     regex = match(TOKEN_MATCH_PATTERN, token)
 
     if regex is None:
@@ -172,7 +187,7 @@ async def _discord_key_validator(
     group = await member.get_group()
 
     if (
-        usergroup.id not in group.accounts and
+        usergroup.id != group.account and
         user_id not in group.users
     ):
         raise HTTPException(401, 'Invalid user id')

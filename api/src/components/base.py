@@ -110,19 +110,14 @@ async def button_delete_confirm(interaction: Interaction) -> None:
 
     groups = await Group.find({
         '$or': [
-            {'accounts': usergroup.id},
+            {'account': usergroup.id},
             {f'users.{interaction.author_id}': {'$exists': True}}]
     }).to_list()
 
     member_ids = set()
 
     for group in groups:
-        group.accounts.discard(usergroup.id)
         group.users.pop(interaction.author_id, None)
-
-        if group.accounts:
-            tasks.append(group.save())
-            continue
 
         if group.avatar:
             avatars.append((group, None))

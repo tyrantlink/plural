@@ -349,7 +349,7 @@ async def get_proxy_data(
 
     groups = await Group.find({
         '$or': [
-            {'accounts': usergroup.id},
+            {'account': usergroup.id},
             {f'users.{event['author']['id']}': {'$exists': True}}]
     }).to_list()
 
@@ -1538,7 +1538,6 @@ async def userproxy_handler(
                     'Authorization': f'Bearer {env.cdn_upload_token}'}),
                 json={
                     'author_id': int(event['author']['id']),
-                    'author_name': event['author']['username'],
                     'patch_filter': ['guilds']})
             return ProxyResponse.failure(publish_latency)
 

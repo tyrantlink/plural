@@ -182,7 +182,7 @@ async def _pagination(
         if group_id else
         await Group.find({
             '$or': [
-                {'accounts': usergroup.id},
+                {'account': usergroup.id},
                 {f'users.{interaction.author_id}': {'$exists': True}}]
         }).to_list()
     )

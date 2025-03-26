@@ -206,7 +206,7 @@ async def autocomplete_member(
 
     groups = await Group.find({
         '$or': [
-            {'accounts': usergroup.id},
+            {'account': usergroup.id},
             {f'users.{interaction.author_id}': {'$exists': True}}]
     }).to_list()
 
@@ -279,7 +279,7 @@ async def autocomplete_group(
 
     groups = await Group.find({
         '$or': [
-            {'accounts': usergroup.id},
+            {'account': usergroup.id},
             {f'users.{interaction.author_id}': {'$exists': True}}]
     }).to_list()
 

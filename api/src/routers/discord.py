@@ -17,6 +17,8 @@ from src.discord import (
 
 from plural.db import ProxyMember, redis
 
+from src.core.route import suppress, name
+
 from .donation import make_donator
 
 
@@ -44,6 +46,7 @@ def create_strong_task(coroutine: Coroutine) -> Task:
 @router.post(  # ? legacy route
     '/userproxy/interaction',
     dependencies=[Depends(discord_key_validator)])
+@suppress()
 async def post__interaction(
     interaction: Interaction
 ) -> Response:
@@ -73,6 +76,7 @@ async def post__interaction(
 @router.post(  # ? legacy route
     '/discord/event',
     dependencies=[Depends(discord_key_validator)])
+@name('/event')
 async def post__event(
     event: WebhookEvent
 ) -> Response:

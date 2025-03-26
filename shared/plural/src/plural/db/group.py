@@ -15,6 +15,7 @@ from .base import BaseDocument
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
+    from .usergroup import Usergroup
 
 
 class Group(BaseDocument):
@@ -25,7 +26,7 @@ class Group(BaseDocument):
         cache_expiration_time = timedelta(milliseconds=500)
         indexes: ClassVar = [
             'name',
-            'accounts',
+            'account',
             'users',
             'members',
             'avatar'
@@ -59,8 +60,8 @@ class Group(BaseDocument):
         description='the name of the group',
         min_length=1,
         max_length=45)
-    accounts: set[PydanticObjectId] = Field(
-        description='the usergroups attached to this group')
+    account: PydanticObjectId = Field(
+        description='the usergroup attached to this group')
     users: dict[int, GroupSharePermissionLevel] = Field(
         default_factory=dict,
         description='the users this group is shared with, and their permission levels')
@@ -95,12 +96,28 @@ class Group(BaseDocument):
         return await Group.find_one({
             'name': 'default',
             '$or': [
-                {'accounts': usergroup_id},
+                {'account': usergroup_id},
                 {f'users.{user_id}': {'$exists': True}}]
         }) or Group(
             name='default',
-            accounts={usergroup_id}
+            account=usergroup_id
         )
+
+    async def get_usergroup(
+        self,
+        use_cache: bool = True
+    ) -> Usergroup:
+        from plural.db.usergroup import Usergroup
+
+        usergroup = await Usergroup.get(
+            self.account,
+            ignore_cache=not use_cache
+        )
+
+        if usergroup is None:
+            raise ValueError(f'group {self.id} has no usergroup')
+
+        return usergroup
 
     async def get_members(
         self,

@@ -909,7 +909,7 @@ async def userproxy_sync(
             return False
 
     groups = await Group.find({
-        'accounts': usergroup.id
+        'account': usergroup.id
     }).to_list()
 
     userproxies = {

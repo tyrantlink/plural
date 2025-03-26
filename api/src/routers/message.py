@@ -9,6 +9,7 @@ from plural.db import redis, Message
 from src.core.auth import api_key_validator, TokenData
 from src.models import Message as MessageModel
 from src.core.ratelimit import ratelimit
+from src.core.route import name
 
 
 router = APIRouter(prefix='/messages', tags=['Messages'])
@@ -51,6 +52,7 @@ def _snowflake_to_age(snowflake: int) -> float:
         422: {
             'content': None,
             'description': 'Validation Error'}})
+@name('/messages/:id/:id')
 @ratelimit(500, timedelta(seconds=1))
 async def head__message(
     channel_id: int,
@@ -160,6 +162,7 @@ async def head__message(
             'description': 'Message is older than 7 days; status is unknown',
             'headers': {
                 'Cache-Control': 'public, max-age=604800'}}})
+@name('/messages/:id/:id')
 @ratelimit(500, timedelta(seconds=1))
 async def get__message(
     channel_id: int,

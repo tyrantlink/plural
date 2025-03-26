@@ -20,25 +20,12 @@ from plural.otel import span
 from src.core.version import VERSION
 from src.core.models import env
 
+from .route import SUPPRESSED_PATHS, ROUTE_NAMES, suppress
+
 
 PATH_PATTERN = compile(
     r'{(.*?)}'
 )
-
-PATH_OVERWRITES = {
-    '/messages/:channel_id/:message_id': '/messages/:id/:id'
-}
-
-SUPPRESSED_PATHS = {
-    '/',
-    '/healthcheck',
-    '/swdocs',
-    '/docs',
-    '/userproxy/interaction',
-    '/discord/interaction',
-    '/interaction',
-    '/__redis/:command/:key/:value'
-}
 
 
 @asynccontextmanager
@@ -56,7 +43,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
             donation,
             discord,
             message,
-            member
+            member,
+            user
         )
 
         # ? commands need to be imported after init
@@ -70,6 +58,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         app.include_router(discord.router)
         app.include_router(message.router)
         app.include_router(member.router)
+        app.include_router(user.router)
 
     create_strong_task(install_count_loop())
 
@@ -182,6 +171,12 @@ async def ratelimiter(
 ) -> Any:  # noqa: ANN401
     from src.core.ratelimit import ratelimit_check
 
+    if (
+        request.headers.get('authorization') ==
+        f'Bearer {env.cdn_upload_token}'
+    ):
+        return await call_next(request)
+
     for route in app.routes:
         match, data = route.matches(request.scope)
 
@@ -196,7 +191,11 @@ async def ratelimiter(
         else request.scope['client'][0]
     )
 
-    limit_response = await ratelimit_check(key, route.endpoint)
+    limit_response = await ratelimit_check(
+        key,
+        route.endpoint,
+        data.get('path_params', {})
+    )
 
     if limit_response and limit_response.block:
         return Response(
@@ -227,10 +226,13 @@ async def otel_trace(
     else:
         return await call_next(request)
 
-    raw_path = PATH_PATTERN.sub(r':\1', route.path)
-
-    if raw_path in SUPPRESSED_PATHS:
+    if route.endpoint in SUPPRESSED_PATHS:
         return await call_next(request)
+
+    path = ROUTE_NAMES.get(
+        route.endpoint,
+        PATH_PATTERN.sub(r':\1', route.path)
+    )
 
     parent = None
     if (
@@ -240,7 +242,7 @@ async def otel_trace(
         parent = request.headers.get('traceparent')
 
     with span(
-        f'{request.method} {PATH_OVERWRITES.get(raw_path, raw_path)}',
+        f'{request.method} {path}',
         parent=parent,
         attributes={
             'http.path': request.url.path,
@@ -283,6 +285,7 @@ async def set_client_ip(
 @app.get(
     '/',
     include_in_schema=False)
+@suppress()
 async def get__root(request: Request) -> Response:
     if 'text/html' in request.headers.get('accept', ''):
         return RedirectResponse('/docs', 308)
@@ -298,5 +301,6 @@ async def get__root(request: Request) -> Response:
     '/healthcheck',
     status_code=204,
     include_in_schema=False)
+@suppress()
 async def get__healthcheck() -> Response:
     return Response(status_code=204)
