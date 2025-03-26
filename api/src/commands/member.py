@@ -510,18 +510,53 @@ async def slash_member_set_pronouns(
 
     group_edit_check(group, interaction.author_id)
 
+    usergroup = await Usergroup.get_by_user(interaction.author_id)
+
     member.pronouns = pronouns
+
+    embeds = [Embed.success(
+        title='Member Pronouns Updated',
+        message=(
+            f'Member `{member.name}` pronouns changed to `{pronouns}`'
+            if pronouns else
+            f'Member `{member.name}` pronouns removed'
+        )
+    )]
+
+    if (
+        member.userproxy is not None and
+        usergroup.userproxy_config.include_pronouns
+    ):
+        embeds[0].set_footer(
+            'Userproxy sync in progress...'
+        )
 
     await gather(
         member.save(),
-        interaction.response.send_message(embeds=[Embed.success(
-            title='Member Pronouns Updated',
-            message=(
-                f'Member `{member.name}` pronouns changed to `{pronouns}`'
-                if pronouns else
-                f'Member `{member.name}` pronouns removed'
-            )
-        )])
+        interaction.response.send_message(embeds=embeds)
+    )
+
+    if (
+        member.userproxy is not None and
+        usergroup.userproxy_config.include_pronouns
+    ):
+        await _userproxy_sync(
+            interaction,
+            member,
+            {'username'},
+            silent=True
+        )
+
+    embeds[0].set_footer(
+        text=(
+            'You may need to restart your client '
+            'to see changes to userproxies'
+        )
+    )
+
+    await interaction.followup.edit_message(
+        '@original',
+        embeds=embeds
     )
 
 
