@@ -270,7 +270,7 @@ CONFIG_OPTIONS = {
             description=dedent('''
                 Whether to include the group tag in the member name.
 
-                Note: the total length of userproxy name and group tag must be less than 32 characters.
+                Note: the total length of userproxy name, group tag, and pronouns must be less than 32 characters.
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
@@ -279,7 +279,7 @@ CONFIG_OPTIONS = {
             description=dedent('''
                 Whether to include the pronouns in the member name.
 
-                Note: the total length of userproxy name and group tag must be less than 32 characters.
+                Note: the total length of userproxy name, group tag, and pronouns must be less than 32 characters.
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
@@ -856,6 +856,8 @@ async def userproxy_sync(
         case ('user', 'display_name_order'):
             patch_filter.add('username')
         case ('userproxy', 'include_group_tag'):
+            patch_filter.add('username')
+        case ('userproxy', 'include_pronouns'):
             patch_filter.add('username')
         case ('userproxy', 'attachment_count'):
             patch_filter.add('commands')
