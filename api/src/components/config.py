@@ -7,6 +7,7 @@ from enum import Enum
 
 from plural.db import Usergroup, Guild, Group, ProxyMember
 from plural.db.enums import ReplyFormat, PaginationStyle
+from plural.errors import InteractionError
 from plural.missing import MISSING
 from plural.otel import span
 
@@ -51,7 +52,7 @@ class ConfigOption:
     parser: Callable[[str], Any]
     choices: list[SelectMenu.Option] | None = None
     docs: str | None = None
-    check: Callable[[Any], bool] | None = None
+    check: tuple[Callable[[Any], bool], str] | None = None
     channel_types: list[ChannelType] | None = None
     text_input: TextInput | None = None
 
@@ -150,7 +151,9 @@ CONFIG_OPTIONS = {
                 style=TextInputStyle.SHORT,
                 placeholder='{tag}'),
             parser=lambda value: value,
-            check=lambda value: '{pronouns}' in value),
+            check=(
+                lambda value: '{tag}' in value,
+                'Value must contain {tag}')),
         'pronoun_format': ConfigOption(
             name='Pronoun Format',
             description=dedent('''
@@ -167,7 +170,9 @@ CONFIG_OPTIONS = {
                 style=TextInputStyle.SHORT,
                 placeholder='({pronouns})'),
             parser=lambda value: value,
-            check=lambda value: '{pronouns}' in value),
+            check=(
+                lambda value: '{pronouns}' in value,
+                'Value must contain {pronouns}')),
         'display_name_order': ConfigOption(
             name='Display Name Order',
             description=dedent('''
@@ -433,6 +438,12 @@ async def select_config_value(
 
     value = option_data.parser(selected[0])
 
+    if option_data.check and not option_data.check[0](value):
+        raise InteractionError(
+            'Invalid value\n\n'
+            f'{option_data.check[1]}'
+        )
+
     match category:
         case 'user':
             parent = await Usergroup.get_by_user(interaction.author_id)
@@ -545,6 +556,14 @@ async def modal_set(
     option: str,
     value: str
 ) -> None:
+    option_data = CONFIG_OPTIONS[category][option]
+
+    if option_data.check and not option_data.check[0](value):
+        raise InteractionError(
+            'Invalid value\n\n'
+            f'{option_data.check[1]}'
+        )
+
     match category:
         case 'user':
             parent = await Usergroup.get_by_user(interaction.author_id)
