@@ -17,7 +17,7 @@ from beanie import PydanticObjectId
 from orjson import dumps
 
 from plural.db.enums import AutoProxyMode, ReplyFormat
-from plural.otel import span, cx, get_counter
+from plural.otel import span, cx, get_counter, inject
 from plural.errors import (
     PluralExceptionCritical,
     HTTPException,
@@ -1234,11 +1234,6 @@ async def _process_proxy(
         await save_debug_log(event, debug_log)
         return ProxyResult(False, emojis)
 
-    userproxy = bool(
-        proxy.member.userproxy and
-        int(event['guild_id']) in proxy.member.userproxy.guilds
-    )
-
     with span(  # ? only start the span once we're proxying
         'proxying message',
         start_time=start_time,
@@ -1260,7 +1255,11 @@ async def _process_proxy(
         handlers = ({
             'userproxy': userproxy_handler,
             'webhook': webhook_handler
-        } if userproxy else {
+        } if (
+            proxy.member.userproxy and
+            int(event['guild_id']) in
+            proxy.member.userproxy.guilds
+        ) else {
             'webhook': webhook_handler
         })
 
@@ -1533,6 +1532,14 @@ async def userproxy_handler(
         except NotFound:
             debug_log.append(
                 'Userproxy member not found in server.')
+            await GENERAL_SESSION.post(
+                f'https://testing.{env.domain}/members/{proxy.member.id}/userproxy/sync',
+                headers=inject({
+                    'Authorization': f'Bearer {env.cdn_upload_token}'}),
+                json={
+                    'author_id': int(event['author']['id']),
+                    'author_name': event['author']['username'],
+                    'patch_filter': ['guilds']})
             return ProxyResponse.failure(publish_latency)
 
         member = await Cache(

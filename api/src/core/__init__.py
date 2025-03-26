@@ -51,17 +51,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
             emoji_init()
         )
 
-        from src.routers import discord, donation, message, redis_proxy
+        from src.routers import (
+            redis_proxy,
+            donation,
+            discord,
+            message,
+            member
+        )
+
         # ? commands need to be imported after init
         from src.discord.commands import sync_commands
         import src.commands  # noqa: F401
 
         await sync_commands(env.bot_token)
 
-        app.include_router(discord.router)
-        app.include_router(donation.router)
-        app.include_router(message.router)
         app.include_router(redis_proxy.router)
+        app.include_router(donation.router)
+        app.include_router(discord.router)
+        app.include_router(message.router)
+        app.include_router(member.router)
 
     create_strong_task(install_count_loop())
 
@@ -74,8 +82,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         print(f'waiting for {len(RUNNING)} tasks to finish...')  # noqa: T201
         await gather(*RUNNING)
 
-    await DISCORD_SESSION.close()
-    await GENERAL_SESSION.close()
+    await gather(
+        GENERAL_SESSION.close(),
+        DISCORD_SESSION.close()
+    )
 
 
 async def install_count_loop() -> None:
@@ -222,8 +232,16 @@ async def otel_trace(
     if raw_path in SUPPRESSED_PATHS:
         return await call_next(request)
 
+    parent = None
+    if (
+        request.headers.get('authorization') ==
+        f'Bearer {env.cdn_upload_token}'
+    ):
+        parent = request.headers.get('traceparent')
+
     with span(
         f'{request.method} {PATH_OVERWRITES.get(raw_path, raw_path)}',
+        parent=parent,
         attributes={
             'http.path': request.url.path,
             'http.method': request.method,

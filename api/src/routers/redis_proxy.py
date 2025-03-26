@@ -1,23 +1,14 @@
-from typing import Annotated
 from enum import Enum
 
-from fastapi import APIRouter, Depends, Request, Header, HTTPException
 from fastapi.responses import Response
+from fastapi import APIRouter, Depends
 
 from plural.db import redis
 
-from src.core.models import env
+from src.core.auth import internal_key_validator
 
 
 router = APIRouter(include_in_schema=False)
-
-
-async def redis_key_validator(
-    request: Request,  # noqa: ARG001
-    authorization: Annotated[str, Header()]
-) -> None:
-    if authorization != f'Bearer {env.cdn_upload_token}':
-        raise HTTPException(status_code=403)
 
 
 class ValidRedisCommand(str, Enum):
@@ -29,7 +20,7 @@ class ValidRedisCommand(str, Enum):
 
 @router.post(
     '/__redis/{command}/{key}/{value}',
-    dependencies=[Depends(redis_key_validator)])
+    dependencies=[Depends(internal_key_validator)])
 async def post__redis(
     command: ValidRedisCommand,
     key: str,

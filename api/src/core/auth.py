@@ -198,3 +198,11 @@ async def discord_key_validator(
         with span('discord validation error') as current_span:
             current_span.record_exception(e)
             raise e
+
+
+async def internal_key_validator(
+    request: Request,  # noqa: ARG001
+    authorization: Annotated[str, Header()]
+) -> None:
+    if authorization != f'Bearer {env.cdn_upload_token}':
+        raise HTTPException(status_code=403)
