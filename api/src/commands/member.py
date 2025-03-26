@@ -43,6 +43,68 @@ member_tags = member.create_subgroup(
 
 
 @member.command(
+    name='info',
+    description='Get information about a member',
+    options=[
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='member',
+            description='Member to get information about',
+            required=True,
+            autocomplete=True)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_member_info(
+    interaction: Interaction,
+    member: ProxyMember
+) -> None:
+    group = await member.get_group()
+
+    embed = Embed(
+        title=member.name,
+        description=(
+            member.bio or 'No bio set'),
+        color=member.color or 0x69ff69
+    ).add_field(
+        name='Display Name',
+        value=member.get_display_name(
+            await Usergroup.get_by_user(interaction.author_id),
+            group),
+        inline=False
+    ).add_field(
+        name='Meta',
+        value=member.meta or 'None',
+        inline=False
+    ).add_field(
+        name='Group',
+        value=group.name,
+        inline=False
+    ).add_field(
+        name='Pronouns',
+        value=member.pronouns or 'None',
+        inline=False
+    ).add_field(
+        name='Birthday',
+        value=member.birthday or 'None',
+        inline=False
+    )
+
+    avatar_url = (
+        member.avatar_url or
+        group.avatar_url
+    )
+
+    if avatar_url:
+        embed.set_thumbnail(
+            url=avatar_url
+        )
+
+    await interaction.response.send_message(embeds=[
+        embed
+    ])
+
+
+@member.command(
     name='list',
     description='List all your members',
     options=[

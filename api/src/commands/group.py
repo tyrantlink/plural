@@ -185,6 +185,46 @@ async def slash_group_accept(
 
 
 @group.command(
+    name='info',
+    description='Get information about a group',
+    options=[
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='group',
+            description='Group to get information about',
+            required=True,
+            autocomplete=True)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_group_info(
+    interaction: Interaction,
+    group: Group
+) -> None:
+
+    embed = Embed(
+        title=group.name,
+        color=0x69ff69
+    ).add_field(
+        name='Tag',
+        value=group.tag or 'None',
+        inline=False
+    ).add_field(
+        name='Members',
+        value=str(len(group.members)),
+        inline=False
+    )
+
+    if group.avatar_url:
+        embed.set_thumbnail(
+            url=group.avatar_url
+        )
+
+    await interaction.response.send_message(embeds=[
+        embed
+    ])
+
+
+@group.command(
     name='kick',
     description='Kick a user from a group share',
     options=[
