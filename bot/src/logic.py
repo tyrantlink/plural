@@ -1533,7 +1533,7 @@ async def userproxy_handler(
             debug_log.append(
                 'Userproxy member not found in server.')
             await GENERAL_SESSION.post(
-                f'https://testing.{env.domain}/members/{proxy.member.id}/userproxy/sync',
+                f'https://api.{env.domain}/members/{proxy.member.id}/userproxy/sync',
                 headers=inject({
                     'Authorization': f'Bearer {env.cdn_upload_token}'}),
                 json={
