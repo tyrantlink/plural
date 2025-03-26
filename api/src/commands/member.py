@@ -170,13 +170,13 @@ async def slash_member_new(
     await gather(
         member.save(),
         group.save(),
-        interaction.send(embeds=[Embed.success(
+        interaction.send(embeds=[Embed(
             title='Member Created',
-            message=(
+            description=(
                 f'Member `{name}` with meta `{meta}` created in group {group.name}'
                 if meta else
-                f'Member `{name}` created in group {group.name}'
-            )
+                f'Member `{name}` created in group {group.name}'),
+            color=member.color or 0x69ff69
         )])
     )
 
@@ -220,9 +220,10 @@ async def slash_member_remove(
         delete_avatar(member),
         member.delete(),
         group.save(),
-        interaction.response.send_message(embeds=[Embed.success(
+        interaction.response.send_message(embeds=[Embed(
             title='Member Removed',
-            message=f'Member `{member.name}` of group `{group.name}` has been deleted'
+            description=f'Member `{member.name}` of group `{group.name}` has been deleted',
+            color=member.color or 0x69ff69
         )])
     )
 
@@ -262,8 +263,10 @@ async def slash_member_set_avatar(
         await delete_avatar(member)
         message = f'Removed member `{member.name}` avatar'
 
-    embed = Embed.success(
-        message
+    embed = Embed(
+        title='Member Avatar Updated',
+        description=message,
+        color=member.color or 0x69ff69
     )
 
     if member.userproxy is not None:
@@ -299,9 +302,104 @@ async def slash_member_set_bio(
     interaction: Interaction,
     member: ProxyMember
 ) -> None:
+    group = await member.get_group()
+
+    group_edit_check(group, interaction.author_id)
+
     await PAGES['bio'](
         interaction,
         member
+    )
+
+
+@member_set.command(
+    name='birthday',
+    description='Set a member\'s birthday',
+    options=[
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='member',
+            description='Member to give new birthday',
+            required=True,
+            autocomplete=True),
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='birthday',
+            description='New member birthday (leave empty to remove)',
+            max_length=32,
+            required=False)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_member_set_birthday(
+    interaction: Interaction,
+    member: ProxyMember,
+    birthday: str | None = None
+) -> None:
+    group = await member.get_group()
+
+    group_edit_check(group, interaction.author_id)
+
+    member.birthday = birthday or ''
+
+    await gather(
+        member.save(),
+        interaction.response.send_message(embeds=[Embed(
+            title='Member Birthday Updated',
+            description=(
+                f'Member `{member.name}` birthday set to `{birthday}`'
+                if birthday else
+                f'Member `{member.name}` birthday removed'),
+            color=member.color or 0x69ff69
+        )])
+    )
+
+
+@member_set.command(
+    name='color',
+    description='Set a member\'s color',
+    options=[
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='member',
+            description='Member to give new color',
+            required=True,
+            autocomplete=True),
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='color',
+            description='New member color (hex)',
+            required=False)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_member_set_color(
+    interaction: Interaction,
+    member: ProxyMember,
+    color: str | None = None
+) -> None:
+    group = await member.get_group()
+
+    group_edit_check(group, interaction.author_id)
+
+    try:
+        member.color = (
+            (int(color.removeprefix('#'), 16) & 0xffffff)
+            if color else
+            None)
+    except ValueError as e:
+        raise InteractionError(
+            'Color must be a valid hex color'
+        ) from e
+
+    await gather(
+        member.save(),
+        interaction.response.send_message(embeds=[Embed(
+            title='Member Color Updated',
+            description=(
+                f'Member `{member.name}` color set to `#{member.color:06x}`'
+                if color else
+                f'Member `{member.name}` color removed'),
+            color=member.color or 0x69ff69
+        )])
     )
 
 
@@ -354,9 +452,10 @@ async def slash_member_set_group(
     current_group.members.discard(member.id)
     group.members.add(member.id)
 
-    embed = Embed.success(
+    embed = Embed(
         title='Member Moved',
-        message=f'Member `{member.name}` moved from group `{current_group.name}` to `{group.name}`'
+        description=f'Member `{member.name}` moved from group `{current_group.name}` to `{group.name}`',
+        color=member.color or 0x69ff69
     )
 
     if member.userproxy is not None:
@@ -418,13 +517,13 @@ async def slash_member_set_meta(
 
     await gather(
         member.save(),
-        interaction.response.send_message(embeds=[Embed.success(
+        interaction.response.send_message(embeds=[Embed(
             title='Member Meta Updated',
-            message=(
+            description=(
                 f'Member `{member.name}` meta field changed to `{meta}`'
                 if meta else
-                f'Member `{member.name}` meta field removed'
-            )
+                f'Member `{member.name}` meta field removed'),
+            color=member.color or 0x69ff69
         )])
     )
 
@@ -480,9 +579,10 @@ async def slash_member_set_name(
 
     old_name, member.name = member.name, name
 
-    embed = Embed.success(
+    embed = Embed(
         title='Member Name Changed',
-        message=f'Member `{old_name}` of group `{group.name}` renamed to `{name}`'
+        description=f'Member `{old_name}` of group `{group.name}` renamed to `{name}`',
+        color=member.color or 0x69ff69
     )
 
     if member.userproxy is not None:
@@ -536,13 +636,13 @@ async def slash_member_set_pronouns(
 
     member.pronouns = pronouns
 
-    embeds = [Embed.success(
+    embeds = [Embed(
         title='Member Pronouns Updated',
-        message=(
+        description=(
             f'Member `{member.name}` pronouns changed to `{pronouns}`'
             if pronouns else
-            f'Member `{member.name}` pronouns removed'
-        )
+            f'Member `{member.name}` pronouns removed'),
+        color=member.color or 0x69ff69
     )]
 
     if (
@@ -667,9 +767,10 @@ async def slash_member_tags_add(
 
     await gather(
         member.save(),
-        interaction.send(embeds=[Embed.success(
+        interaction.send(embeds=[Embed(
             title='Proxy Tag Added',
-            message=f'Proxy tag {proxy_tag.name} added to member `{member.name}`'
+            description=f'Proxy tag {proxy_tag.name} added to member `{member.name}`',
+            color=member.color or 0x69ff69
         )])
     )
 
@@ -722,9 +823,10 @@ async def slash_member_tags_avatar(
         await delete_avatar(member, tag_index)
         message = f'Removed Proxy Tag {tag.name} avatar'
 
-    await interaction.send(embeds=[Embed.success(
+    await interaction.send(embeds=[Embed(
         title='Proxy Tag Edited',
-        message=message
+        description=message,
+        color=member.color or 0x69ff69
     )])
 
 
@@ -766,9 +868,10 @@ async def slash_member_tags_clear(
 
     await gather(
         member.save(),
-        interaction.send(embeds=[Embed.success(
+        interaction.send(embeds=[Embed(
             title='Proxy Tags Cleared',
-            message=f'All proxy tags removed from member `{member.name}`'
+            description=f'All proxy tags removed from member `{member.name}`',
+            color=member.color or 0x69ff69
         )])
     )
 
@@ -804,12 +907,13 @@ async def slash_member_tags_list(
             ' ', ' ​'
         ).strip('​')
 
-    embed = Embed.success(
+    embed = Embed(
         title='Member Proxy Tags',
-        message='\n'.join([
-                f'{padded(index + 1, tag.avatar is not None)}{tag.name}'
-                for index, tag in enumerate(member.proxy_tags)
-        ]) or 'No proxy tags'
+        description='\n'.join([
+            f'{padded(index + 1, tag.avatar is not None)}{tag.name}'
+            for index, tag in
+            enumerate(member.proxy_tags)]) or 'No proxy tags',
+        color=member.color or 0x69ff69
     ).set_author(
         name=member.name,
         icon_url=(
@@ -864,8 +968,9 @@ async def slash_member_tags_remove(
 
     await gather(
         member.save(),
-        interaction.send(embeds=[Embed.success(
+        interaction.send(embeds=[Embed(
             title='Proxy Tag Removed',
-            message=f'Proxy tag {tag.name} removed from member `{member.name}`'
+            description=f'Proxy tag {tag.name} removed from member `{member.name}`',
+            color=member.color or 0x69ff69
         )])
     )

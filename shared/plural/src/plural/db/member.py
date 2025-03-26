@@ -138,7 +138,13 @@ class ProxyMember(BaseDocument):
     bio: str = Field(
         '',
         description='the bio of the member',
-        max_length=4096)
+        max_length=4000)
+    birthday: str = Field(
+        '',
+        description='the birthday of the member')
+    color: int | None = Field(
+        None,
+        description='the color of the member')
     avatar: str | None = Field(
         None,
         description='the avatar hash of the member')

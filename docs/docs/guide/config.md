@@ -27,3 +27,4 @@ All config options have built-in descriptions when using the command, so this pa
 ### Self Hosted
 ### Required Message Parameter
 ### Name in Reply Command
+### Include Attribution
