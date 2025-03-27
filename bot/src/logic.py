@@ -4,6 +4,7 @@ from urllib.parse import urlparse, parse_qs
 from datetime import timedelta, datetime
 from collections.abc import Callable
 from dataclasses import dataclass
+from contextlib import suppress
 from types import CoroutineType
 from time import perf_counter
 from typing import Self, Any
@@ -1334,6 +1335,25 @@ async def _process_proxy(
                     original_deleted = True
 
                     if name == 'webhook':
+                        with suppress(BaseException):
+                            await request(Route(
+                                'POST',
+                                f'/channels/{event["channel_id"]}/messages',
+                                token=env.bot_token
+                            ), json={
+                                'embeds': [{
+                                    'title': 'Proxy Failed',
+                                    'description': 'Proxy deleted original message but failed to send proxy.',
+                                    'color': 0xff6969,
+                                    'fields': [{
+                                        'name': 'Reason',
+                                        'value': str(getattr(
+                                            discord_responses[1],
+                                            'detail',
+                                            discord_responses[1]))[:1024],
+                                        'inline': True}],
+                                    'footer': {
+                                        'text': 'Please report this in the support server, if possible.'}}]})
                         raise PluralExceptionCritical(
                             'Proxy deleted original message but failed to send proxy.'
                         ) from discord_responses[1]
