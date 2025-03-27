@@ -167,6 +167,23 @@ async def slash_member_list(
             autocomplete=True),
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.STRING,
+            name='pronouns',
+            description='Pronouns of the member',
+            max_length=50,
+            required=False),
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='birthday',
+            description='Birthday of the member',
+            max_length=32,
+            required=False),
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='color',
+            description='Color for the member (hex)',
+            required=False),
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
             name='simply_plural_id',
             description='Simply Plural ID to link to the member',
             required=False)],
@@ -179,6 +196,9 @@ async def slash_member_new(
     avatar: Attachment | None = None,
     tag_prefix: str | None = None,
     tag_suffix: str | None = None,
+    pronouns: str | None = None,
+    birthday: str | None = None,
+    color: str | None = None,
     group: Group | None = None,
     simply_plural_id: str | None = None
 ) -> None:
@@ -190,6 +210,16 @@ async def slash_member_new(
     )
 
     group_edit_check(group, interaction.author_id, True)
+
+    try:
+        int_color = (
+            (int(color.removeprefix('#'), 16) & 0xffffff)
+            if color else
+            None)
+    except ValueError as e:
+        raise InteractionError(
+            'Color must be a valid hex color'
+        ) from e
 
     if await group.get_member_by_name(name, meta) is not None:
         error = [
@@ -208,6 +238,9 @@ async def slash_member_new(
     member = ProxyMember(
         name=name,
         meta=meta,
+        pronouns=pronouns or '',
+        birthday=birthday or '',
+        color=int_color,
         simply_plural_id=simply_plural_id,
     )
 
