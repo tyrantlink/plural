@@ -85,8 +85,8 @@ async def message_plural_debug(
     debug_log_str = await redis.hget('proxy_debug', str(message.id))
 
     if debug_log_str is None:
-        if message.timestamp < datetime.now(UTC) - timedelta(hours=1):
-            raise InteractionError('Debug logs only last for one hour')
+        if message.timestamp < datetime.now(UTC) - timedelta(days=1):
+            raise InteractionError('Debug logs only last for one day')
         raise InteractionError('No debug log found for this message')
 
     debug_log: list[str] = loads(debug_log_str)
