@@ -51,6 +51,9 @@ async def event_listener() -> None:
     from plural.db import redis
 
     from .listener import on_event
+    from .logic import emoji_index_init
+
+    await emoji_index_init()
 
     with suppress(ResponseError):
         await redis.xgroup_create(

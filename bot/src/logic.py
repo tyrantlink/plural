@@ -8,7 +8,6 @@ from types import CoroutineType
 from time import perf_counter
 from typing import Self, Any
 from hashlib import sha256
-from random import randint
 from time import time_ns
 from io import BytesIO
 
@@ -144,15 +143,20 @@ class ProxyResponse:
         return cls(False, '', {}, {}, '', publish_latency)
 
 
-_emoji_index = randint(0, 999)
+_emoji_index = redis.register_script("""
+local current = tonumber(redis.call('GET', KEYS[1]) or 0)
+local new_value = (current + 1) % 1000
+redis.call('SET', KEYS[1], new_value)
+return current
+""")
 
 
-def emoji_index() -> str:
-    global _emoji_index
-    if _emoji_index == 999:
-        _emoji_index = -1
-    _emoji_index += 1
-    return f'{_emoji_index:03}'
+async def emoji_index_init() -> None:
+    await redis.set('emoji_index', 0, nx=True)
+
+
+async def emoji_index() -> str:
+    return f'{await _emoji_index(['emoji_index']):03}'
 
 
 async def to_process[T](
@@ -733,7 +737,7 @@ async def insert_emojis(
                 '/applications/{application_id}/emojis',
                 token=token),
             json={
-                'name': f'{emoji.name[:28]}_{emoji_index()}',
+                'name': f'{emoji.name[:28]}_{await emoji_index()}',
                 'image': bytes_to_base64_data(await emoji.read())})
         app_emojis[emoji.id] = ProbableEmoji(
             name=response['name'],
