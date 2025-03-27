@@ -170,10 +170,23 @@ class PluralKitExport(BaseExport):
 
             return _default_group_id
 
+        def get_color(hex: str | None) -> int | None:
+            if hex is None:
+                return None
+
+            try:
+                return int(hex.removeprefix('#'), 16)
+            except ValueError:
+                return None
+
         members = [
             StandardExport.Member(
                 id=index,
                 name=member.display_name or member.name,
+                pronouns=member.pronouns or '',
+                bio=member.description or '',
+                birthday=member.birthday or '',
+                color=get_color(member.color),
                 avatar_url=member.avatar_url,
                 proxy_tags=[StandardExport.Member.ProxyTag(
                     prefix=proxy_tag.prefix or '',

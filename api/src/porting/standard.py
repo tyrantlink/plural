@@ -49,6 +49,10 @@ class StandardExport(BaseExport):
 
         id: int
         name: str
+        pronouns: str
+        bio: str
+        birthday: str
+        color: int | None
         avatar_url: str | None
         proxy_tags: list[ProxyTag]
         group_id: int
@@ -324,6 +328,10 @@ class StandardExport(BaseExport):
             new_member = ProxyMember(
                 name=member_name,
                 avatar=None,
+                pronouns=member.pronouns,
+                bio=member.bio,
+                birthday=member.birthday,
+                color=member.color,
                 proxy_tags=[
                     ProxyMember.ProxyTag(
                         prefix=tag.prefix,
