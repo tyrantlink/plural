@@ -13,7 +13,7 @@ from nacl.signing import VerifyKey
 from bcrypt import checkpw
 from orjson import loads
 
-from plural.db import ProxyMember, Usergroup, Application, redis
+from plural.db import ProxyMember, Group, Usergroup, Application, redis
 from plural.crypto import decode_b66, BASE66CHARS
 from beanie import PydanticObjectId
 from plural.otel import span, cx
@@ -221,3 +221,65 @@ async def internal_key_validator(
 ) -> None:
     if authorization != f'Bearer {env.cdn_upload_token}':
         raise HTTPException(status_code=403)
+
+
+async def authorized_member(
+    member_id: PydanticObjectId,
+    token: TokenData = Security(api_key_validator)  # noqa: B008
+) -> ProxyMember:
+    member = await ProxyMember.get(member_id)
+
+    if member is None:
+        raise HTTPException(status_code=404)
+
+    if (
+        token.internal or
+        str(token.app_id) in (
+            await (await member.get_group()).get_usergroup()
+        ).data.applications
+    ):
+        return member
+
+    raise HTTPException(status_code=403)
+
+
+async def authorized_group(
+    group_id: PydanticObjectId,
+    token: TokenData = Security(api_key_validator)  # noqa: B008
+) -> Group:
+    group = await Group.get(group_id)
+
+    if group is None:
+        raise HTTPException(status_code=404)
+
+    if (
+        token.internal or
+        str(token.app_id) in (
+            await group.get_usergroup()
+        ).data.applications
+    ):
+        return group
+
+    raise HTTPException(status_code=403)
+
+
+async def authorized_user(
+    user_id: int | PydanticObjectId,
+    token: TokenData = Security(api_key_validator)  # noqa: B008
+) -> Usergroup:
+    usergroup = (
+        await Usergroup.find_one({'users': user_id})
+        if isinstance(user_id, int) else
+        await Usergroup.get(user_id)
+    )
+
+    if token.internal:
+        return usergroup
+
+    if usergroup is None:
+        raise HTTPException(status_code=404)
+
+    if str(token.app_id) in usergroup.data.applications:
+        return usergroup
+
+    raise HTTPException(status_code=403)

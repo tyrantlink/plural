@@ -80,7 +80,7 @@ class Usergroup(BaseDocument):
         supporter_tier: SupporterTier = Field(
             default=SupporterTier.NONE,
             description='the supporter tier of the user')
-        applications: dict[str, list[ApplicationScope]] = Field(
+        applications: dict[str, ApplicationScope] = Field(
             default_factory=dict,
             description='the applications the user has authorized')
         image_limit: int = Field(

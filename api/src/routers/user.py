@@ -1,19 +1,22 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Security, Response
+from fastapi import APIRouter, Security, Depends, Response
+from beanie import PydanticObjectId
 
 from plural.db.enums import ApplicationScope
 from plural.errors import NotFound
 from plural.db import Usergroup
 
-from src.core.auth import TokenData, api_key_validator
+from src.core.auth import TokenData, api_key_validator, authorized_user
 from src.discord import User, Embed, ActionRow
 from src.core.ratelimit import ratelimit
 from src.core.models import env
 from src.core.route import name
 
+from src.models import Usergroup as UsergroupModel
 
-router = APIRouter(prefix='/users', tags=['Members'])
+
+router = APIRouter(prefix='/users', tags=['Users'])
 
 
 @router.post(
@@ -67,3 +70,21 @@ async def post__users_authorize(
     )
 
     return Response(status_code=204)
+
+
+@router.get(
+    '/{user_id}')
+@name('/users/:id')
+@ratelimit(5, timedelta(seconds=30), ['user_id'])
+async def get__users(
+    user_id: int | PydanticObjectId,  # noqa: ARG001
+    token: TokenData = Security(api_key_validator),  # noqa: B008
+    usergroup: Usergroup = Depends(authorized_user)  # noqa: B008
+) -> Response:
+    return Response(
+        status_code=200,
+        content=UsergroupModel.from_usergroup(
+            usergroup,
+            token
+        ).model_dump_json()
+    )
