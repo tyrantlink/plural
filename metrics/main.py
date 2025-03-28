@@ -51,7 +51,7 @@ def main() -> None:
     dev = environ.get('DEV', '1') != '0'
     token = environ.get('BOT_TOKEN')
 
-    version, _ = load_semantic_version('bot')
+    version, _ = load_semantic_version('metrics')
 
     if not mongo_uri:
         raise ValueError("MONGO_URL environment variable is not set")
