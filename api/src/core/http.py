@@ -10,6 +10,7 @@ from asyncio import sleep
 from orjson import loads, dumps
 from aiohttp import (
     __version__ as aiohttp_version,
+    ServerDisconnectedError,
     ClientResponse,
     ClientSession,
     FormData
@@ -232,7 +233,10 @@ async def request(
                     case _:
                         raise HTTPException(resp_data)
 
-        except OSError as e:
+        except (OSError, ServerDisconnectedError) as e:
+            if isinstance(e, ServerDisconnectedError):
+                continue
+
             if tries < 4 and e.errno in (54, 10054):
                 await sleep(1 + tries * 2)
                 continue
