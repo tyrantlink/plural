@@ -18,8 +18,4 @@ RUN apt-get update && \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# ? uv doesn't install local dependencies (e.g. shared) until it's actually run
-# ? and i don't want that at runtime
-RUN uv run main.py
-
 CMD uv run main.py
