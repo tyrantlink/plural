@@ -1287,6 +1287,9 @@ async def _process_proxy(
                 publish_latency = False
 
             if not response.success:
+                if name == 'webhook':
+                    await save_debug_log(event, debug_log)
+                    return ProxyResult(False, emojis)
                 continue
 
             tasks = [
