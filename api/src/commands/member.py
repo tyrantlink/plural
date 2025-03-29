@@ -312,7 +312,7 @@ async def slash_member_remove(
         await _delete_userproxy(member)
 
     await gather(
-        delete_avatar(member),
+        delete_avatar(member, error=False),
         member.delete(),
         group.save(),
         interaction.response.send_message(embeds=[Embed(

@@ -624,7 +624,7 @@ async def slash_group_set_avatar(
         await set_avatar(group, avatar.url, interaction.author_id)
         message = f'Set group `{group.name}` avatar'
     else:
-        await delete_avatar(group)
+        await delete_avatar(group, error=False)
         message = f'Removed group `{group.name}` avatar'
 
     embed = Embed.success(message)

@@ -339,7 +339,7 @@ async def set_avatar(
         self.proxy_tags[proxy_tag].avatar
     ):
         try:
-            await delete_avatar(self, proxy_tag)
+            await delete_avatar(self, proxy_tag, error=False)
         except InteractionError as e:
             if str(e) != 'No avatar to delete':
                 raise e
@@ -381,7 +381,8 @@ async def set_avatar(
 
 async def delete_avatar(
     self: Group | ProxyMember,
-    proxy_tag: int | None = None
+    proxy_tag: int | None = None,
+    error: bool = True
 ) -> None:
     hash, id = (
         (self.proxy_tags[proxy_tag].avatar, self.proxy_tags[proxy_tag].id)
@@ -402,7 +403,9 @@ async def delete_avatar(
         }
     ):
         if hash is None:
-            raise InteractionError('No avatar to delete')
+            if error:
+                raise InteractionError('No avatar to delete')
+            return None
 
         await _delete_avatar(str(id), hash, GENERAL_SESSION)
 
