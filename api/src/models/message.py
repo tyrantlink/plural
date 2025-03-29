@@ -4,8 +4,10 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
+from plural.db.enums import SupporterTier
+
 if TYPE_CHECKING:
-    from plural.db import Message
+    from plural.db import Message, ProxyMember, Usergroup
 
 
 class MessageModel(BaseModel):
@@ -32,4 +34,32 @@ class MessageModel(BaseModel):
                 if message.webhook_id is not None else
                 None
             )
+        )
+
+
+class AuthorModel(BaseModel):
+    name: str
+    pronouns: str
+    bio: str
+    birthday: str
+    color: int | None
+    avatar_url: str | None
+    supporter: bool
+
+    @classmethod
+    def from_member(
+        cls,
+        usergroup: Usergroup,
+        member: ProxyMember
+    ) -> AuthorModel:
+        return cls(
+            name=member.name,
+            pronouns=member.pronouns,
+            bio=member.bio,
+            birthday=member.birthday,
+            color=member.color,
+            avatar_url=member.avatar_url,
+            supporter=(
+                usergroup.data.supporter_tier
+                == SupporterTier.SUPPORTER)
         )
