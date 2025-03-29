@@ -628,7 +628,7 @@ async def slash_export(
         export = await export.to_standard()
 
     message = await interaction.response.send_message(
-        content='Your data is ready',
+        content='Your data is ready\n\nNOTE: Userproxies are currently not importable',
         with_response=True,
         attachments=[File(
             BytesIO(dumps(  # ? i miss elixir
