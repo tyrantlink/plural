@@ -130,6 +130,10 @@ class PluralExport(BaseExport):
                 members.append(StandardExport.Member(
                     id=member_index,
                     name=member.name,
+                    pronouns=member.pronouns,
+                    bio=member.bio,
+                    birthday=member.birthday,
+                    color=member.color,
                     avatar_url=member.avatar_url,
                     proxy_tags=[
                         StandardExport.Member.ProxyTag(
