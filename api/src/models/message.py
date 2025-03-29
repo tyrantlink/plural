@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from plural.db import Message as DBMessage
+    from plural.db import Message
 
 
-class Message(BaseModel):
+class MessageModel(BaseModel):
     original_id: str | None
     proxy_id: str
     author_id: str
@@ -17,7 +17,7 @@ class Message(BaseModel):
     webhook_id: str | None
 
     @classmethod
-    def from_message(cls, message: DBMessage) -> Message:
+    def from_message(cls, message: Message) -> MessageModel:
         return cls(
             original_id=(
                 str(message.original_id)

@@ -1,9 +1,10 @@
-from .member import UserproxySync
-from .usergroup import Usergroup
-from .message import Message
+from .member import MemberModel, UserproxySync
+from .usergroup import UsergroupModel
+from .message import MessageModel
 
 __all__ = (
-    'Message',
-    'Usergroup',
+    'MemberModel',
+    'MessageModel',
+    'UsergroupModel',
     'UserproxySync',
 )

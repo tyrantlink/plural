@@ -7,7 +7,7 @@ from plural.db.enums import ApplicationScope
 from plural.db import redis, Message
 
 from src.core.auth import api_key_validator, TokenData
-from src.models import Message as MessageModel
+from src.models import MessageModel as MessageModel
 from src.core.ratelimit import ratelimit
 from src.core.route import name
 
@@ -30,22 +30,13 @@ def _snowflake_to_age(snowflake: int) -> float:
     responses={
         200: {
             'content': None,
-            'description': 'Message found',
-            'headers': {
-                'Cache-Control': 'public, max-age=604800'
-            }},
+            'description': 'Message found'},
         404: {
             'content': None,
-            'description': 'Message was not found',
-            'headers': {
-                'Cache-Control': 'public, max-age=604800'
-            }},
+            'description': 'Message was not found'},
         410: {
             'content': None,
-            'description': 'Message is older than 7 days; status is unknown',
-            'headers': {
-                'Cache-Control': 'public, max-age=604800'
-            }},
+            'description': 'Message is older than 7 days; status is unknown'},
         400: {
             'content': None,
             'description': 'Message is in the future; status is unknown'},
@@ -144,24 +135,20 @@ async def head__message(
                             'reason': 'Matched proxy tag ​`text`​`--steve`',
                             'webhook_id': None
                         }},
-                    }}},
-            'headers': {
-                'Cache-Control': 'public, max-age=604800'
-            }},
+                    }
+                }
+            }
+        },
         400: {
             'description': 'Message is in the future; status is unknown'},
         403: {
             'description': 'Missing logging scope'
         },
         404: {
-            'description': 'Message was not found',
-            'headers': {
-                'Cache-Control': 'public, max-age=604800'
-            }},
+            'description': 'Message was not found'
+        },
         410: {
-            'description': 'Message is older than 7 days; status is unknown',
-            'headers': {
-                'Cache-Control': 'public, max-age=604800'}}})
+            'description': 'Message is older than 7 days; status is unknown'}})
 @name('/messages/:id/:id')
 @ratelimit(500, timedelta(seconds=1))
 async def get__message(
@@ -173,6 +160,7 @@ async def get__message(
     if not ApplicationScope.LOGGING & token.application.scope:
         return Response(
             status_code=403,
+            media_type='application/json',
             content=dumps({'detail': {
                 'loc': ['header', 'Authorization'],
                 'msg': 'Missing required scope: logging',
@@ -213,6 +201,7 @@ async def get__message(
 
     return Response(
         status_code=200,
+        media_type='application/json',
         headers={'Cache-Control': 'public, max-age=604800'},
         content=MessageModel.from_message(
             message

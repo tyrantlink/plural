@@ -355,7 +355,7 @@ async def slash_member_set_avatar(
         await set_avatar(member, avatar.url, interaction.author_id)
         message = f'Set member `{member.name}` avatar'
     else:
-        await delete_avatar(member)
+        await delete_avatar(member, error=False)
         message = f'Removed member `{member.name}` avatar'
 
     embed = Embed(
@@ -915,7 +915,7 @@ async def slash_member_tags_avatar(
             tag_index)
         message = f'Set Proxy Tag {tag.name} avatar'
     else:
-        await delete_avatar(member, tag_index)
+        await delete_avatar(member, tag_index, error=False)
         message = f'Removed Proxy Tag {tag.name} avatar'
 
     await interaction.send(embeds=[Embed(
@@ -1057,7 +1057,7 @@ async def slash_member_tags_remove(
 
     if member.proxy_tags[proxy_tag].avatar is not None:
         await interaction.response.defer()
-        await delete_avatar(member, proxy_tag)
+        await delete_avatar(member, proxy_tag, error=False)
 
     tag = member.proxy_tags.pop(proxy_tag)
 

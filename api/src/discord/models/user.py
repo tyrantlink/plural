@@ -109,6 +109,20 @@ class User(RawBaseModel):
             ))
         )
 
+    @classmethod
+    async def fetch_from_oauth(
+        cls,
+        token: str
+    ) -> User:
+        return cls(
+            **await request(Route(
+                'GET',
+                '/users/@me'
+            ), headers={
+                'Authorization': f'Bearer {token}'
+            })
+        )
+
     async def fetch_guilds(
         self,
         token: str

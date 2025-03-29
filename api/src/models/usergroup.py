@@ -14,12 +14,12 @@ from plural.db.enums import (
 
 
 if TYPE_CHECKING:
-    from plural.db import Usergroup as DBUsergroup
+    from plural.db import Usergroup
 
     from src.core.auth import TokenData
 
 
-class Usergroup(BaseModel):
+class UsergroupModel(BaseModel):
     class Config(BaseModel):
         reply_format: ReplyFormat = Field(
             default=ReplyFormat.INLINE,
@@ -104,7 +104,7 @@ class Usergroup(BaseModel):
     @classmethod
     def from_usergroup(
         cls,
-        usergroup: DBUsergroup,
+        usergroup: Usergroup,
         token: TokenData
     ) -> Usergroup:
         data = cls(**usergroup.model_dump(mode='json'))
