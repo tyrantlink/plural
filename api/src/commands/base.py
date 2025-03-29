@@ -502,34 +502,13 @@ async def slash_autoproxy(
 
 @slash_command(
     name='config',
-    description='Configure /plu/ral settings. Leave empty to use button menu',
-    # options=[
-    #     ApplicationCommand.Option(
-    #         type=ApplicationCommandOptionType.STRING,
-    #         name='option',
-    #         description='Config option; Use the autocomplete',
-    #         required=False,
-    #         autocomplete=True),
-    #     ApplicationCommand.Option(
-    #         type=ApplicationCommandOptionType.STRING,
-    #         name='value',
-    #         description='Config value',
-    #         required=False,
-    #         autocomplete=True)],
+    description='Configure /plu/ral settings.',
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def slash_config(
-    interaction: Interaction,
-    option: str | None = None,
-    value: str | None = None  # noqa: ARG001
+    interaction: Interaction
 ) -> None:
-    if option is None:
-        return await PAGES['home'](interaction)
-
-    raise InteractionError(
-        'Text-based config is not yet implemented\n\n'
-        'Please use the button menu instead.'
-    )
+    await PAGES['home'](interaction)
 
 
 @slash_command(
