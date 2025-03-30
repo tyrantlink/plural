@@ -28,6 +28,7 @@ For example, members, groups, and proxy tags are all selected with autocomplete,
 ### Differences from PluralKit
 - To link accounts (`pk;link`), see [Using Multiple Accounts](/guide/multiple-accounts.md)
 - There is no support for legacy moderation bots, as /plu/ral prioritizes speed. Discord AutoMod is more effective and can act before any bot can.
+- There is no system tag, each group has its own tag (`/group set tag`)
 
 More coming soon
 

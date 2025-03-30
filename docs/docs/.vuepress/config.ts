@@ -13,6 +13,7 @@ import {
   sidebarEn,
 } from './configs/index.js'
 
+
 export default defineUserConfig({
   head,
   locales: {
@@ -42,10 +43,9 @@ export default defineUserConfig({
     searchPlugin(),
     gitPlugin(),
     copyCodePlugin({
-        'showInMobile': true
-    }),
+        'showInMobile': true}),
     shikiPlugin({
       themes: { light: 'github-light', dark: 'github-dark' },
-      langs: ['py', 'json', 'sh', 'regex'],
-    })]
+      langs: ['py', 'json', 'sh', 'regex']}
+    )]
 })
