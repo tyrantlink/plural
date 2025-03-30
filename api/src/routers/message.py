@@ -229,8 +229,7 @@ async def get__message(
             'description': 'Message was not found or member was not found'
         },
         410: {
-            'description': 'Message is older than 7 days; status is unknown'}
-    })
+            'description': 'Message is older than 7 days; status is unknown'}})
 @name('/messages/:id/:id/member')
 @ratelimit(500, timedelta(seconds=1))
 async def get__message_member(
@@ -285,7 +284,6 @@ async def get__message_member(
     return Response(
         status_code=200,
         media_type='application/json',
-        headers={'Cache-Control': 'public, max-age=604800'},
         content=AuthorModel.from_member(
             usergroup,
             member
