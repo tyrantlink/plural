@@ -429,7 +429,7 @@ async def slash_autoproxy(
                 icon_url=interaction.guild.icon_url or MISSING
             )
 
-        if (
+        if interaction.guild_id and (
             await AutoProxy.find_one({
                 'user': interaction.author_id,
                 'guild': interaction.guild_id if global_ else None})
