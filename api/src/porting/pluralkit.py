@@ -42,7 +42,8 @@ class PluralKitExport(BaseExport):
         hid_display_split: bool
         hid_display_caps: bool
         hid_list_padding: str
-        proxy_switch: Optional[bool]
+        # ? can sometimes be "new" and i don't know what that means
+        proxy_switch: Optional[bool | str]
         name_format: Optional[Nullable[str]]  # ? unsure of type
         description_templates: list[str]  # ? unsure of type
 
