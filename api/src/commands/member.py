@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from asyncio import gather
 
-from plural.db import Group, ProxyMember, Usergroup
+from plural.db import Group, ProxyMember, Usergroup, Guild
 from plural.errors import InteractionError
 from plural.missing import MISSING
 
@@ -69,7 +69,10 @@ async def slash_member_info(
         name='Display Name',
         value=member.get_display_name(
             await Usergroup.get_by_user(interaction.author_id),
-            group),
+            group, (
+                await Guild.get_by_id(interaction.guild_id)
+                if interaction.guild_id
+                else None)),
         inline=False
     ).add_field(
         name='Meta',

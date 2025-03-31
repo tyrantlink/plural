@@ -11,6 +11,7 @@ from regex import compile
 from plural.env import env
 
 from .base import BaseDocument
+from .guild import Guild
 
 if TYPE_CHECKING:
     from aiohttp import ClientSession
@@ -171,23 +172,31 @@ class ProxyMember(BaseDocument):
         self,
         usergroup: Usergroup,
         group: Group,
+        guild: Guild | None,
         userproxy: bool = False
     ) -> str:
+        guild = guild or Guild(id=0)
+
         components = [
             self.name, (
                 usergroup.config.tag_format.replace(
                     '{tag}', group.tag)
                 if (
-                    group.tag and not (
-                        userproxy and not
-                        usergroup.userproxy_config.include_group_tag)
+                    group.tag and (
+                        (usergroup.userproxy_config.include_group_tag)
+                        if userproxy else
+                        (guild.config.force_include_group_tag or
+                         usergroup.config.include_group_tag)
+                    )
                 ) else ''), (
                 usergroup.config.pronoun_format.replace(
                     '{pronouns}', self.pronouns)
                 if (
-                    self.pronouns and not (
-                        userproxy and not
-                        usergroup.userproxy_config.include_pronouns)
+                    self.pronouns and (
+                        (usergroup.userproxy_config.include_pronouns)
+                        if userproxy else
+                        (usergroup.config.include_pronouns)
+                    )
                 ) else ''
             )
         ]

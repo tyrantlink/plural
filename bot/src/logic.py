@@ -32,6 +32,7 @@ from plural.db import (
     ProxyLog,
     Message,
     Group,
+    Guild,
     redis
 )
 
@@ -1508,7 +1509,8 @@ async def webhook_handler(
             'content': proxy.content,
             'username': proxy.member.get_display_name(
                 usergroup,
-                proxy.group),
+                proxy.group,
+                await Guild.get_by_id(int(event['guild_id']))),
             'avatar_url': proxy.avatar_url,
             'allowed_mentions': parse_allowed_mentions(
                 original_content,

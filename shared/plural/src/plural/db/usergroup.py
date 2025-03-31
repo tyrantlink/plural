@@ -39,6 +39,12 @@ class Usergroup(BaseDocument):
         pronoun_format: str = Field(
             default='({pronouns})',
             description='the format for pronouns in member names')
+        include_group_tag: bool = Field(
+            default=True,
+            description='whether to include the group tag in the member name')
+        include_pronouns: bool = Field(
+            default=True,
+            description='whether to include the pronouns in the member name')
         display_name_order: list[int] = Field(
             default_factory=lambda: [0, 1, 2],
             description='the order of display name components'

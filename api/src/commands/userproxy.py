@@ -162,6 +162,7 @@ async def _userproxy_sync(
         bot_patch['username'] = member.get_display_name(
             usergroup,
             group,
+            None,
             True
         )[:32]
 

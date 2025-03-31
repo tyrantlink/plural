@@ -174,6 +174,26 @@ CONFIG_OPTIONS = {
             check=(
                 lambda value: '{pronouns}' in value,
                 'Value must contain {pronouns}')),
+        'include_group_tag': ConfigOption(
+            name='Include Group Tag in Member Name',
+            description=dedent('''
+                Whether to include the group tag in the member name.
+
+                Note: the total length of userproxy name, group tag, and pronouns must be less than 80 characters.
+
+                Server config can override this setting, always showing group tags.
+            ''').strip(),
+            type=ConfigOptionType.BOOLEAN,
+            parser=lambda value: value == 'Enabled'),
+        'include_pronouns': ConfigOption(
+            name='Include Pronouns in Member Name',
+            description=dedent('''
+                Whether to include the pronouns in the member name.
+
+                Note: the total length of userproxy name, group tag, and pronouns must be less than 80 characters.
+            ''').strip(),
+            type=ConfigOptionType.BOOLEAN,
+            parser=lambda value: value == 'Enabled'),
         'display_name_order': ConfigOption(
             name='Display Name Order',
             description=dedent('''
@@ -354,6 +374,15 @@ CONFIG_OPTIONS = {
                 Whether to clean up log messages.
 
                 If enabled, deleted message logs from compatible bots will be automatically deleted.
+            ''').strip(),
+            type=ConfigOptionType.BOOLEAN,
+            parser=lambda value: value == 'Enabled'),
+        'force_include_group_tag': ConfigOption(
+            name='Force Include Group Tag',
+            description=dedent('''
+                Whether to force the group tag to be visible for all members used in this server.
+
+                This does **NOT** apply to userproxies
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
