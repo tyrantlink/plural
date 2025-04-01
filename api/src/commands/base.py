@@ -155,15 +155,14 @@ async def message_plural_proxy_info(
     embed = Embed(
         title='Proxy Info',
         description=member.bio,
-        color=member.color or 0x69ff69
+        color=(
+            member.color
+            if member.color and not usergroup.config.private_member_info else
+            0x69ff69)
     ).add_field(
         name='Author',
         value=f'<@{db_message.author_id}>',
         inline=True
-    ).add_field(
-        name='Proxy Reason',
-        value=db_message.reason,
-        inline=False
     ).set_footer(
         'original message id: ' + (
             str(db_message.original_id)
@@ -175,19 +174,26 @@ async def message_plural_proxy_info(
         message.author.avatar_url
     )
 
-    if member.pronouns:
-        embed.fields.insert(1, Embed.Field(
-            name='Pronouns',
-            value=member.pronouns,
-            inline=True
-        ))
+    if not usergroup.config.private_member_info:
+        embed.add_field(
+            name='Proxy Reason',
+            value=db_message.reason,
+            inline=False
+        )
 
-    if member.birthday:
-        embed.fields.insert(2, Embed.Field(
-            name='Birthday',
-            value=member.birthday,
-            inline=True
-        ))
+        if member.pronouns:
+            embed.fields.insert(1, Embed.Field(
+                name='Pronouns',
+                value=member.pronouns,
+                inline=True
+            ))
+
+        if member.birthday:
+            embed.fields.insert(2, Embed.Field(
+                name='Birthday',
+                value=member.birthday,
+                inline=True
+            ))
 
     if usergroup.data.supporter_tier == SupporterTier.SUPPORTER:
         embed.footer.text += '\n🌟/plu/ral supporter🌟'

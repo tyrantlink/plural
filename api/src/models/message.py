@@ -52,14 +52,16 @@ class AuthorModel(BaseModel):
         usergroup: Usergroup,
         member: ProxyMember
     ) -> AuthorModel:
+        private = usergroup.config.private_member_info
         return cls(
             name=member.name,
-            pronouns=member.pronouns,
-            bio=member.bio,
-            birthday=member.birthday,
-            color=member.color,
+            pronouns=member.pronouns if not private else '',
+            bio=member.bio if not private else '',
+            birthday=member.birthday if not private else '',
+            color=member.color if not private else None,
             avatar_url=member.avatar_url,
             supporter=(
                 usergroup.data.supporter_tier
-                == SupporterTier.SUPPORTER)
+                == SupporterTier.SUPPORTER
+            )
         )

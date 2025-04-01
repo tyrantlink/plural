@@ -222,7 +222,26 @@ CONFIG_OPTIONS = {
                     label='Pronouns, Group Tag, Name',
                     value='2,1,0')],
             parser=lambda value: [
-                int(index) for index in value.split(',')])},
+                int(index) for index in value.split(',')]),
+        'private_member_info': ConfigOption(
+            name='Private Member Info',
+            description=dedent('''
+                Whether to show member details in the proxy info command.
+
+                If enabled, **anyone** will see the following information in the proxy info command:
+                - Pronouns
+                - Bio
+                - Birthday
+                - Color
+
+                Note that since this requires the proxy info command, these values will only be visible when the member is *used*
+
+                This is a global option, and will affect all members.
+
+                Default: Disabled
+            ''').strip(),
+            type=ConfigOptionType.BOOLEAN,
+            parser=lambda value: value == 'Enabled')},
     'userproxy': {
         'reply_format': ConfigOption(
             name='Server Reply Format',
@@ -527,7 +546,7 @@ async def button_back(
 
 @button(
     custom_id='button_true',
-    label='true',
+    label='Enabled',
     style=ButtonStyle.SECONDARY)
 async def button_true(
     interaction: Interaction,
@@ -539,7 +558,7 @@ async def button_true(
 
 @button(
     custom_id='button_false',
-    label='false',
+    label='Disabled',
     style=ButtonStyle.SECONDARY)
 async def button_false(
     interaction: Interaction,

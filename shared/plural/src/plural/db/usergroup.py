@@ -47,7 +47,10 @@ class Usergroup(BaseDocument):
             description='whether to include the pronouns in the member name')
         display_name_order: list[int] = Field(
             default_factory=lambda: [0, 1, 2],
-            description='the order of display name components'
+            description='the order of display name components')
+        private_member_info: bool = Field(
+            default=False,
+            description='whether to show member details in the proxy info command'
         )
 
     class UserproxyConfig(BaseModel):
