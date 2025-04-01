@@ -1100,6 +1100,24 @@ async def create_request(
     )
 
 
+def filesize_check(
+    size: int,
+    limit: int,
+    debug_log: list[str]
+) -> bool:
+    if size > limit:
+        debug_log.append(
+            f'Attachments exceed {round(limit / 1_048_576)} MB. '
+            f'({round(size / 1_048_576, 2)} MB)')
+        return False
+
+    if size > 20_971_520:
+        debug_log.append(
+            'Only 20MB of attachments can be proxied at a time.')
+        return False
+    return True
+
+
 async def _process_proxy(
     event: dict,
     start_time: int,
@@ -1222,16 +1240,34 @@ async def _process_proxy(
         event.get('attachments', [])
     )
 
-    if total_filesize > filesize_limit:
-        debug_log.append(
-            f'Attachments exceed {round(filesize_limit / 1_048_576)} MB. '
-            f'({round(total_filesize / 1_048_576, 2)} MB)')
+    if not filesize_check(
+        total_filesize,
+        filesize_limit,
+        debug_log
+    ):
         await save_debug_log(event, debug_log)
         return ProxyResult(False, emojis)
 
-    if total_filesize > 20_971_520:
-        debug_log.append(
-            'Only 20MB of attachments can be proxied at a time.')
+    files = [
+        File(
+            data=BytesIO(data),
+            filename=attachment['filename'],
+            description=attachment.get('description'),
+            spoiler=attachment['filename'].startswith('SPOILER_'),
+            duration_secs=attachment.get('duration_secs'),
+            waveform=attachment.get('waveform'),
+            size=len(data))
+        for attachment in event.get('attachments', [])
+        if (data := await (
+            await GENERAL_SESSION.get(attachment['url'])
+        ).read())
+    ]
+
+    if not filesize_check(
+        sum(file.size or 0 for file in files),
+        filesize_limit,
+        debug_log
+    ):
         await save_debug_log(event, debug_log)
         return ProxyResult(False, emojis)
 
@@ -1287,26 +1323,6 @@ async def _process_proxy(
                     await save_debug_log(event, debug_log)
                     return ProxyResult(False, emojis)
                 continue
-
-            files = [
-                File(
-                    data=BytesIO(data),
-                    filename=attachment['filename'],
-                    description=attachment.get('description'),
-                    spoiler=attachment['filename'].startswith('SPOILER_'),
-                    duration_secs=attachment.get('duration_secs'),
-                    waveform=attachment.get('waveform'),
-                    size=len(data))
-                for attachment in event.get('attachments', [])
-                if (data := await (
-                    await GENERAL_SESSION.get(attachment['url'])).read()
-                    )
-            ]
-
-            cx().set_attribute(
-                'proxy.actual_attachment_size',
-                sum(file.size or 0 for file in files)
-            )
 
             tasks = [
                 request(
