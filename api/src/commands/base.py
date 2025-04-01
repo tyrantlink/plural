@@ -365,7 +365,10 @@ async def slash_api(
                     value='latch'),
                 ApplicationCommand.Option.Choice(
                     name='Locked; autoproxy will not switch even if you use proxy tags',
-                    value='locked')],
+                    value='locked'),
+                ApplicationCommand.Option.Choice(
+                    name='Disabled; ALL proxying (including with tags) will be disabled',
+                    value='disabled')],
             required=False),
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.STRING,
@@ -389,6 +392,8 @@ async def slash_autoproxy(
             mode = AutoProxyMode.LATCH
         case 'locked':
             mode = AutoProxyMode.LOCKED
+        case 'disabled':
+            mode = AutoProxyMode.DISABLED
         case None:
             mode = AutoProxyMode.LATCH
         case _:
@@ -1007,7 +1012,10 @@ async def slash_stats(
                     value='latch'),
                 ApplicationCommand.Option.Choice(
                     name='Locked; Autoproxy will not switch even if you use proxy tags',
-                    value='locked')],
+                    value='locked'),
+                ApplicationCommand.Option.Choice(
+                    name='Disabled; ALL proxying (including with tags) will be disabled',
+                    value='disabled')],
             required=False),
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.STRING,

@@ -57,6 +57,7 @@ class AutoProxyMode(Enum):
     LATCH = 0
     FRONT = 1
     LOCKED = 2
+    DISABLED = 3
 
 
 class GroupSharePermissionLevel(Enum):

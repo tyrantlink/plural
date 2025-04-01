@@ -299,6 +299,14 @@ async def get_proxy_data(
     ) or autoproxies.get(None)
     autoproxy_members: dict[int | None, ProxyMember] = {}
 
+    if (
+        autoproxy and
+        autoproxy.mode == AutoProxyMode.DISABLED
+    ):
+        debug_log.append(
+            'Autoproxy mode is "disabled". All proxying is disabled.')
+        return None
+
     if autoproxy:
         member = await ProxyMember.get(autoproxy.member)
         debug_log.append(
