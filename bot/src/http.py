@@ -115,12 +115,14 @@ class File:
         spoiler: bool = False,
         duration_secs: float | None = None,
         waveform: str | None = None,
+        size: int | None = None
     ) -> None:
         self.data = data
         self._original_pos = data.tell()
         self.filename = filename
         self.duration_secs = duration_secs
         self.waveform = waveform
+        self.size = size
 
         self._closer = self.data.close
         self.data.close = lambda: None  # type: ignore[method-assign]

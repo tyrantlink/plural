@@ -1061,9 +1061,9 @@ async def create_request(
     token: str,
     json: dict,
     params: dict,
-    attachments: list[dict]
+    files: list[File]
 ) -> CoroutineType[Any, Any, dict[str, Any] | str | None]:
-    if not attachments:
+    if not files:
         return request(
             Route(
                 'POST',
@@ -1072,19 +1072,6 @@ async def create_request(
             json=json,
             params=params
         )
-
-    files = [
-        File(
-            data=BytesIO(await (
-                await GENERAL_SESSION.get(
-                    attachment['url'])).read()),
-            filename=attachment['filename'],
-            description=attachment.get('description'),
-            spoiler=attachment['filename'].startswith('SPOILER_'),
-            duration_secs=attachment.get('duration_secs'),
-            waveform=attachment.get('waveform'))
-        for attachment in attachments
-    ]
 
     form, json_files = [], []
     for index, file in enumerate(files):
@@ -1301,6 +1288,26 @@ async def _process_proxy(
                     return ProxyResult(False, emojis)
                 continue
 
+            files = [
+                File(
+                    data=BytesIO(data),
+                    filename=attachment['filename'],
+                    description=attachment.get('description'),
+                    spoiler=attachment['filename'].startswith('SPOILER_'),
+                    duration_secs=attachment.get('duration_secs'),
+                    waveform=attachment.get('waveform'),
+                    size=len(data))
+                for attachment in event.get('attachments', [])
+                if (data := await (
+                    await GENERAL_SESSION.get(attachment['url'])).read()
+                    )
+            ]
+
+            cx().set_attribute(
+                'proxy.actual_attachment_size',
+                sum(file.size or 0 for file in files)
+            )
+
             tasks = [
                 request(
                     Route(
@@ -1317,7 +1324,7 @@ async def _process_proxy(
                     response.token,
                     response.json,
                     response.params,
-                    event.get('attachments', [])
+                    files
                 )
             ]
 
