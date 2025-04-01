@@ -154,7 +154,10 @@ async def message_plural_proxy_info(
 
     embed = Embed(
         title='Proxy Info',
-        description=member.bio,
+        description=(
+            'Member Info Private'
+            if usergroup.config.private_member_info else
+            member.bio),
         color=(
             member.color
             if member.color and not usergroup.config.private_member_info else
