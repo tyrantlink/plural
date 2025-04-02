@@ -172,10 +172,9 @@ async def message_plural_proxy_info(
             str(db_message.original_id)
             if db_message.original_id is not None else
             'None (Userproxy command)'
-            if (
-                db_message.reason.startswith('Userproxy') or
-                db_message.reason.startswith('/say command')
-            ) else
+            if db_message.reason.startswith('Userproxy') else
+            'None (/say command)'
+            if db_message.reason == '/say command' else
             'sent through /plu/ral api')
     ).set_thumbnail(
         message.author.avatar_url
