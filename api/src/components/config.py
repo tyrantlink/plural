@@ -860,7 +860,7 @@ async def _option(
                 id=interaction.guild_id)
             config = guild.config
             embed.set_author(
-                name=interaction.guild.name,
+                name=interaction.guild.name or 'Server Name Unknown',
                 icon_url=interaction.guild.icon_url or MISSING
             )
 
