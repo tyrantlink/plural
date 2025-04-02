@@ -26,7 +26,7 @@ This involves creating a bot, so it can be managed by /plu/ral.
 For options beyond the token, bio, banner, and proxy command, see the [Userproxy Config](/guide/config.md#userproxy-config) page.
 
 #### Restrictions
-- Member names must be at most 32 characters, with group tag, if included
+- Member names must be at most 32 characters, with tag, if included
 
 #### If you have more than 25 members
 - Due to the way Discord works, you will have to create a bot for each member, if you have more than 25 members, head to the [Discord Developer Portal](https://discord.com/developers/applications), and in the Teams tab, click "New Team", then when creating your applications, set them to that team.

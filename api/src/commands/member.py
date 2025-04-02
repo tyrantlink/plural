@@ -664,15 +664,15 @@ async def slash_member_set_name(
         usergroup = await Usergroup.get_by_user(interaction.author_id)
 
         userproxy_name = name + (
-            (group.tag or '')
-            if usergroup.userproxy_config.include_group_tag
+            (group.tag or usergroup.config.account_tag or '')
+            if usergroup.userproxy_config.include_tag
             else ''
         )
 
         if not (2 <= len(userproxy_name) <= 32):
             raise InteractionError(
                 'Userproxy member names must be between 2 and 32 characters '
-                '(including group tag, if enabled)'
+                '(including tag, if enabled)'
             )
 
     old_name, member.name = member.name, name

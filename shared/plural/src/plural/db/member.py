@@ -177,17 +177,17 @@ class ProxyMember(BaseDocument):
     ) -> str:
         guild = guild or Guild(id=0)
 
+        tag = group.tag or usergroup.config.account_tag
+
         components = [
             self.name, (
-                usergroup.config.tag_format.replace(
-                    '{tag}', group.tag)
+                usergroup.config.tag_format.replace('{tag}', tag)
                 if (
-                    group.tag and (
-                        (usergroup.userproxy_config.include_group_tag)
+                    tag and (
+                        (usergroup.userproxy_config.include_tag)
                         if userproxy else
-                        (guild.config.force_include_group_tag or
-                         usergroup.config.include_group_tag)
-                    )
+                        (guild.config.force_include_tag or
+                         usergroup.config.include_tag))
                 ) else ''), (
                 usergroup.config.pronoun_format.replace(
                     '{pronouns}', self.pronouns)

@@ -23,5 +23,12 @@ If you use another bot and would like to see support for it, please post in the 
 #### Adding Support for In-House Logging Bots
 See [Adding Logging Support](/third-party-applications/logging-support.md)
 
+### Force Include Tag
+When this option is enabled, it will override the `Include Tag in Member Name` option for all members in the server.
+
+This is useful for servers that want to force the tag to be included in all member names, regardless of the user's settings.
+
+This does **NOT** enforce that the user has a tag set.
+
 ### Logging
 This feature is currently not implemented and will respond with an error message.

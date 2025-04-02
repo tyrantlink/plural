@@ -45,7 +45,7 @@ async def _set_tag(
         member for member in members
         if len(f'{member.name} {tag}') > (
             32
-            if usergroup.userproxy_config.include_group_tag else
+            if usergroup.userproxy_config.include_tag else
             80
         )
     ] if tag else []

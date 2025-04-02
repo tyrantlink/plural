@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 
 class UsergroupModel(BaseModel):
     class Config(BaseModel):
+        account_tag: str = Field(
+            default='',
+            description='the global account tag; overridden by group tags')
         reply_format: ReplyFormat = Field(
             default=ReplyFormat.INLINE,
             description='Format for message references in servers')
@@ -35,13 +38,16 @@ class UsergroupModel(BaseModel):
             description='Whether to show for dice rolls')
         tag_format: str = Field(
             default='{tag}',
-            description='The format for group tags in member names')
+            description='The format for account/group tags in member names')
         pronoun_format: str = Field(
             default='({pronouns})',
             description='The format for pronouns in member names')
         display_name_order: list[int] = Field(
             default_factory=lambda: [0, 1, 2],
-            description='The order of display name components'
+            description='The order of display name components (0 = name, 1 = tag, 2 = pronouns)')
+        private_member_info: bool = Field(
+            default=False,
+            description='whether to show member details in the proxy info command'
         )
 
     class UserproxyConfig(BaseModel):
@@ -54,9 +60,9 @@ class UsergroupModel(BaseModel):
         ping_replies: bool = Field(
             default=False,
             description='Whether to ping when you reply to someone')
-        include_group_tag: bool = Field(
+        include_tag: bool = Field(
             default=False,
-            description='Whether to include the group tag in the member name')
+            description='Whether to include the account/group tag in the member name')
         include_pronouns: bool = Field(
             default=False,
             description='Whether to include the pronouns in the member name')

@@ -21,6 +21,9 @@ class Usergroup(BaseDocument):
         ]
 
     class Config(BaseModel):
+        account_tag: str = Field(
+            default='',
+            description='the global account tag; overridden by group tags')
         reply_format: ReplyFormat = Field(
             default=ReplyFormat.INLINE,
             description='format for message references in servers')
@@ -35,19 +38,19 @@ class Usergroup(BaseDocument):
             description='whether to show for dice rolls')
         tag_format: str = Field(
             default='{tag}',
-            description='the format for group tags in member names')
+            description='the format for tags in member names')
         pronoun_format: str = Field(
             default='({pronouns})',
             description='the format for pronouns in member names')
-        include_group_tag: bool = Field(
+        include_tag: bool = Field(
             default=True,
-            description='whether to include the group tag in the member name')
+            description='whether to include the account/group tag in the member name')
         include_pronouns: bool = Field(
             default=True,
             description='whether to include the pronouns in the member name')
         display_name_order: list[int] = Field(
             default_factory=lambda: [0, 1, 2],
-            description='the order of display name components')
+            description='The order of display name components (0 = name, 1 = tag, 2 = pronouns)')
         private_member_info: bool = Field(
             default=False,
             description='whether to show member details in the proxy info command'
@@ -63,15 +66,15 @@ class Usergroup(BaseDocument):
         ping_replies: bool = Field(
             default=False,
             description='whether to ping when you reply to someone')
-        include_group_tag: bool = Field(
+        include_tag: bool = Field(
             default=False,
-            description='whether to include the group tag in the member name')
+            description='whether to include the tag in the member name')
         include_pronouns: bool = Field(
             default=False,
             description='whether to include the pronouns in the member name')
         attachment_count: int = Field(
             default=1,
-            description='the number of attachments options to include in the proxy command')
+            description='the number of attachment options to include in the proxy command')
         self_hosted: bool = Field(
             default=False,
             description='whether the userproxy is self-hosted')

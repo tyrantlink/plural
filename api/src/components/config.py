@@ -60,6 +60,21 @@ class ConfigOption:
 
 CONFIG_OPTIONS = {
     'user': {
+        'account_tag': ConfigOption(
+            name='Account Tag',
+            description=dedent('''
+                The global account tag for this account.
+
+                This will be overridden by group tags.
+            ''').strip(),
+            type=ConfigOptionType.STRING,
+            text_input=TextInput(
+                custom_id='value',
+                label='Account Tag',
+                style=TextInputStyle.SHORT,
+                required=False,
+                max_length=79),
+            parser=lambda value: value),
         'reply_format': ConfigOption(
             name='Reply Format',
             description=dedent('''
@@ -137,18 +152,18 @@ CONFIG_OPTIONS = {
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
         'tag_format': ConfigOption(
-            name='Group Tag Format',
+            name='Tag Format',
             description=dedent('''
-                The format for group tags
+                The format for account/group tags
 
-                {tag} in your format will be replaced with your group tag.
+                {tag} in your format will be replaced with your account/group tag.
 
                 Default: {tag}
             ''').strip(),
             type=ConfigOptionType.STRING,
             text_input=TextInput(
                 custom_id='value',
-                label='Group Tag Format',
+                label='Tag Format',
                 style=TextInputStyle.SHORT,
                 placeholder='{tag}'),
             parser=lambda value: value,
@@ -174,14 +189,14 @@ CONFIG_OPTIONS = {
             check=(
                 lambda value: '{pronouns}' in value,
                 'Value must contain {pronouns}')),
-        'include_group_tag': ConfigOption(
-            name='Include Group Tag in Member Name',
+        'include_tag': ConfigOption(
+            name='Include Tag in Member Name',
             description=dedent('''
-                Whether to include the group tag in the member name.
+                Whether to include the account/group tag in the member name.
 
-                Note: the total length of userproxy name, group tag, and pronouns must be less than 80 characters.
+                Note: the total length of member name, tag, and pronouns must be less than 80 characters.
 
-                Server config can override this setting, always showing group tags.
+                Server config can override this setting, always showing tags.
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
@@ -190,7 +205,7 @@ CONFIG_OPTIONS = {
             description=dedent('''
                 Whether to include the pronouns in the member name.
 
-                Note: the total length of userproxy name, group tag, and pronouns must be less than 80 characters.
+                Note: the total length of member name, tag, and pronouns must be less than 80 characters.
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
@@ -199,27 +214,27 @@ CONFIG_OPTIONS = {
             description=dedent('''
                 The order of display name components.
 
-                Default: Name, Group Tag, Pronouns
+                Default: Name, Tag, Pronouns
             ''').strip(),
             type=ConfigOptionType.SELECT,
             choices=[
                 SelectMenu.Option(
-                    label='Name, Group Tag, Pronouns',
+                    label='Name, Tag, Pronouns',
                     value='0,1,2'),
                 SelectMenu.Option(
-                    label='Name, Pronouns, Group Tag',
+                    label='Name, Pronouns, Tag',
                     value='0,2,1'),
                 SelectMenu.Option(
-                    label='Group Tag, Name, Pronouns',
+                    label='Tag, Name, Pronouns',
                     value='1,0,2'),
                 SelectMenu.Option(
-                    label='Group Tag, Pronouns, Name',
+                    label='Tag, Pronouns, Name',
                     value='1,2,0'),
                 SelectMenu.Option(
-                    label='Pronouns, Name, Group Tag',
+                    label='Pronouns, Name, Tag',
                     value='2,0,1'),
                 SelectMenu.Option(
-                    label='Pronouns, Group Tag, Name',
+                    label='Pronouns, Tag, Name',
                     value='2,1,0')],
             parser=lambda value: [
                 int(index) for index in value.split(',')]),
@@ -310,12 +325,12 @@ CONFIG_OPTIONS = {
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
-        'include_group_tag': ConfigOption(
-            name='Include Group Tag in Member Name',
+        'include_tag': ConfigOption(
+            name='Include Tag in Member Name',
             description=dedent('''
-                Whether to include the group tag in the member name.
+                Whether to include the account/group tag in the member name.
 
-                Note: the total length of userproxy name, group tag, and pronouns must be less than 32 characters.
+                Note: the total length of userproxy name, tag, and pronouns must be less than 32 characters.
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
@@ -324,7 +339,7 @@ CONFIG_OPTIONS = {
             description=dedent('''
                 Whether to include the pronouns in the member name.
 
-                Note: the total length of userproxy name, group tag, and pronouns must be less than 32 characters.
+                Note: the total length of userproxy name, tag, and pronouns must be less than 32 characters.
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
@@ -396,10 +411,10 @@ CONFIG_OPTIONS = {
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
-        'force_include_group_tag': ConfigOption(
-            name='Force Include Group Tag',
+        'force_include_tag': ConfigOption(
+            name='Force Include Tag',
             description=dedent('''
-                Whether to force the group tag to be visible for all members used in this server.
+                Whether to force the account/group tag to be visible for all members used in this server.
 
                 This does **NOT** apply to userproxies
             ''').strip(),
@@ -449,7 +464,7 @@ def extract_values(config: dict) -> dict[str, tuple[str, Any]]:
                 out[key] = (
                     ', '.join([
                         'Name',
-                        'Group Tag',
+                        'Tag',
                         'Pronouns'
                     ][index] for index in value),
                     value)
@@ -655,7 +670,7 @@ async def modal_set(
 @button(
     custom_id='button_set',
     label='Set',
-    style=ButtonStyle.SECONDARY)
+    style=ButtonStyle.PRIMARY)
 async def button_set(
     interaction: Interaction,
     category: str,
@@ -771,7 +786,7 @@ async def _category(
     for raw_name, option in CONFIG_OPTIONS[category].items():
         embed.add_field(
             name=option.name,
-            value=current_values.get(raw_name, ('Not Set',))[0],
+            value=current_values.get(raw_name, ('',))[0] or 'Not Set',
             inline=False
         )
 
@@ -900,7 +915,7 @@ async def _option(
         case ConfigOptionType.STRING:
             embed.add_field(
                 name='Current Value',
-                value=current_values[selected[0]][0],
+                value=current_values[selected[0]][0] or 'Not Set',
                 inline=False)
             components = [
                 ActionRow(components=[
@@ -927,15 +942,17 @@ async def userproxy_sync(
     patch_filter = set()
 
     match category, option:
+        case ('user', 'account_tag'):
+            patch_filter.add('username')
         case ('user', 'tag_format'):
-            if usergroup.userproxy_config.include_group_tag:
+            if usergroup.userproxy_config.include_tag:
                 patch_filter.add('username')
         case ('user', 'pronoun_format'):
             if usergroup.userproxy_config.include_pronouns:
                 patch_filter.add('username')
         case ('user', 'display_name_order'):
             patch_filter.add('username')
-        case ('userproxy', 'include_group_tag'):
+        case ('userproxy', 'include_tag'):
             patch_filter.add('username')
         case ('userproxy', 'include_pronouns'):
             patch_filter.add('username')

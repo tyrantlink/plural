@@ -82,19 +82,19 @@ async def on_interaction_error(
                         value=detail['message']
                     )
 
+                    if 'RATE_LIMIT' in detail['code']:
+                        error_embed.set_footer(
+                            'This looks like a discord rate limit error, '
+                            'please try again in ~30 minutes.\n'
+                            'Your member changes have still been saved, '
+                            'but the userproxy is likely desynced.'
+                        )
+
             if len(error_embed.fields) == 0:
                 error_embed.description = discord_error.message
 
             if len(error_embed.fields) > 25:
                 error_embed.fields = error_embed.fields[:25]
-
-            if 'RATE_LIMIT' in discord_error.code:
-                error_embed.footer = (
-                    'This looks like a discord rate limit error, '
-                    'please try again in ~30 minutes.\n'
-                    'Your member changes have still been saved, '
-                    'but the userproxy is likely desynced.'
-                )
 
     responses = await gather(
         interaction.send(

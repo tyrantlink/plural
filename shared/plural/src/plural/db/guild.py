@@ -17,9 +17,9 @@ class Guild(BaseDocument):
         logclean: bool = Field(
             default=False,
             description='whether the log cleaning is enabled')
-        force_include_group_tag: bool = Field(
+        force_include_tag: bool = Field(
             default=False,
-            description='whether to force include group tag in member names')
+            description='whether to force include tag in member names')
         log_channel: int | None = Field(
             None,
             description='the channel id for logging proxy messages'
