@@ -222,6 +222,17 @@ async def button_set_name_description(
 
 
 @button(
+    custom_id='button_set_endpoint',
+    label='Set Endpoint',
+    style=ButtonStyle.PRIMARY)
+async def button_set_endpoint(
+    interaction: Interaction,  # noqa: ARG001
+    application_id: str  # noqa: ARG001
+) -> None:
+    raise InteractionError('User events are not implemented yet')
+
+
+@button(
     custom_id='button_reset_token',
     label='Reset Token',
     style=ButtonStyle.DANGER)
@@ -373,7 +384,12 @@ async def _application(
             for scope in
             ApplicationScope
             if scope & application.scope)
-        or 'No scopes selected'
+        or 'No scopes selected',
+        inline=False
+    ).add_field(
+        name='Endpoint',
+        value=application.endpoint or 'No event endpoint set',
+        inline=False
     )
 
     if token is not None:
@@ -408,6 +424,11 @@ async def _application(
                     emoji=arrow if isinstance(arrow, Emoji) else None),
                 button_set_name_description.with_overrides(
                     extra=[str(application.id)]),
+                button_set_endpoint.with_overrides(
+                    disabled=not bool(ApplicationScope.USER_EVENTS &
+                                      application.scope),
+                    extra=[str(application.id)])]),
+            ActionRow(components=[
                 button_reset_token.with_overrides(
                     label='Confirm' if action == 'reset' else 'Reset Token',
                     extra=[str(application.id)]),

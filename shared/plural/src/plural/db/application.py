@@ -40,6 +40,9 @@ class Application(BaseDocument):
         description='the api key of the application')
     scope: ApplicationScope = Field(
         description='the scope of the application')
+    endpoint: str = Field(
+        default='',
+        description='the endpoint of the application')
     authorized_count: int = Field(
         default=0,
         description='the number of users who have authorized the application'
