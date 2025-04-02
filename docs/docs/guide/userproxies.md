@@ -3,6 +3,9 @@
 
 Userproxies are proxy members attached to a real Discord Bot, giving them banners, bios, and the ability to be used in DMs, Group DMs, and servers without /plu/ral.
 
+**Note: it is currently not possible to autoproxy with userproxies**, you must use the command every time.
+This may change in the future through client modding.
+
 ### Userproxy Commands
 Userproxies have two commands
 - `/proxy`\* - Sends a message as the userproxy
