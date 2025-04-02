@@ -97,6 +97,13 @@ class TupperboxExport(BaseExport):
             StandardExport.Member(
                 id=index,
                 name=tupper.name,
+                pronouns='',
+                bio='',
+                birthday=(
+                    f'<t:{tupper.birthday.timestamp()}:D>'
+                    if tupper.birthday is not None else
+                    None),
+                color=None,
                 avatar_url=tupper.avatar_url,
                 proxy_tags=[StandardExport.Member.ProxyTag(
                     prefix=tupper.brackets[0],
