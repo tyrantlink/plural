@@ -37,6 +37,7 @@ from src.discord import (
     message_command,
     slash_command,
     Interaction,
+    MessageFlag,
     Attachment,
     Message,
     Embed,
@@ -926,6 +927,80 @@ async def slash_reproxy(
     await interaction.response.send_message(
         content='Message reproxied successfully'
     )
+
+
+@slash_command(
+    name='say',
+    description='Send a message as a member without a userproxy',
+    options=[
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='message',
+            description='Message to send',
+            required=True),
+        ApplicationCommand.Option(
+            type=ApplicationCommandOptionType.STRING,
+            name='member',
+            description='Member to proxy as, leave empty to use current autoproxy',
+            required=False,
+            autocomplete=True)],
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_proxy(
+    interaction: Interaction,
+    message: str,
+    member: ProxyMember | None = None
+) -> None:
+    autoproxies = {
+        autoproxy.guild: autoproxy
+        for autoproxy in await AutoProxy.find({
+            'user': interaction.author_id,
+            'guild': {'$in': [int(interaction.guild_id or 0), None]},
+        }).to_list()
+    }
+
+    autoproxy = autoproxies.get(
+        interaction.guild_id
+    ) or autoproxies.get(None)
+
+    if member is None:
+        if autoproxy is None:
+            raise InteractionError(
+                'No autoproxy found. Please specify a member.'
+            )
+        member = await ProxyMember.get(autoproxy.member)
+
+        if not member:
+            raise InteractionError(
+                'Autoproxy member not found. Please specify a member.'
+            )
+
+    group = await member.get_group()
+    usergroup = await group.get_usergroup()
+
+    await interaction.response.send_message(
+        embeds=[Embed(
+            description=message,
+            color=member.color or 0x000000
+        ).set_author(
+            name=member.get_display_name(
+                usergroup,
+                group,
+                interaction.guild_id or None,
+                True),
+            icon_url=member.avatar_url or MISSING)],
+        flags=MessageFlag.NONE
+    )
+
+    if autoproxy is None:
+        return
+
+    if (
+        autoproxy.mode == AutoProxyMode.LATCH and
+        member.id != autoproxy.member
+    ):
+        autoproxy.member = member.id
+        await autoproxy.save()
 
 
 @slash_command(

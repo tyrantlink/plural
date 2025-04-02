@@ -44,6 +44,10 @@ SUB_PAGES = {
 
         This feature is advanced and requires a lot of setup, if you want to use it, [follow the instructions on the wiki](<https://{env.domain}/guide/userproxies#creating-a-userproxy>).
 
+        If you have a large number of members, you don't have to create a userproxy for each one, just the most frequently used, then you can use the {{cmd_ref[say]}} command to send messages as any member.
+
+        The {{cmd_ref[say]}} responds with an embed, and does not support many of the features of a normal message, basically just text. Userproxies should always be used if you're willing to go through the setup.
+
         **Note: it is currently not possible to autoproxy with userproxies**, you must use the command every time.
         This may change in the future through client modding.
     ''').strip(),

@@ -3,6 +3,10 @@
 
 Userproxies are proxy members attached to a real Discord Bot, giving them banners, bios, and the ability to be used in DMs, Group DMs, and servers without /plu/ral.
 
+If you have a large number of members, you don't have to create a userproxy for each one, just the most frequently used, then you can use the `/say` command to send messages as any member.
+
+The `/say` command responds with an embed, and does not support many of the features of a normal message, basically just text. Userproxies should always be used if you're willing to go through the setup.
+
 **Note: it is currently not possible to autoproxy with userproxies**, you must use the command every time.
 This may change in the future through client modding.
 
