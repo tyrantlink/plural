@@ -533,12 +533,19 @@ async def get_proxy_data(
 
     if autoproxy is not None and autoproxy_members.get(autoproxy.guild) is not None:
         group = next(
-            group
-            for group in groups
-            if autoproxy_members[autoproxy.guild].id in group.members
+            (group
+             for group in groups
+             if autoproxy_members[autoproxy.guild].id
+             in group.members),
+            None
         )
 
-        if not (group.channels and not (channel_ids & group.channels)):
+        if group is None:
+            debug_log.append(
+                f'Member `{autoproxy_members[autoproxy.guild].name}` not in any group. This should not happen.'
+            )
+
+        if group and not (group.channels and not (channel_ids & group.channels)):
             return ProxyData(
                 member=autoproxy_members[autoproxy.guild],
                 autoproxy=autoproxy,
