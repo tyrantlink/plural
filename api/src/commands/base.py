@@ -798,18 +798,18 @@ async def slash_import(
     await PAGES['import_confirm'](interaction, logs, key)
 
 
-@slash_command(
-    name='manage',
-    description='Manage your groups and members',
-    contexts=InteractionContextType.ALL(),
-    integration_types=ApplicationIntegrationType.ALL())
-async def slash_manage(
-    _interaction: Interaction
-) -> None:
-    raise InteractionError('\n\n'.join([
-        'Button-based group and member management is not yet implemented',
-        'Please use the group and member commands instead'
-    ]))
+# @slash_command(  # ! awaiting select menu autocomplete
+#     name='manage',
+#     description='Manage your groups and members',
+#     contexts=InteractionContextType.ALL(),
+#     integration_types=ApplicationIntegrationType.ALL())
+# async def slash_manage(
+#     _interaction: Interaction
+# ) -> None:
+#     raise InteractionError('\n\n'.join([
+#         'Button-based group and member management is not yet implemented',
+#         'Please use the group and member commands instead'
+#     ]))
 
 
 @slash_command(
