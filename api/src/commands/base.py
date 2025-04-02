@@ -172,7 +172,10 @@ async def message_plural_proxy_info(
             str(db_message.original_id)
             if db_message.original_id is not None else
             'None (Userproxy command)'
-            if db_message.reason.startswith('Userproxy') else
+            if (
+                db_message.reason.startswith('Userproxy') or
+                db_message.reason.startswith('/say command')
+            ) else
             'sent through /plu/ral api')
     ).set_thumbnail(
         message.author.avatar_url
@@ -978,7 +981,7 @@ async def slash_proxy(
     group = await member.get_group()
     usergroup = await group.get_usergroup()
 
-    await interaction.response.send_message(
+    response = await interaction.response.send_message(
         embeds=[Embed(
             description=message,
             color=member.color or 0x000000
@@ -989,8 +992,18 @@ async def slash_proxy(
                 interaction.guild_id or None,
                 True),
             icon_url=member.avatar_url or MISSING)],
-        flags=MessageFlag.NONE
+        flags=MessageFlag.NONE,
+        with_response=True
     )
+
+    await DBMessage(
+        original_id=None,
+        proxy_id=response.id,
+        author_id=interaction.author_id,
+        channel_id=interaction.channel_id,
+        member_id=member.id,
+        reason='/say command'
+    ).save()
 
     if autoproxy is None:
         return
