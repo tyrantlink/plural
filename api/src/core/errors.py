@@ -71,6 +71,7 @@ async def on_interaction_error(
         with suppress(ValidationError):
             discord_error = DiscordErrorResponse.model_validate(
                 error.detail)
+            expected = True
             error_embed.description = MISSING
             error_embed.title = 'Discord Error!'
 
@@ -86,6 +87,14 @@ async def on_interaction_error(
 
             if len(error_embed.fields) > 25:
                 error_embed.fields = error_embed.fields[:25]
+
+            if 'RATE_LIMIT' in discord_error.code:
+                error_embed.footer = (
+                    'This looks like a discord rate limit error, '
+                    'please try again in ~30 minutes.\n'
+                    'Your member changes have still been saved, '
+                    'but the userproxy is likely desynced.'
+                )
 
     responses = await gather(
         interaction.send(
