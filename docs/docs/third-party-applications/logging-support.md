@@ -5,19 +5,18 @@ This page is intended for developers who want to integrate with /plu/ral.
 If you're a user looking to clean the logs of a bot that doesn't have native support, see the [Log Clean Config](/server-guide/config.md#log-clean) page.
 
 #### Instructions
-Currently, there is only an API endpoint for checking if a message was deleted by /plu/ral. Responses with more information, such as member data, will be implemented at a later date.
-
-Checking if a message exists will NOT require authentication, all other endpoints will require registering an application with /plu/ral, also coming at a later date.
+Checking if a message exists (`HEAD /messages/:channel_id/:message_id`) does not *require* authentication, however the unauthenticated rate limit is very low, so if your bot anything more than an in-house bot for a small server, you should create an application with the `/api` command.
 
 You can check either the id of the message that was deleted OR the id of the proxied message.
 
-See the [API Documentation](https://api.plural.gg) for more information.
+See the [API Documentation](https://api.plural.gg) for all endpoints and response examples.
 
 #### Basic Example
 ::: tabs
 @tab cURL
 ```sh
-curl -X HEAD 'https://api.plural.gg/messages/{message_id}'
+curl -X HEAD 'https://api.plural.gg/messages/{message_id}' \
+  -H 'Authorization: your_token_here'
 ```
 
 @tab Python (aiohttp)
@@ -29,7 +28,8 @@ from aiohttp import ClientSession
 
 async def check_plural(message_id: int | str) -> bool:
     async with ClientSession(
-        base_url='https://api.plural.gg'
+        base_url='https://api.plural.gg',
+        headers={'Authorization': 'your_token_here'}
     ) as session, session.head(
         f'/messages/{message_id}'
     ) as response:
@@ -52,7 +52,8 @@ import requests
 
 def check_plural(message_id: int | str) -> bool:
     response = requests.get(
-        f'https://api.plural.gg/messages/{message_id}'
+        f'https://api.plural.gg/messages/{message_id}',
+        headers={'Authorization': 'your_token_here'}
     )
 
     return response.status_code == 200

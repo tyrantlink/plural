@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta, UTC
 
 from fastapi import APIRouter, Response, Security
-from orjson import dumps
 
 from plural.db import redis, Message, ProxyMember
-from plural.db.enums import ApplicationScope
 
 from src.core.auth import api_key_validator, TokenData
 from src.models import MessageModel, AuthorModel
@@ -44,6 +42,7 @@ def _snowflake_to_age(snowflake: int) -> float:
             'content': None,
             'description': 'Validation Error'}})
 @name('/messages/:id/:id')
+@ratelimit(5, timedelta(seconds=5), auth=False)
 @ratelimit(500, timedelta(seconds=1))
 async def head__message(
     channel_id: int,

@@ -4,12 +4,13 @@ from asyncio import gather
 from random import randint
 from typing import Any
 
+from fastapi import FastAPI, Response, Request, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, Response, Request
 from fastapi.routing import APIRoute
 from starlette.routing import Match
 from regex import compile
+from orjson import dumps
 
 from plural.db import mongo_init, redis_init
 from plural.utils import create_strong_task
@@ -170,6 +171,7 @@ async def ratelimiter(
     call_next: Callable[..., Awaitable[Any]]
 ) -> Any:  # noqa: ANN401
     from src.core.ratelimit import ratelimit_check
+    from src.core.auth import api_key_validator
 
     if (
         request.headers.get('authorization') ==
@@ -185,16 +187,29 @@ async def ratelimiter(
     else:
         return await call_next(request)
 
-    key = (
-        request.headers['Authorization'].split('.')[0].strip()
-        if 'Authorization' in request.headers
-        else request.scope['client'][0]
+    auth, key = (
+        (True, request.headers['Authorization'].split('.')[0].strip())
+        if 'Authorization' in request.headers else
+        (False, request.scope['client'][0])
     )
+
+    if auth:
+        try:
+            await api_key_validator(request.headers['Authorization'])
+        except HTTPException as e:
+            return Response(
+                dumps(e.detail)
+                if isinstance(e.detail, dict) else
+                str(e.detail),
+                e.status_code,
+                e.headers
+            )
 
     limit_response = await ratelimit_check(
         key,
         route.endpoint,
-        data.get('path_params', {})
+        data.get('path_params', {}),
+        auth
     )
 
     if limit_response and limit_response.block:

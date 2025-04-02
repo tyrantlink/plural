@@ -247,7 +247,7 @@ async def button_reset_token(
     if application is None:
         raise InteractionError('Application not found')
 
-    if interaction.message.components[1].components[2].label != 'Confirm':
+    if interaction.message.components[2].components[0].label != 'Confirm':
         await PAGES['application'](
             interaction,
             application_id,
@@ -283,7 +283,7 @@ async def button_delete_application(
     if application is None:
         raise InteractionError('Application not found')
 
-    if interaction.message.components[1].components[3].label != 'Confirm':
+    if interaction.message.components[2].components[1].label != 'Confirm':
         await PAGES['application'](
             interaction,
             application_id,

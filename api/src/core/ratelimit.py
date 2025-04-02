@@ -31,7 +31,7 @@ class RateLimitResponse(NamedTuple):
 
 
 RATELIMITS: dict[
-    Callable,
+    tuple[Callable, bool],
     RateLimit
 ] = {}
 
@@ -39,10 +39,11 @@ RATELIMITS: dict[
 def ratelimit(
     limit: int,
     interval: timedelta,
-    keys: list[str] | None = None
+    keys: list[str] | None = None,
+    auth: bool = True
 ) -> Callable:
     def decorator(function: Callable) -> Callable:
-        RATELIMITS[function] = RateLimit(
+        RATELIMITS[(function, auth)] = RateLimit(
             limit,
             int(interval.total_seconds()),
             keys or [])
@@ -54,14 +55,15 @@ def ratelimit(
 async def ratelimit_check(
     key: str,
     function: Callable,
-    params: dict[str, str]
+    params: dict[str, str],
+    auth: bool
 ) -> RateLimitResponse | None:
     from plural.db import redis
 
-    if function not in RATELIMITS:
+    if (function, auth) not in RATELIMITS:
         return None
 
-    limit = RATELIMITS.get(function)
+    limit = RATELIMITS.get((function, auth))
 
     keys = ':'.join([
         value
@@ -71,7 +73,7 @@ async def ratelimit_check(
 
     response = await redis.execute_command(
         'CL.THROTTLE',
-        f'ratelimit:{key}:{function.__name__}:{keys}',
+        f'ratelimit:{key}:{function.__name__}:{int(auth)}:{keys}',
         limit.limit - 1,
         limit.limit,
         limit.interval

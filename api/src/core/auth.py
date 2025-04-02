@@ -41,6 +41,14 @@ INVALID_TOKEN = HTTPException(400, {
     }
 })
 
+EXPIRED_TOKEN = HTTPException(401, {
+    'detail': {
+        'loc': ['header', 'Authorization'],
+        'msg': 'Token expired',
+        'type': 'value_error'
+    }
+})
+
 
 @dataclass
 class TokenData:
@@ -99,7 +107,7 @@ async def api_key_validator(token: str = Security(API_KEY)) -> TokenData:
     )
 
     if (application := await Application.get(token_data.app_id)) is None:
-        raise INVALID_TOKEN
+        raise EXPIRED_TOKEN
 
     cx().set_attribute('application_id', str(application.id))
 
@@ -110,7 +118,7 @@ async def api_key_validator(token: str = Security(API_KEY)) -> TokenData:
         return token_data
 
     if not await acheckpw(token, application.token):
-        raise INVALID_TOKEN
+        raise EXPIRED_TOKEN
 
     await redis.set(token_data.redis_key, '1', ex=3600)
 
