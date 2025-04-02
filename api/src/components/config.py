@@ -758,7 +758,7 @@ async def _category(
                 title='Server Config',
                 color=0x69ff69
             ).set_author(
-                name=interaction.guild.name,
+                name=interaction.guild.name or 'Server Name Unknown',
                 icon_url=interaction.guild.icon_url or MISSING
             )
 
