@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from inspect import currentframe, getframeinfo
 from typing import Any, TYPE_CHECKING
 from re import match, IGNORECASE
 from urllib.parse import quote
 from base64 import b64decode
 from sys import version_info
+from os.path import relpath
 from asyncio import sleep
 
 from orjson import loads, dumps
@@ -151,6 +153,19 @@ class File:
         }
 
 
+def get_context() -> str:
+    frame = currentframe()
+    for _ in range(2):
+        if frame is None:
+            return 'unknown'
+
+        frame = frame.f_back
+
+    info = getframeinfo(frame)
+
+    return f'{relpath(info.filename)}:{info.lineno} {info.function}'.removeprefix('src/')
+
+
 async def request(
     route: Route,
     files: Sequence[File] | None = None,
@@ -163,6 +178,7 @@ async def request(
 ) -> dict[str, Any] | str | None:
     headers = {
         'User-Agent': USER_AGENT,
+        'X-Context': get_context()
     }
 
     if route.token is not None:

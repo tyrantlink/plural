@@ -175,6 +175,13 @@ async fn proxy_handler(
         .unwrap_or("")
         .is_empty();
 
+    let context = request
+        .headers()
+        .get("X-Context")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+
     let token = request
         .headers()
         .get("Authorization")
@@ -266,6 +273,10 @@ async fn proxy_handler(
         let mut client_req = state.client.request(method.clone(), &url);
 
         for (name, value) in &headers {
+            if name == "X-Suppress-Tracer" || name == "X-Context" {
+                continue;
+            }
+
             client_req = client_req.header(name, value);
         }
 
@@ -373,7 +384,11 @@ async fn proxy_handler(
                             res.status().as_u16() as i64),
                         KeyValue::new(
                             "attempts",
-                            attempts as i64)
+                            attempts as i64),
+                        KeyValue::new(
+                            "context",
+                            context
+                        )
                     ];
 
                     if !token_id.is_empty() {
@@ -447,7 +462,7 @@ async fn proxy_handler(
 
                 let body_bytes;
 
-                if res.status().is_client_error() && trace {
+                if !res.status().is_success() && trace {
                     body_bytes = res.bytes().await.unwrap_or_else(|_| Bytes::new());
 
                     cx.span().set_attribute(KeyValue::new(
