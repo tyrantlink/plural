@@ -89,9 +89,7 @@ async def head__message(
 @router.get(
     '/{channel_id}/{message_id}',
     description="""
-    Get a message by its id
-
-    Requires logging scope""",
+    Get a message by its id""",
     responses={
         200: {
             'description': 'Message found',
@@ -141,9 +139,6 @@ async def head__message(
         },
         400: {
             'description': 'Message is in the future; status is unknown'},
-        403: {
-            'description': 'Missing logging scope'
-        },
         404: {
             'description': 'Message was not found'
         },
@@ -154,20 +149,8 @@ async def head__message(
 async def get__message(
     channel_id: int,
     message_id: int,
-    token: TokenData = Security(api_key_validator)  # noqa: B008
+    token: TokenData = Security(api_key_validator)  # noqa: ARG001, B008
 ) -> Response:
-    # ! figure out how to move this into the validator
-    if not ApplicationScope.LOGGING & token.application.scope:
-        return Response(
-            status_code=403,
-            media_type='application/json',
-            content=dumps({'detail': {
-                'loc': ['header', 'Authorization'],
-                'msg': 'Missing required scope: logging',
-                'type': 'permission_error'
-            }})
-        )
-
     if _snowflake_to_age(message_id) > 604_800:  # 7 days
         return Response(
             status_code=410,
@@ -212,9 +195,7 @@ async def get__message(
 @router.get(
     '/{channel_id}/{message_id}/member',
     description="""
-    Get a message author by message id
-
-    Requires logging scope""",
+    Get a message author by message id""",
     responses={
         200: {
             'description': 'Message Member found',
@@ -222,9 +203,6 @@ async def get__message(
         },
         400: {
             'description': 'Message is in the future; status is unknown'},
-        403: {
-            'description': 'Missing logging scope'
-        },
         404: {
             'description': 'Message was not found or member was not found'
         },
@@ -235,19 +213,8 @@ async def get__message(
 async def get__message_member(
     channel_id: int,
     message_id: int,
-    token: TokenData = Security(api_key_validator)  # noqa: B008
+    token: TokenData = Security(api_key_validator)  # noqa: ARG001, B008
 ) -> Response:
-    if not ApplicationScope.LOGGING & token.application.scope:
-        return Response(
-            status_code=403,
-            media_type='application/json',
-            content=dumps({'detail': {
-                'loc': ['header', 'Authorization'],
-                'msg': 'Missing required scope: logging',
-                'type': 'permission_error'
-            }})
-        )
-
     if _snowflake_to_age(message_id) > 604_800:  # 7 days
         return Response(
             status_code=410,

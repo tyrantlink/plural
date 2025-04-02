@@ -15,17 +15,15 @@ __all__ = (
 
 class ApplicationScope(Flag):
     NONE = 0
-    LOGGING = 1 << 0
-    USER_EVENTS = 1 << 1
-    USER_WRITE = 1 << 2
-    SEND_MESSAGES = 1 << 3  # ? requires approval
-    USERPROXY_TOKENS = 1 << 4  # ? requires approval
-    SP_TOKENS = 1 << 5  # ? requires approval
+    USER_EVENTS = 1 << 0
+    USER_WRITE = 1 << 1
+    SEND_MESSAGES = 1 << 2  # ? requires approval
+    USERPROXY_TOKENS = 1 << 3  # ? requires approval
+    SP_TOKENS = 1 << 4  # ? requires approval
 
     @property
     def pretty_name(self) -> str:
         return {
-            ApplicationScope.LOGGING: 'Logging',
             ApplicationScope.USER_EVENTS: 'User Events',
             ApplicationScope.USER_WRITE: 'User Write',
             ApplicationScope.SEND_MESSAGES: 'Send Messages',
@@ -36,7 +34,6 @@ class ApplicationScope(Flag):
     @property
     def description(self) -> str:
         return {
-            ApplicationScope.LOGGING: 'Access to /messages',
             ApplicationScope.USER_EVENTS: 'Receive user update events',
             ApplicationScope.USER_WRITE: 'Modify user data',
             ApplicationScope.SEND_MESSAGES: 'Access to send messages; Requires approval',

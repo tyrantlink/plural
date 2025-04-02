@@ -96,9 +96,7 @@ async def post__users_authorize(
             scope.pretty_name
             for scope in
             ApplicationScope
-            if (
-                scope & token.application.scope and
-                scope != ApplicationScope.LOGGING)
+            if scope & token.application.scope
         ) or 'None'
     )
 
