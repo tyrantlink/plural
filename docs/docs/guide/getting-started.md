@@ -36,3 +36,8 @@ See [Proxy Tags](/guide/members.md#proxy-tags) for more information.
   - The image will be scaled down to 1024x1024, and converted to webp, if it isn't already.
   - Animated avatars will only be animated for userproxy bots (see [Userproxies](/guide/userproxies.md)).
     - This is a Discord limitation.
+
+## Proxying in DMs
+
+In order to proxy in DMs you need to attach a userproxy to your member.
+See [Userproxies](/guide/userproxies.md) for more information on userproxies and how to create them.
