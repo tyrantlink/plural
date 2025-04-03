@@ -39,5 +39,6 @@ See [Proxy Tags](/guide/members.md#proxy-tags) for more information.
 
 ## Proxying in DMs
 
-In order to proxy in DMs you need to attach a userproxy to your member.
+In order to proxy in DMs you need to attach a userproxy to a member.
+
 See [Userproxies](/guide/userproxies.md) for more information on userproxies and how to create them.
