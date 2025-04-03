@@ -632,7 +632,7 @@ async def slash_userproxy_remove(
 
         await gather(
             userproxy.save(),
-            await interaction.send(
+            interaction.send(
                 embeds=[Embed.success(
                     title='Userproxy Removed',
                     message=(
