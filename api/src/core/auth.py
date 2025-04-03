@@ -240,11 +240,12 @@ async def authorized_member(
     if member is None:
         raise HTTPException(status_code=404)
 
+    usergroup = await (await member.get_group()).get_usergroup()
+
     if (
         token.internal or
-        str(token.app_id) in (
-            await (await member.get_group()).get_usergroup()
-        ).data.applications
+        token.application.developer in usergroup.users or
+        str(token.app_id) in usergroup.data.applications
     ):
         return member
 
@@ -260,11 +261,12 @@ async def authorized_group(
     if group is None:
         raise HTTPException(status_code=404)
 
+    usergroup = await group.get_usergroup()
+
     if (
         token.internal or
-        str(token.app_id) in (
-            await group.get_usergroup()
-        ).data.applications
+        token.application.developer in usergroup.users or
+        str(token.app_id) in usergroup.data.applications
     ):
         return group
 
@@ -287,7 +289,10 @@ async def authorized_user(
     if usergroup is None:
         raise HTTPException(status_code=404)
 
-    if str(token.app_id) in usergroup.data.applications:
+    if (
+        token.application.developer in usergroup.users or
+        str(token.app_id) in usergroup.data.applications
+    ):
         return usergroup
 
     raise HTTPException(status_code=403)
