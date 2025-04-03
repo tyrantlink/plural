@@ -454,7 +454,7 @@ def make_json_safe(  # ? yay recursion
     match obj:
         case dict():
             return {
-                key: make_json_safe(value)
+                str(key): make_json_safe(value)
                 for key, value in obj.items()}
         case list():
             return [
