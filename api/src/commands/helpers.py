@@ -149,6 +149,11 @@ async def edit_message(
             content
         ])
 
+    mentions = AllowedMentions.parse_content(content, False)
+
+    mentions.users &= {user.id for user in message.mentions}
+    mentions.roles &= set(message.mention_roles)
+
     match db_message.reason:
         case 'Userproxy /proxy command' | 'Userproxy Reply command':
             userproxy = await ProxyMember.find_one({
@@ -175,11 +180,6 @@ async def edit_message(
                     bot_token=userproxy.userproxy.token
                 )
             else:
-                mentions = AllowedMentions.parse_content(content, False)
-
-                mentions.users &= {user.id for user in message.mentions}
-                mentions.roles &= set(message.mention_roles)
-
                 await Webhook.from_db_message(db_message).edit_message(
                     message.id,
                     content,
@@ -225,8 +225,8 @@ async def edit_message(
             await Webhook.model_validate(webhook).edit_message(
                 message.id,
                 content,
-                thread_id=thread_id
-            )
+                allowed_mentions=mentions,
+                thread_id=thread_id)
         case _ if message.author.bot:
             userproxy = await ProxyMember.find_one({
                 'userproxy.bot_id': message.author.id
