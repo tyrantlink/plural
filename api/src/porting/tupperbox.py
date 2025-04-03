@@ -101,8 +101,7 @@ class TupperboxExport(BaseExport):
                 bio='',
                 birthday=(
                     f'<t:{tupper.birthday.timestamp()}:D>'
-                    if tupper.birthday is not None else
-                    None),
+                    if tupper.birthday is not None else ''),
                 color=None,
                 avatar_url=tupper.avatar_url,
                 proxy_tags=[StandardExport.Member.ProxyTag(
