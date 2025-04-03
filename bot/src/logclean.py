@@ -202,19 +202,19 @@ def catalogger(event: dict) -> LogExtract | None:
         return None
 
     match = search(
-        r'<#(?P<channel1>\d+)>\nID: (?P<channel2>\d+)',
+        r'<#(?P<channel>\d+)>',
         event['embeds'][0]['fields'][0]['value']
     )
 
     if (
         match is None or
-        match.group('channel1') != match.group('channel2')
+        match.group('channel') is None
     ):
         return None
 
     extract = LogExtract(
         author_name=event['embeds'][0]['author']['name'],
-        channel_id=int(match.group('channel1'))
+        channel_id=int(match.group('channel'))
     )
 
     match = search(
