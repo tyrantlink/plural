@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from pydantic import Field
 from re import finditer
 
+from plural.missing import is_not_missing, MISSING
 from plural.db import redis
 
 from src.core.http import request, Route
@@ -210,13 +211,27 @@ class Message(RawBaseModel):
 
     async def edit(
         self,
-        content: str,
+        content: Optional[Nullable[str]] = MISSING,
+        embeds: Optional[Nullable[list[Embed]]] = MISSING,
         bot_token: str = env.bot_token
     ) -> Message:
-        mentions = AllowedMentions.parse_content(content, False)
+        json = {}
 
-        mentions.users &= {user.id for user in self.mentions}
-        mentions.roles &= set(self.mention_roles)
+        if is_not_missing(content):
+            json['content'] = content
+
+            mentions = AllowedMentions.parse_content(content, False)
+
+            mentions.users &= {user.id for user in self.mentions}
+            mentions.roles &= set(self.mention_roles)
+
+            json['allowed_mentions'] = mentions.as_payload()
+
+        if is_not_missing(embeds):
+            json['embeds'] = [
+                embed.as_payload()
+                for embed in embeds
+            ] if embeds is not None else None
 
         return Message(**await request(
             Route(
@@ -225,10 +240,7 @@ class Message(RawBaseModel):
                 token=bot_token,
                 channel_id=self.channel_id,
                 message_id=self.id),
-            json={
-                'content': content,
-                'allowed_mentions': mentions.as_payload()
-            })
+            json=json)
         )
 
     async def delete(

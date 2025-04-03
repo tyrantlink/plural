@@ -6,7 +6,6 @@ from plural.otel import span
 from plural.env import env
 
 from .application import Application
-from .interaction import Interaction
 from .autoproxy import AutoProxy
 from .migration import Migration
 from .usergroup import Usergroup
@@ -24,7 +23,6 @@ __all__ = (
     'AutoProxy',
     'Group',
     'Guild',
-    'Interaction',
     'Message',
     'Migration',
     'ProxyLog',
@@ -49,7 +47,6 @@ async def mongo_init() -> None:
                 AutoProxy,
                 Group,
                 Guild,
-                Interaction,
                 Message,
                 Migration,
                 ProxyLog,

@@ -2,7 +2,6 @@ from asyncio import gather
 
 from plural.db.enums import ReplyType
 from plural.db import (
-    Interaction as DBInteraction,
     Message as DBMessage,
     ProxyMember,
     Usergroup,
@@ -73,23 +72,17 @@ async def modal_proxy(
             with_response=True
         )
 
-        await gather(
-            DBInteraction(
-                author_id=interaction.author_id,
-                bot_id=interaction.application_id,
-                message_id=sent_message.id,
-                channel_id=interaction.channel_id,
-                token=interaction.token
-            ).save(),
-            DBMessage(
-                original_id=None,
-                proxy_id=sent_message.id,
-                author_id=interaction.author_id,
-                channel_id=interaction.channel_id,
-                member_id=(await ProxyMember.find_one({
-                    'userproxy.bot_id': interaction.application_id})).id,
-                reason=f'Userproxy {'Reply' if reply_id else '/proxy'} command'
-            ).save())
+        await DBMessage(
+            original_id=None,
+            proxy_id=sent_message.id,
+            author_id=interaction.author_id,
+            channel_id=interaction.channel_id,
+            member_id=(await ProxyMember.find_one({
+                'userproxy.bot_id': interaction.application_id})).id,
+            reason=f'Userproxy {'Reply' if reply_id else '/proxy'} command',
+            bot_id=interaction.application_id,
+            interaction_token=interaction.token
+        ).save()
         return
 
     if reply.author is None:
@@ -137,25 +130,18 @@ async def modal_proxy(
         flags=MessageFlag.NONE
     )
 
-    await gather(
-        DBInteraction(
-            author_id=interaction.author_id,
-            bot_id=interaction.application_id,
-            message_id=sent_message.id,
-            channel_id=interaction.channel_id,
-            token=interaction.token
-        ).save(),
-        DBMessage(
-            original_id=None,
-            proxy_id=sent_message.id,
-            author_id=interaction.author_id,
-            channel_id=interaction.channel_id,
-            member_id=(await ProxyMember.find_one({
-                'userproxy.bot_id': interaction.application_id
-            })).id,
-            reason='Userproxy Reply command'
-        ).save()
-    )
+    await DBMessage(
+        original_id=None,
+        proxy_id=sent_message.id,
+        author_id=interaction.author_id,
+        channel_id=interaction.channel_id,
+        member_id=(await ProxyMember.find_one({
+            'userproxy.bot_id': interaction.application_id
+        })).id,
+        reason='Userproxy Reply command',
+        bot_id=interaction.application_id,
+        interaction_token=interaction.token,
+    ).save()
 
 
 async def _proxy(

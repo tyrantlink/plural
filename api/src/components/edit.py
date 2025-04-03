@@ -1,5 +1,4 @@
-from plural.db import Interaction as DBInteraction, redis
-from plural.errors import InteractionError
+from plural.db import Message as DBMessage, redis
 
 from src.commands.helpers import make_json_safe
 
@@ -8,7 +7,6 @@ from src.discord import (
     Interaction,
     TextInput,
     Message,
-    Webhook,
     modal
 )
 
@@ -29,28 +27,10 @@ async def modal_edit(
 ) -> None:
     from src.commands.helpers import edit_message
 
-    if not message.interaction_metadata:
-        await edit_message(interaction, message, content)
-        return
-
-    db_interaction = await DBInteraction.find_one({
-        'author_id': interaction.author_id,
-        'bot_id': message.author.id,
-        'channel_id': interaction.channel_id,
-        'message_id': message.id
-    })
-
-    if db_interaction is None:
-        raise InteractionError(
-            'No message found\n\n'
-            'Messages older than 15 minutes cannot be edited'
-        )
-
     await edit_message(
         interaction,
         message,
-        content,
-        Webhook.from_proxy_interaction(db_interaction)
+        content
     )
 
 
@@ -58,13 +38,23 @@ async def _edit(
     interaction: Interaction,
     message: Message
 ) -> None:
-    from src.commands.helpers import can_edit
+    from src.commands.helpers import can_edit, INLINE_REPLY
 
-    if not await can_edit(interaction, message):
-        raise InteractionError(
-            'You cannot edit this message, '
-            'it is either not a /plu/ral message, older than 7 days, '
-            'or you are not the author of the message'
+    await can_edit(interaction, message)
+
+    db_message = await DBMessage.find_one({
+        'author_id': interaction.author_id,
+        'channel_id': interaction.channel_id,
+        '$or': [
+            {'original_id': message.id},
+            {'proxy_id': message.id}
+        ]
+    })
+
+    if db_message is None:
+        raise RuntimeError(
+            'DBMessage not found but edit check passed.\n\n'
+            'this should never happen'
         )
 
     pipeline = redis.pipeline()
@@ -86,7 +76,12 @@ async def _edit(
                 min_length=1,
                 max_length=2000,
                 required=True,
-                value=message.content,
+                value=(
+                    message.embeds[0].description
+                    if db_message.reason == '/say command' else
+                    message.content.split('\n', 1)[1]
+                    if INLINE_REPLY.match(message.content) else
+                    message.content),
                 placeholder='Enter the new content')],
             extra=[message]
         )

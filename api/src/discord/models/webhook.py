@@ -14,7 +14,7 @@ from .message import Message, AllowedMentions
 
 
 if TYPE_CHECKING:
-    from plural.db import Interaction as DBInteraction
+    from plural.db import Message as DBMessage
     from plural.missing import Optional, Nullable
 
     from src.discord.types import Snowflake
@@ -76,15 +76,15 @@ class Webhook(RawBaseModel):
         )
 
     @classmethod
-    def from_proxy_interaction(
+    def from_db_message(
         cls,
-        interaction: DBInteraction,
+        message: DBMessage,
     ) -> Webhook:
         return cls(
-            id=interaction.bot_id,
+            id=message.bot_id,
             type=WebhookType.APPLICATION,
-            channel_id=interaction.channel_id,
-            token=interaction.token,
+            channel_id=message.channel_id,
+            token=message.interaction_token,
             name=None,
             avatar=None,
             application_id=None

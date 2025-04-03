@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from src.core.http import request, Route
+
 from src.discord.models.base import RawBaseModel
 
 from src.discord.enums import ChannelType
@@ -167,6 +169,19 @@ class Channel(RawBaseModel):
             ChannelType.PUBLIC_THREAD,
             ChannelType.PRIVATE_THREAD
         )
+
+    @classmethod
+    async def fetch(
+        cls,
+        channel_id: Snowflake,
+        bot_token: str
+    ) -> Channel:
+        return cls(**await request(Route(
+            'GET',
+            '/channels/{channel_id}',
+            token=bot_token,
+            channel_id=channel_id
+        )))
 
 
 class ChannelMention(RawBaseModel):

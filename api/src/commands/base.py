@@ -40,6 +40,7 @@ from src.discord import (
     MessageFlag,
     Attachment,
     Message,
+    Webhook,
     Embed,
     User
 )
@@ -177,6 +178,8 @@ async def message_plural_proxy_info(
             if db_message.reason == '/say command' else
             'sent through /plu/ral api')
     ).set_thumbnail(
+        member.avatar_url or (await member.get_group()).avatar_url
+        if db_message.reason == '/say command' else
         message.author.avatar_url
     )
 
@@ -555,42 +558,52 @@ async def slash_edit(
     sed: str | None = None
 ) -> None:
     db_message = await DBMessage.find_one(
-        {
-            'author_id': interaction.author_id,
-            'channel_id': interaction.channel_id
-        },
+        {'author_id': interaction.author_id,
+         'channel_id': interaction.channel_id},
         sort=[('ts', -1)]
     )
 
     if db_message is None:
         raise InteractionError('No messages found to edit')
 
-    try:
-        message = await Message.fetch(
-            interaction.channel_id,
-            db_message.proxy_id
+    if db_message.interaction_token and db_message.expired:
+        raise InteractionError(
+            'No message found\n\n'
+            'Messages older than 15 minutes cannot be edited'
         )
+
+    try:
+        message = await (
+            Webhook.from_db_message(
+                db_message
+            ).fetch_message(
+                db_message.proxy_id)
+            if db_message.interaction_token else
+            Message.fetch(
+                interaction.channel_id,
+                db_message.proxy_id))
     except Forbidden as e:
         raise InteractionError(
             'Unable to read messages in this channel, please use the /plu/ral edit message command'
             '\n\n(right-click on the message -> Apps -> /plu/ral edit)'
         ) from e
 
-    if sed is None:
-        await PAGES['edit'](interaction, message)
-    else:
-        await sed_edit(interaction, message, sed)
+    await (
+        PAGES['edit'](interaction, message)
+        if sed is None else
+        sed_edit(interaction, message, sed)
+    )
 
 
-@slash_command(
-    name='explain',
-    description='Send a quick message explaining /plu/ral',
-    contexts=InteractionContextType.ALL(),
-    integration_types=ApplicationIntegrationType.ALL())
-async def slash_explain(
-    interaction: Interaction
-) -> None:
-    raise NotImplementedError
+# @slash_command(
+#     name='explain',  # noqa: ERA001
+#     description='Send a quick message explaining /plu/ral',  # noqa: ERA001
+#     contexts=InteractionContextType.ALL(),  # noqa: ERA001
+#     integration_types=ApplicationIntegrationType.ALL())
+# async def slash_explain(
+#     interaction: Interaction  # noqa: ERA001
+# ) -> None:
+#     raise NotImplementedError
 
 
 @slash_command(
@@ -820,17 +833,17 @@ async def slash_import(
 
 
 # @slash_command(  # ! awaiting select menu autocomplete
-#     name='manage',
-#     description='Manage your groups and members',
-#     contexts=InteractionContextType.ALL(),
+#     name='manage',  # noqa: ERA001
+#     description='Manage your groups and members',  # noqa: ERA001
+#     contexts=InteractionContextType.ALL(),  # noqa: ERA001
 #     integration_types=ApplicationIntegrationType.ALL())
 # async def slash_manage(
-#     _interaction: Interaction
+#     _interaction: Interaction  # noqa: ERA001
 # ) -> None:
 #     raise InteractionError('\n\n'.join([
 #         'Button-based group and member management is not yet implemented',
 #         'Please use the group and member commands instead'
-#     ]))
+#     ]))  # noqa: ERA001, RUF100
 
 
 @slash_command(

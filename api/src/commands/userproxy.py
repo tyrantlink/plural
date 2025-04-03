@@ -7,7 +7,6 @@ from regex import compile
 
 from plural.db.enums import ReplyType, ReplyFormat
 from plural.db import (
-    Interaction as DBInteraction,
     Message as DBMessage,
     ProxyMember,
     Usergroup,
@@ -891,12 +890,16 @@ async def umessage_reply(
 
     await gather(
         reply.delete(),
-        DBInteraction(
+        DBMessage(
+            original_id=None,
+            proxy_id=sent_message.id,
             author_id=interaction.author_id,
+            channel_id=interaction.channel_id,
+            member_id=(await ProxyMember.find_one({
+                'userproxy.bot_id': interaction.application_id})).id,
+            reason='Userproxy Reply command',
             bot_id=interaction.application_id,
-            message_id=sent_message.id,
-            channel_id=sent_message.channel_id,
-            token=interaction.token,
+            interaction_token=interaction.token,
         ).save()
     )
 
@@ -945,29 +948,29 @@ async def uslash_proxy(
         return
 
     if message and SED.match(message):
-        old_interaction = await DBInteraction.find_one({
+        db_message = await DBMessage.find_one({
             'author_id': interaction.author_id,
             'bot_id': interaction.application_id,
             'channel_id': interaction.channel_id},
             sort=[('ts', -1)]
         )
 
-        if old_interaction is None:
+        if db_message is None or db_message.expired:
             raise InteractionError(
                 'No message found\n\n'
                 'Messages older than 15 minutes cannot be edited'
             )
 
-        webhook = Webhook.from_proxy_interaction(old_interaction)
-        og_message = await webhook.fetch_message(
-            old_interaction.message_id
+        og_message = await Webhook.from_db_message(
+            db_message
+        ).fetch_message(
+            db_message.proxy_id
         )
 
         await sed_edit(
             interaction,
             og_message,
-            message,
-            webhook
+            message
         )
 
         return
@@ -1014,24 +1017,17 @@ async def uslash_proxy(
             flags=MessageFlag.NONE
         )
 
-        await gather(
-            DBInteraction(
-                author_id=interaction.author_id,
-                bot_id=interaction.application_id,
-                message_id=sent_message.id,
-                channel_id=interaction.channel_id,
-                token=interaction.token
-            ).save(),
-            DBMessage(
-                original_id=None,
-                proxy_id=sent_message.id,
-                author_id=interaction.author_id,
-                channel_id=interaction.channel_id,
-                member_id=(await ProxyMember.find_one({
-                    'userproxy.bot_id': interaction.application_id
-                })).id,
-                reason='Userproxy /proxy command'
-            ).save())
+        await DBMessage(
+            original_id=None,
+            proxy_id=sent_message.id,
+            author_id=interaction.author_id,
+            channel_id=interaction.channel_id,
+            member_id=(await ProxyMember.find_one({
+                'userproxy.bot_id': interaction.application_id})).id,
+            reason='Userproxy /proxy command',
+            bot_id=interaction.application_id,
+            interaction_token=interaction.token,
+        ).save()
         return
 
     await gather(

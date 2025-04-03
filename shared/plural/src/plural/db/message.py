@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import ClassVar
 
 from beanie import PydanticObjectId
@@ -39,7 +39,19 @@ class Message(BaseDocument):
     webhook_id: int | None = Field(
         None,
         description='the webhook id of the message')
+    bot_id: int | None = Field(
+        None,
+        description='the bot id of the message')
+    interaction_token: str | None = Field(
+        None,
+        description='the interaction token of the message')
     ts: datetime = Field(
         default_factory=datetime.utcnow,
         description='the timestamp of the message'
     )
+
+    @property
+    def expired(self) -> bool:
+        return (
+            self.ts.replace(tzinfo=UTC) + timedelta(minutes=14, seconds=30)
+        ) < datetime.now(UTC)

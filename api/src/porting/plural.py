@@ -6,7 +6,6 @@ from asyncio import gather
 from plural.db import (
     ProxyMember,
     Application,
-    Interaction,
     Usergroup,
     AutoProxy,
     ProxyLog,
@@ -26,7 +25,6 @@ class PluralExport(BaseExport):
     applications: list[Application]
     autoproxies: list[AutoProxy]
     groups: list[Group]
-    interactions: list[Interaction]
     messages: list[Message]
     proxy_logs: list[ProxyLog]
     members: list[ProxyMember]
@@ -40,7 +38,6 @@ class PluralExport(BaseExport):
             applications=[],
             autoproxies=[],
             groups=[],
-            interactions=[],
             messages=[],
             proxy_logs=[],
             members=[],
@@ -76,7 +73,6 @@ class PluralExport(BaseExport):
         (
             self.applications,
             self.autoproxies,
-            self.interactions,
             self.messages,
             self.proxy_logs,
             self.replies,
@@ -87,9 +83,6 @@ class PluralExport(BaseExport):
             }).to_list(),
             AutoProxy.find({
                 'user': user_id
-            }).to_list(),
-            Interaction.find({
-                'author_id': user_id
             }).to_list(),
             Message.find({
                 'author_id': user_id

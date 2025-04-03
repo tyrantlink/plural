@@ -1,5 +1,8 @@
+from datetime import timedelta
+from asyncio import gather
 from typing import Any
 
+from beanie import PydanticObjectId
 from regex import (
     error as RegexError,  # noqa: N812
     IGNORECASE,
@@ -7,10 +10,6 @@ from regex import (
     escape,
     sub
 )
-
-from beanie import PydanticObjectId
-from datetime import timedelta
-from asyncio import gather
 
 from plural.db.enums import GroupSharePermissionLevel, ReplyFormat
 from plural.db import (
@@ -21,7 +20,7 @@ from plural.db import (
     Reply,
     redis
 )
-from plural.errors import InteractionError, PluralException
+from plural.errors import InteractionError, PluralException, HTTPException
 from plural.missing import MISSING
 from plural.otel import span, cx
 
@@ -32,6 +31,7 @@ from src.discord import (
     AllowedMentions,
     InteractionType,
     Interaction,
+    Channel,
     Message,
     Webhook,
     Embed
@@ -76,8 +76,7 @@ def timestring_to_timedelta(time: str) -> timedelta:
 async def sed_edit(
     interaction: Interaction,
     message: Message,
-    sed: str,
-    webhook: Webhook | None = None
+    sed: str
 ) -> None:
     match = SED.match(sed)
 
@@ -101,9 +100,15 @@ async def sed_edit(
                     ' but regex pattern still matched'
                 )
 
+    content = (
+        message.content.split('\n', 1)[1]
+        if INLINE_REPLY.match(message.content)
+        else message.content
+    )
+
     try:
         edited_content = sub(
-            escape(expression), replacement, message.content, count=count, flags=flags)
+            escape(expression), replacement, content, count=count, flags=flags)
     except RegexError as e:
         raise InteractionError(
             'invalid regular expression'
@@ -112,53 +117,139 @@ async def sed_edit(
     await edit_message(
         interaction,
         message,
-        edited_content,
-        webhook
+        edited_content
     )
 
 
 async def edit_message(
     interaction: Interaction,
     message: Message,
-    content: str,
-    webhook: Webhook | None = None
+    content: str
 ) -> None:
-    if not await can_edit(interaction, message):
-        raise InteractionError(
-            'You cannot edit this message, '
-            'it is either not a /plu/ral message, older than 7 days, '
-            'or you are not the author of the message'
+    await can_edit(interaction, message)
+
+    db_message = await DBMessage.find_one({
+        'author_id': interaction.author_id,
+        'channel_id': interaction.channel_id,
+        '$or': [
+            {'original_id': message.id},
+            {'proxy_id': message.id}
+        ]
+    })
+
+    if db_message is None:
+        raise RuntimeError(
+            'DBMessage not found but edit check passed.\n\n'
+            'this should never happen'
         )
 
-    if message.interaction_metadata:
-        await _edit_userproxy_message(
-            interaction,
-            message,
-            content,
-            webhook)
-    elif message.webhook_id:
-        await _edit_webhook_message(
-            interaction,
-            message,
+    if INLINE_REPLY.match(message.content):
+        content = '\n'.join([
+            message.content.split('\n', 1)[0],
             content
-        )
-    else:
-        await _edit_guild_userproxy_message(
-            interaction,
-            message,
-            content
-        )
+        ])
+
+    match db_message.reason:
+        case 'Userproxy /proxy command' | 'Userproxy Reply command':
+            userproxy = await ProxyMember.find_one({
+                'userproxy.bot_id': message.author.id
+            })
+
+            if userproxy is None:
+                raise InteractionError('userproxy not found')
+
+            if db_message.expired:
+                try:
+                    await Channel.fetch(
+                        message.channel_id,
+                        userproxy.userproxy.token)
+                except HTTPException as e:
+                    raise InteractionError(
+                        'You cannot edit this message, '
+                        'Userproxy messages can only be edited within 15 minutes '
+                        'of sending them unless the userproxy bot is in the server'
+                    ) from e
+
+                await message.edit(
+                    content,
+                    bot_token=userproxy.userproxy.token
+                )
+            else:
+                mentions = AllowedMentions.parse_content(content, False)
+
+                mentions.users &= {user.id for user in message.mentions}
+                mentions.roles &= set(message.mention_roles)
+
+                await Webhook.from_db_message(db_message).edit_message(
+                    message.id,
+                    content,
+                    allowed_mentions=mentions)
+        case '/say command':
+            embed = message.embeds[0]
+            embed.description = content
+            await message.edit(
+                embeds=[embed])
+        case _ if message.webhook_id == db_message.webhook_id:
+            channel = await redis.json().get(
+                f'discord:channel:{message.channel_id}'
+            )
+            thread_id = MISSING
+
+            if channel is None:
+                raise ValueError('Channel not found in cache.')
+
+            if channel['data'].get('type') in {11, 12}:
+                thread_id = int(channel['data']['id'])
+
+                channel = await redis.json().get(
+                    f'discord:channel:{channel['data']['parent_id']}'
+                )
+
+                if channel is None:
+                    raise ValueError('Parent channel not found in cache.')
+
+            webhook = next((
+                webhook
+                for webhook in (
+                    (await redis.json().get(
+                        f'discord:webhooks:{channel['data']['id']}'
+                    )) or [])
+                if webhook['id'] == str(message.webhook_id)
+            ), None)
+
+            if webhook is None:
+                raise InteractionError(
+                    'webhook not found. It may have been deleted.'
+                )
+
+            await Webhook.model_validate(webhook).edit_message(
+                message.id,
+                content,
+                thread_id=thread_id
+            )
+        case _ if message.author.bot:
+            userproxy = await ProxyMember.find_one({
+                'userproxy.bot_id': message.author.id
+            })
+
+            if userproxy is None:
+                raise InteractionError('userproxy not found')
+
+            await message.edit(
+                content,
+                bot_token=userproxy.userproxy.token
+            )
+        case _:
+            raise InteractionError(
+                'You cannot edit this message, '
+                'it is either not a /plu/ral message, older than 7 days, '
+                'or you are not the author of the message'
+            )
 
     await redis.json().delete(
         f'discord:pending_edit:{message.id}', '$'
     )
 
-
-async def _edit_response(
-    interaction: Interaction,
-    message: Message,
-    content: str
-) -> None:
     if interaction.type in {
         InteractionType.MESSAGE_COMPONENT,
         InteractionType.MODAL_SUBMIT
@@ -166,135 +257,91 @@ async def _edit_response(
         await interaction.response.ack()
         return
 
-    embed = (
-        Embed.success('Message Edited')
-        if content != message.content
-        else Embed.warning('No Changes Made')
-    )
-
     await interaction.response.send_message(
-        embeds=[embed]
+        embeds=[(
+            Embed.success('Message Edited')
+            if content != message.content
+            else Embed.warning('No Changes Made')
+        )]
     )
-
-
-async def _edit_guild_userproxy_message(
-    interaction: Interaction,
-    message: Message,
-    content: str
-) -> None:
-    userproxy = await ProxyMember.find_one({
-        'userproxy.bot_id': message.author.id
-    })
-
-    if userproxy is None:
-        raise InteractionError('userproxy not found')
-
-    await gather(
-        _edit_response(interaction, message, content),
-        message.edit(
-            content,
-            userproxy.userproxy.token
-        )
-    )
-
-
-async def _edit_webhook_message(
-    interaction: Interaction,
-    message: Message,
-    content: str
-) -> None:
-    channel_id = message.channel_id
-
-    channel = await redis.json().get(f'discord:channel:{channel_id}')
-
-    thread_id = MISSING
-
-    if channel is None:
-        raise ValueError('Channel not found in cache.')
-
-    if channel['data'].get('type') in {11, 12}:
-        thread_id = int(channel['data']['id'])
-
-        channel = await redis.json().get(
-            f'discord:channel:{channel['data']['parent_id']}'
-        )
-
-        if channel is None:
-            raise ValueError('Parent channel not found in cache.')
-
-    webhook = next((
-        webhook
-        for webhook in (
-            (await redis.json().get(
-                f'discord:webhooks:{channel['data']['id']}'
-            )) or [])
-        if webhook['id'] == str(message.webhook_id)
-    ), None)
-
-    if webhook is None:
-        raise InteractionError('webhook not found')
-
-    webhook = Webhook.model_validate(webhook)
-
-    await gather(
-        _edit_response(interaction, message, content),
-        webhook.edit_message(
-            message_id=message.id,
-            content=content,
-            thread_id=thread_id
-        )
-    )
-
-
-async def _edit_userproxy_message(
-    interaction: Interaction,
-    message: Message,
-    content: str,
-    webhook: Webhook
-) -> None:
-    await webhook.edit_message(
-        message_id=message.id,
-        content=content
-    )
-
-    await _edit_response(interaction, message, content)
 
 
 async def can_edit(
     interaction: Interaction,
     message: Message
-) -> bool:
-    # ? userproxy command message
-    if message.interaction_metadata:
-        return message.interaction_metadata.user.id == interaction.author_id
-
-    # ? webhook message
-    if message.webhook_id:
-        db_message = await DBMessage.find_one({
-            'author_id': interaction.author_id,
-            'webhook_id': message.webhook_id,
-            'channel_id': interaction.channel_id,
-            'proxy_id': message.id
-        })
-
-        return db_message is not None
-
-    # ? guild userproxy message
-    userproxy = await ProxyMember.find_one({
-        'userproxy.bot_id': message.author.id
+) -> None:
+    db_message = await DBMessage.find_one({
+        'author_id': interaction.author_id,
+        'channel_id': interaction.channel_id,
+        '$or': [
+            {'original_id': message.id},
+            {'proxy_id': message.id}
+        ]
     })
 
-    if userproxy is None:
-        return False
+    if db_message is None:
+        raise InteractionError(
+            'You cannot edit this message, '
+            'it is either not a /plu/ral message, older than 7 days, '
+            'or you are not the author of the message'
+        )
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    match db_message.reason:
+        case 'Userproxy /proxy command' | 'Userproxy Reply command':
+            userproxy = await ProxyMember.find_one({
+                'userproxy.bot_id': message.author.id
+            })
 
-    group = await userproxy.get_group()
+            if userproxy is None:
+                raise InteractionError('Userproxy not found')
 
-    return (
-        usergroup.id == group.account or
-        interaction.author_id in group.users
-    )
+            usergroup = await Usergroup.get_by_user(interaction.author_id)
+
+            group = await userproxy.get_group()
+
+            if not (
+                usergroup.id == group.account or
+                interaction.author_id in group.users
+            ):
+                raise InteractionError(
+                    'You cannot edit this message, '
+                    'it is either not a /plu/ral message, older than 7 days, '
+                    'or you are not the author of the message'
+                )
+
+            if not db_message.expired:
+                return
+
+            try:
+                await Channel.fetch(
+                    message.channel_id,
+                    userproxy.userproxy.token)
+            except HTTPException as e:
+                raise InteractionError(
+                    'You cannot edit this message, '
+                    'Userproxy messages can only be edited within 15 minutes'
+                    ' of sending them unless the userproxy bot is in the server'
+                ) from e
+        case '/say command' if (
+            message.interaction_metadata and
+            message.interaction_metadata.user.id == interaction.author_id
+        ):
+            return
+        case _ if message.webhook_id:
+            if message.webhook_id != db_message.webhook_id:
+                raise InteractionError(
+                    'You cannot edit this message, '
+                    'it is either not a /plu/ral message, older than 7 days, '
+                    'or you are not the author of the message'
+                )
+        case _ if message.author.bot:
+            pass
+        case _:
+            raise InteractionError(
+                'You cannot edit this message, '
+                'it is either not a /plu/ral message, older than 7 days, '
+                'or you are not the author of the message'
+            )
 
 
 def group_edit_check(
