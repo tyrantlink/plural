@@ -615,6 +615,24 @@ async def slash_export(
     interaction: Interaction,
     format: str = 'standard'
 ) -> None:
+    usergroup = await Usergroup.get_by_user(interaction.author_id)
+
+    # ! probably move rate limit to a dedicated function
+    response = await redis.execute_command(
+        'CL.THROTTLE',
+        f'command:export:{usergroup.id}:{format}',
+        0,
+        1,
+        600
+    )
+
+    if response[0]:
+        raise InteractionError(
+            'You can only export once every 10 minutes\n\n'
+            'Please try again in '
+            f'<t:{int(datetime.now(UTC).timestamp() + response[4])}:R>'
+        )
+
     export = await PluralExport.from_user_id(
         interaction.author_id,
         format
