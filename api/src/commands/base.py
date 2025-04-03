@@ -629,7 +629,7 @@ async def slash_export(
     if response[0]:
         raise InteractionError(
             'You can only export once every 10 minutes\n\n'
-            'Please try again in '
+            'Please try again '
             f'<t:{int(datetime.now(UTC).timestamp() + response[4])}:R>'
         )
 
