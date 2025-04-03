@@ -23,7 +23,7 @@ PAGES = {
 async def modal_edit(
     interaction: Interaction,
     message: Message,
-    content: str
+    content: str = '',
 ) -> None:
     from src.commands.helpers import edit_message
 
@@ -73,9 +73,9 @@ async def _edit(
                 custom_id='content',
                 style=TextInputStyle.PARAGRAPH,
                 label='Message',
-                min_length=1,
+                min_length=0,
                 max_length=2000,
-                required=True,
+                required=False,
                 value=(
                     message.embeds[0].description
                     if db_message.reason == '/say command' else

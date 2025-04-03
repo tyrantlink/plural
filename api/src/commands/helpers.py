@@ -143,6 +143,12 @@ async def edit_message(
             'this should never happen'
         )
 
+    if not content and not message.attachments:
+        raise InteractionError(
+            'Message content cannot be empty'
+            ' without attachments'
+        )
+
     if INLINE_REPLY.match(message.content):
         content = '\n'.join([
             message.content.split('\n', 1)[0],
