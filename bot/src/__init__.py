@@ -80,6 +80,13 @@ async def event_listener() -> None:
 
             for key, event in data[0][1]:
                 await create_strong_task(on_event(key, event['data'], start_time=time_ns()))
+        except ResponseError:
+            # ? redis may have restarted and lost the stream
+            await redis.xgroup_create(
+                'discord_events',
+                'plural_consumers',
+                id='0',
+                mkstream=True)
         except Exception as e:  # noqa: BLE001
             with span('proxy error') as current_span:
                 current_span.record_exception(e)
