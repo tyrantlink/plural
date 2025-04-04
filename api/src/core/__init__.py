@@ -4,6 +4,7 @@ from asyncio import gather
 from random import randint
 from typing import Any
 
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi import FastAPI, Response, Request, HTTPException
 from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -156,8 +157,8 @@ app = PatchedFastAPI(
     title='/plu/ral API',
     description='Get an application token by running `/api` from the bot',
     lifespan=lifespan,
-    docs_url='/swdocs',
-    redoc_url='/docs',
+    docs_url=None,
+    redoc_url=None,
     version=VERSION,
     debug=env.dev
 )
@@ -324,3 +325,23 @@ async def get__root(request: Request) -> Response:
 @suppress()
 async def get__healthcheck() -> Response:
     return Response(status_code=204)
+
+
+@app.get('/docs', include_in_schema=False)
+@suppress()
+async def get__docs() -> Response:
+    return get_redoc_html(
+        openapi_url=app.openapi_url,
+        title=app.title,
+        redoc_favicon_url='https://plural.gg/images/icons/favicon-32x32.png'
+    )
+
+
+@app.get('/swdocs', include_in_schema=False)
+@suppress()
+async def get__swdocs() -> Response:
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title,
+        swagger_favicon_url='https://plural.gg/images/icons/favicon-32x32.png'
+    )
