@@ -1292,7 +1292,7 @@ async def _process_proxy(
         }
     ):
         await redis.set(
-            f'pending_proxy:{event['id']}',
+            f'pending_proxy:{event['channel_id']}:{event['id']}',
             '1', ex=timedelta(seconds=30)
         )
 
