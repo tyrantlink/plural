@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from beanie import PydanticObjectId  # noqa: TC002
 
 from plural.db.enums import (
@@ -96,9 +96,15 @@ class UsergroupModel(BaseModel):
             None,
             description='The simply plural system id of the user'
         )
+
+    @field_validator('users', mode='before')
+    @classmethod
+    def validate_users(cls, users: list[str | int]) -> list[str]:
+        return [str(user_id) for user_id in users]
+
     id: PydanticObjectId = Field(
-        description='Internal usergroup ID')
-    users: list[int] = Field(
+        description='usergroup ID')
+    users: list[str] = Field(
         description='List of user IDs in the usergroup')
     config: Config = Field(
         description='Usergroup config')

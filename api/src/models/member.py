@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from beanie import PydanticObjectId
 
 from plural.db.enums import ApplicationScope
@@ -37,7 +37,17 @@ class MemberModel(BaseModel):
         )
 
     class UserProxy(BaseModel):
-        bot_id: int = Field(
+        @field_validator('bot_id', mode='before')
+        @classmethod
+        def validate_bot_id(cls, bot_id: str | int) -> str:
+            return str(bot_id)
+
+        @field_validator('guilds', mode='before')
+        @classmethod
+        def validate_guilds(cls, guilds: set[str | int]) -> set[str]:
+            return {str(guild_id) for guild_id in guilds}
+
+        bot_id: str = Field(
             description='Bot id')
         public_key: str = Field(
             description='The userproxy public key')
@@ -46,7 +56,7 @@ class MemberModel(BaseModel):
         command: str = Field(
             'proxy',
             description='Name of the proxy command')
-        guilds: set[int] = Field(
+        guilds: set[str] = Field(
             default_factory=set,
             description='The guilds the userproxy is enabled in'
         )
@@ -97,7 +107,7 @@ class MemberModel(BaseModel):
         member: ProxyMember,
         token: TokenData
     ) -> Usergroup:
-        data = cls(**member.model_dump(mode='json'))
+        data = cls(**member.model_dump())
 
         if token.internal:
             return data
@@ -108,7 +118,16 @@ class MemberModel(BaseModel):
             ).value &
             ApplicationScope.USERPROXY_TOKENS.value
         ):
-            member.userproxy.token = ''
+            data.userproxy.public_key = ''
+            data.userproxy.token = ''
+
+        if not (
+            usergroup.data.applications.get(
+                str(token.app_id), ApplicationScope.NONE
+            ).value &
+            ApplicationScope.SP_TOKENS.value
+        ):
+            data.simplyplural_id = None
 
         return data
 

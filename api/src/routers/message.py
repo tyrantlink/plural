@@ -9,6 +9,11 @@ from src.models import MessageModel, AuthorModel
 from src.core.ratelimit import ratelimit
 from src.core.route import name
 
+from src.docs import (
+    message_response,
+    response
+)
+
 
 router = APIRouter(prefix='/messages', tags=['Messages'])
 
@@ -23,24 +28,25 @@ def _snowflake_to_age(snowflake: int) -> float:
 
 @router.head(
     '/{channel_id}/{message_id}',
+    name='Check Message',
     description="""
         Check if a message was either deleted or created by /plu/ral""",
     responses={
-        200: {
-            'content': None,
-            'description': 'Message found'},
-        404: {
-            'content': None,
-            'description': 'Message was not found'},
-        410: {
-            'content': None,
-            'description': 'Message is older than 7 days; status is unknown'},
-        400: {
-            'content': None,
-            'description': 'Message is in the future; status is unknown'},
-        422: {
-            'content': None,
-            'description': 'Validation Error'}})
+        200: response(
+            description='Message found',
+            content=None),
+        400: response(
+            description='Message is in the future; status is unknown',
+            content=None),
+        404: response(
+            description='Message was not found',
+            content=None),
+        410: response(
+            description='Message is older than 7 days; status is unknown',
+            content=None),
+        422: response(
+            description='Validation Error',
+            content=None)})
 @name('/messages/:id/:id')
 @ratelimit(5, timedelta(seconds=5), auth=False)
 @ratelimit(500, timedelta(seconds=1))
@@ -87,62 +93,17 @@ async def head__message(
 
 @router.get(
     '/{channel_id}/{message_id}',
+    name='Get Message',
     description="""
     Get a message by its id""",
     responses={
-        200: {
-            'description': 'Message found',
-            'model': MessageModel,
-            'content': {
-                'application/json': {
-                    'examples': {
-                        'Webhook proxy': {'value': {
-                            'original_id': '1353206395104923681',
-                            'proxy_id': '1353206397420179466',
-                            'author_id': '250797109022818305',
-                            'channel_id': '1307354421394669608',
-                            'reason': 'Matched proxy tag ​`text`​`--steve`',
-                            'webhook_id': '1347606225851912263'}},
-                        'Userproxy bot proxy': {'value': {
-                            'original_id': '1353202123797430272',
-                            'proxy_id': '1353202124502073398',
-                            'author_id': '250797109022818305',
-                            'channel_id': '1292096869974937736',
-                            'reason': 'Matched proxy tag ​`text`​`--steve`',
-                            'webhook_id': None}},
-                        'Userproxy command': {'value': {
-                            'original_id': None,
-                            'proxy_id': '1353212365616709693',
-                            'author_id': '250797109022818305',
-                            'channel_id': '1307354421394669608',
-                            'reason': 'Userproxy /proxy command',
-                            'webhook_id': None}},
-                        'Webhook proxy (api)': {'value': {
-                            'original_id': None,
-                            'proxy_id': '1353206397420179466',
-                            'author_id': '250797109022818305',
-                            'channel_id': '1307354421394669608',
-                            'reason': 'Matched proxy tag ​`text`​`--steve`',
-                            'webhook_id': '1347606225851912263'}},
-                        'Userproxy bot proxy (api)': {'value': {
-                            'original_id': None,
-                            'proxy_id': '1353202124502073398',
-                            'author_id': '250797109022818305',
-                            'channel_id': '1292096869974937736',
-                            'reason': 'Matched proxy tag ​`text`​`--steve`',
-                            'webhook_id': None
-                        }},
-                    }
-                }
-            }
-        },
-        400: {
-            'description': 'Message is in the future; status is unknown'},
-        404: {
-            'description': 'Message was not found'
-        },
-        410: {
-            'description': 'Message is older than 7 days; status is unknown'}})
+        200: message_response,
+        400: response(
+            description='Message is in the future; status is unknown'),
+        404: response(
+            description='Message was not found'),
+        410: response(
+            description='Message is older than 7 days; status is unknown')})
 @name('/messages/:id/:id')
 @ratelimit(500, timedelta(seconds=1))
 async def get__message(
@@ -193,6 +154,7 @@ async def get__message(
 
 @router.get(
     '/{channel_id}/{message_id}/member',
+    name='Get Message Member',
     description="""
     Get a message author by message id""",
     responses={

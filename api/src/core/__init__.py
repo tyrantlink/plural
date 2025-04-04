@@ -22,6 +22,7 @@ from src.core.version import VERSION
 from src.core.models import env
 
 from .route import SUPPRESSED_PATHS, ROUTE_NAMES, suppress
+from .stupid_openapi_patch import patched_openapi
 
 
 PATH_PATTERN = compile(
@@ -147,7 +148,11 @@ async def emoji_init() -> None:
         )
 
 
-app = FastAPI(
+class PatchedFastAPI(FastAPI):
+    openapi = patched_openapi
+
+
+app = PatchedFastAPI(
     title='/plu/ral API',
     description='Get an application token by running `/api` from the bot',
     lifespan=lifespan,
