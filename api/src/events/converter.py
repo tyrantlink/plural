@@ -1,4 +1,4 @@
-from plural.db import ProxyMember, Group, Usergroup
+from plural.db import ProxyMember, Group
 from beanie import PydanticObjectId
 from bson.errors import InvalidId
 
@@ -30,7 +30,7 @@ async def member_converter(
 
     group = await member.get_group()
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     if (
         usergroup.id != group.account and
@@ -55,7 +55,7 @@ async def group_converter(
 
     group = await Group.get(parsed_value)
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     if (
         group is None or

@@ -519,10 +519,10 @@ async def select_config_value(
 
     match category:
         case 'user':
-            parent = await Usergroup.get_by_user(interaction.author_id)
+            parent = await interaction.get_usergroup()
             config = parent.config
         case 'userproxy':
-            parent = await Usergroup.get_by_user(interaction.author_id)
+            parent = await interaction.get_usergroup()
             config = parent.userproxy_config
         case 'guild':
             parent = await Guild.get(interaction.guild_id) or Guild(
@@ -591,10 +591,10 @@ async def _button_bool(
 ) -> None:
     match category:
         case 'user':
-            parent = await Usergroup.get_by_user(interaction.author_id)
+            parent = await interaction.get_usergroup()
             config = parent.config
         case 'userproxy':
-            parent = await Usergroup.get_by_user(interaction.author_id)
+            parent = await interaction.get_usergroup()
             config = parent.userproxy_config
         case 'guild':
             parent = await Guild.get(interaction.guild_id) or Guild(
@@ -639,10 +639,10 @@ async def modal_set(
 
     match category:
         case 'user':
-            parent = await Usergroup.get_by_user(interaction.author_id)
+            parent = await interaction.get_usergroup()
             config = parent.config
         case 'userproxy':
-            parent = await Usergroup.get_by_user(interaction.author_id)
+            parent = await interaction.get_usergroup()
             config = parent.userproxy_config
         case 'guild':
             parent = await Guild.get(interaction.guild_id) or Guild(
@@ -678,10 +678,10 @@ async def button_set(
 ) -> None:
     match category:
         case 'user':
-            parent = await Usergroup.get_by_user(interaction.author_id)
+            parent = await interaction.get_usergroup()
             config = parent.config
         case 'userproxy':
-            parent = await Usergroup.get_by_user(interaction.author_id)
+            parent = await interaction.get_usergroup()
             config = parent.userproxy_config
         case 'guild':
             parent = await Guild.get(interaction.guild_id) or Guild(
@@ -744,7 +744,7 @@ async def _category(
     interaction: Interaction,
     category: str
 ) -> None:
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     match category:
         case 'user' | 'userproxy':
@@ -825,7 +825,7 @@ async def _option(
 ) -> None:
     option = CONFIG_OPTIONS[category][selected[0]]
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     embed = Embed.success(
         title=option.name,

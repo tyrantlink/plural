@@ -94,7 +94,7 @@ async def message_plural_debug(
     debug_log: list[str] = loads(debug_log_str)
 
     if (
-        debug_log[0] != str(interaction.author_id) and
+        debug_log[0] != str((await interaction.get_usergroup()).id) and
         interaction.author_id not in env.admins
     ):
         for entry in debug_log.copy():
@@ -104,17 +104,15 @@ async def message_plural_debug(
             if AUTOPROXY_FOUND_PATTERN.match(entry):
                 debug_log.remove(entry)
 
-    success = (
-        debug_log[-1].startswith('Latency: ') or
-        debug_log[1] == 'Reproxy command used.'
-    )
-
     await interaction.response.send_message(embeds=[Embed(
         title='debug log',
         description=f'```{'\n'.join(debug_log[1:])}```',
         color=(
             0x69ff69
-            if success else
+            if (
+                debug_log[-1].startswith('Latency: ') or
+                debug_log[1] == 'Reproxy command used.'
+            ) else
             0xff6969
         )
     )])
@@ -239,7 +237,7 @@ async def slash_account_accept(
         )
 
     sharer = await Usergroup.get_by_user(user.id)
-    sharee = await Usergroup.get_by_user(interaction.author_id)
+    sharee = await interaction.get_usergroup()
 
     if sharer.id == sharee.id:
         raise InteractionError(
@@ -299,7 +297,7 @@ async def slash_account_share(
             'You can only have one pending account share per user.'
         )
 
-    sharer = await Usergroup.get_by_user(interaction.author_id)
+    sharer = await interaction.get_usergroup()
     sharee = await Usergroup.get_by_user(user.id)
 
     if sharer.id == sharee.id:
@@ -406,8 +404,10 @@ async def slash_autoproxy(
             raise InteractionError(f'invalid mode `{mode}`')
     mode: AutoProxyMode
 
+    usergroup = await interaction.get_usergroup()
+
     autoproxy = await AutoProxy.find_one({
-        'user': interaction.author_id,
+        'user': usergroup.id,
         'guild': None if global_ else interaction.guild_id
     })
 
@@ -431,7 +431,7 @@ async def slash_autoproxy(
                     'Global autoproxy still enabled; Messages will still be proxied'
                     if (not global_ and
                         (await AutoProxy.find_one(
-                            {'user': interaction.author_id, 'guild': None}
+                            {'user': usergroup.id, 'guild': None}
                         )) is not None)
                     else None
                 )
@@ -451,7 +451,7 @@ async def slash_autoproxy(
 
         if interaction.guild_id and (
             await AutoProxy.find_one({
-                'user': interaction.author_id,
+                'user': usergroup.id,
                 'guild': interaction.guild_id if global_ else None})
         ) is not None:
             embed.set_footer(
@@ -481,15 +481,13 @@ async def slash_autoproxy(
         value=(
             member.name
             if member else
-            'Next'
-        )
+            'Next')
     ).add_field(
         name='Expires',
         value=(
             f'<t:{int(expiry_time.timestamp())}:R>'
             if expiry is not None
-            else 'never'
-        )
+            else 'never')
     ).add_field(
         name='Mode',
         value=mode.name.capitalize()
@@ -503,7 +501,7 @@ async def slash_autoproxy(
 
     tasks = [
         AutoProxy(
-            user=interaction.author_id,
+            user=usergroup.id,
             guild=None if global_ else str(interaction.guild_id),
             mode=mode,
             member=member.id if member else None,
@@ -558,7 +556,7 @@ async def slash_edit(
     sed: str | None = None
 ) -> None:
     db_message = await DBMessage.find_one(
-        {'author_id': interaction.author_id,
+        {'user': (await interaction.get_usergroup()).id,
          'channel_id': interaction.channel_id},
         sort=[('ts', -1)]
     )
@@ -628,7 +626,7 @@ async def slash_export(
     interaction: Interaction,
     format: str = 'standard'
 ) -> None:
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     # ! probably move rate limit to a dedicated function
     response = await redis.execute_command(
@@ -984,10 +982,12 @@ async def slash_proxy(
     message: str,
     member: ProxyMember | None = None
 ) -> None:
+    usergroup = await interaction.get_usergroup()
+
     autoproxies = {
         autoproxy.guild: autoproxy
         for autoproxy in await AutoProxy.find({
-            'user': interaction.author_id,
+            'user': usergroup.id,
             'guild': {'$in': [int(interaction.guild_id or 0), None]},
         }).to_list()
     }
@@ -1009,7 +1009,6 @@ async def slash_proxy(
             )
 
     group = await member.get_group()
-    usergroup = await group.get_usergroup()
 
     response = await interaction.response.send_message(
         embeds=[Embed(
@@ -1030,6 +1029,7 @@ async def slash_proxy(
         original_id=None,
         proxy_id=response.id,
         author_id=interaction.author_id,
+        user=usergroup.id,
         channel_id=interaction.channel_id,
         member_id=member.id,
         reason='/say command'
@@ -1054,7 +1054,7 @@ async def slash_proxy(
 async def slash_stats(
     interaction: Interaction
 ) -> None:
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     groups = await Group.find({
         '$or': [

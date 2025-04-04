@@ -129,7 +129,7 @@ async def edit_message(
     await can_edit(interaction, message)
 
     db_message = await DBMessage.find_one({
-        'author_id': interaction.author_id,
+        'user': (await interaction.get_usergroup()).id,
         'channel_id': interaction.channel_id,
         '$or': [
             {'original_id': message.id},
@@ -277,7 +277,7 @@ async def can_edit(
     message: Message
 ) -> None:
     db_message = await DBMessage.find_one({
-        'author_id': interaction.author_id,
+        'user': (await interaction.get_usergroup()).id,
         'channel_id': interaction.channel_id,
         '$or': [
             {'original_id': message.id},
@@ -301,7 +301,7 @@ async def can_edit(
             if userproxy is None:
                 raise InteractionError('Userproxy not found')
 
-            usergroup = await Usergroup.get_by_user(interaction.author_id)
+            usergroup = await interaction.get_usergroup()
 
             group = await userproxy.get_group()
 

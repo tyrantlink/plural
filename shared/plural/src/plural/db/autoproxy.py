@@ -22,8 +22,8 @@ class AutoProxy(BaseDocument):
     id: PydanticObjectId = Field(
         default_factory=PydanticObjectId,
         description='the id of the autoproxy')
-    user: int = Field(
-        description='the user id')
+    user: PydanticObjectId = Field(
+        description='the usergroup id')
     guild: int | None = Field(
         description='the guild id; None if global')
     mode: AutoProxyMode = Field(

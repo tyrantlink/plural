@@ -2,9 +2,9 @@ from enum import Enum
 
 from beanie import PydanticObjectId
 
-from plural.db import Usergroup, Group, ProxyMember
 from plural.db.enums import PaginationStyle
 from plural.errors import InteractionError
+from plural.db import Group, ProxyMember
 
 from src.core.emoji import EMOJI
 
@@ -159,7 +159,7 @@ async def _pagination(
     sort: SortOrder = SortOrder.ALPHA_ASC,
     group_id: PydanticObjectId | None = None
 ) -> None:
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     left, right = PAGINATION_STYLE_MAP[usergroup.config.pagination_style]
 

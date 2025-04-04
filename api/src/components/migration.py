@@ -323,7 +323,7 @@ async def migration_loop(
 
         from src.commands.userproxy import _userproxy_sync
 
-        usergroup = await Usergroup.get_by_user(interaction.author_id)
+        usergroup = await interaction.get_usergroup()
 
         groups = await Group.find({
             'account': usergroup.id

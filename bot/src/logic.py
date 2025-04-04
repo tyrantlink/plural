@@ -286,10 +286,19 @@ async def get_proxy_data(
     event: dict,
     debug_log: list[str]
 ) -> ProxyData | None:
+    usergroup = await Usergroup.find_one({
+        'users': int(event['author']['id'])
+    })
+
+    if usergroup is None:
+        debug_log.append(
+            'User has not registered with /plu/ral.')
+        return None
+
     autoproxies = {
         autoproxy.guild: autoproxy
         for autoproxy in await AutoProxy.find({
-            'user': int(event['author']['id']),
+            'user': usergroup.id,
             'guild': {'$in': [int(event['guild_id']), None]},
         }).to_list()
     }
@@ -351,15 +360,6 @@ async def get_proxy_data(
         debug_log.append(
             'Reproxy member not found.'
         )
-
-    usergroup = await Usergroup.find_one({
-        'users': int(event['author']['id'])
-    })
-
-    if usergroup is None:
-        debug_log.append(
-            'User has not registered with /plu/ral.')
-        return None
 
     groups = await Group.find({
         '$or': [
@@ -459,7 +459,7 @@ async def get_proxy_data(
                     'Matched member in restricted group and different from autoproxy. '
                     'Auto-creating server autoproxy.')
                 autoproxy = await AutoProxy(
-                    user=int(event['author']['id']),
+                    user=usergroup.id,
                     guild=int(event['guild_id']),
                     member=member.id,
                     ts=None
@@ -516,7 +516,7 @@ async def get_proxy_data(
                         'Matched member in restricted group and different from autoproxy. '
                         'Auto-creating server autoproxy.')
                     autoproxy = await AutoProxy(
-                        user=int(event['author']['id']),
+                        user=usergroup.id,
                         guild=int(event['guild_id']),
                         member=member.id,
                         ts=None
@@ -1418,6 +1418,7 @@ async def _process_proxy(
             original_id=int(event['id']),
             proxy_id=int(message['id']),
             author_id=int(event['author']['id']),
+            user=(await Usergroup.get_by_user(int(event['author']['id']))).id,
             channel_id=int(event['channel_id']),
             member_id=proxy.member.id,
             reason=proxy.reason,

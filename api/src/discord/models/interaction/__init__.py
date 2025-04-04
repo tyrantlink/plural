@@ -5,6 +5,7 @@ from typing import Self, TYPE_CHECKING
 from pydantic import model_validator
 
 from plural.missing import MISSING, Optional, Nullable
+from plural.db import Usergroup
 
 from src.discord.models.base import RawBaseModel
 from src.discord.models.member import Member
@@ -111,6 +112,15 @@ class Interaction(RawBaseModel):
 
         if self.guild_id is not None:
             self.guild = await Guild.fetch(self.guild_id) or self.guild
+
+    async def get_usergroup(
+        self,
+        use_cache: bool = True
+    ) -> Usergroup:
+        return await Usergroup.get_by_user(
+            self.author_id,
+            use_cache
+        )
 
     def send(
         self,

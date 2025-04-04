@@ -104,9 +104,7 @@ async def button_delete_confirm(interaction: Interaction) -> None:
     tasks = []
     avatars = []
 
-    usergroup = await Usergroup.find_one({
-        'users': interaction.author_id
-    })
+    usergroup = await interaction.get_usergroup()
 
     groups = await Group.find({
         '$or': [
@@ -156,7 +154,7 @@ async def button_delete_confirm(interaction: Interaction) -> None:
     }).delete_many())
 
     tasks.append(AutoProxy.find({
-        'user': interaction.author_id
+        'user': usergroup.id,
     }).delete_many())
 
     tasks.append(usergroup.delete())

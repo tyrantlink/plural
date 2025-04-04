@@ -844,7 +844,7 @@ async def umessage_reply(
         for attachment in reply.attachments
     ]
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     reply_format = (
         usergroup.userproxy_config.reply_format
@@ -894,6 +894,7 @@ async def umessage_reply(
             original_id=None,
             proxy_id=sent_message.id,
             author_id=interaction.author_id,
+            user=usergroup.id,
             channel_id=interaction.channel_id,
             member_id=(await ProxyMember.find_one({
                 'userproxy.bot_id': interaction.application_id})).id,
@@ -947,9 +948,11 @@ async def uslash_proxy(
             None)
         return
 
+    usergroup = await interaction.get_usergroup()
+
     if message and SED.match(message):
         db_message = await DBMessage.find_one({
-            'author_id': interaction.author_id,
+            'user': usergroup.id,
             'bot_id': interaction.application_id,
             'channel_id': interaction.channel_id},
             sort=[('ts', -1)]
@@ -1021,6 +1024,7 @@ async def uslash_proxy(
             original_id=None,
             proxy_id=sent_message.id,
             author_id=interaction.author_id,
+            user=usergroup.id,
             channel_id=interaction.channel_id,
             member_id=(await ProxyMember.find_one({
                 'userproxy.bot_id': interaction.application_id})).id,

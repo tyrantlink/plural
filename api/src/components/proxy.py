@@ -4,7 +4,6 @@ from plural.db.enums import ReplyType
 from plural.db import (
     Message as DBMessage,
     ProxyMember,
-    Usergroup,
     Reply
 )
 
@@ -65,6 +64,8 @@ async def modal_proxy(
         'message_id': reply_id
     })
 
+    usergroup = await interaction.get_usergroup()
+
     if reply is None:
         sent_message = await interaction.response.send_message(
             content=message,
@@ -76,6 +77,7 @@ async def modal_proxy(
             original_id=None,
             proxy_id=sent_message.id,
             author_id=interaction.author_id,
+            user=usergroup.id,
             channel_id=interaction.channel_id,
             member_id=(await ProxyMember.find_one({
                 'userproxy.bot_id': interaction.application_id})).id,
@@ -88,7 +90,7 @@ async def modal_proxy(
     if reply.author is None:
         raise ValueError('Reply author is None')
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     reply_format = (
         usergroup.userproxy_config.reply_format
@@ -134,10 +136,10 @@ async def modal_proxy(
         original_id=None,
         proxy_id=sent_message.id,
         author_id=interaction.author_id,
+        user=usergroup.id,
         channel_id=interaction.channel_id,
         member_id=(await ProxyMember.find_one({
-            'userproxy.bot_id': interaction.application_id
-        })).id,
+            'userproxy.bot_id': interaction.application_id})).id,
         reason='Userproxy Reply command',
         bot_id=interaction.application_id,
         interaction_token=interaction.token,

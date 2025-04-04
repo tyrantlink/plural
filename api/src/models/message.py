@@ -45,6 +45,7 @@ class AuthorModel(BaseModel):
     color: int | None
     avatar_url: str | None
     supporter: bool
+    private: bool
 
     @classmethod
     def from_member(
@@ -62,6 +63,6 @@ class AuthorModel(BaseModel):
             avatar_url=member.avatar_url,
             supporter=(
                 usergroup.data.supporter_tier
-                == SupporterTier.SUPPORTER
-            )
+                == SupporterTier.SUPPORTER),
+            private=private
         )

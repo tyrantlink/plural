@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from asyncio import gather
 
-from plural.db import Group, ProxyMember, Usergroup, Guild
+from plural.db import Group, ProxyMember, Guild
 from plural.errors import InteractionError
 from plural.missing import MISSING
 
@@ -68,7 +68,7 @@ async def slash_member_info(
     ).add_field(
         name='Display Name',
         value=member.get_display_name(
-            await Usergroup.get_by_user(interaction.author_id),
+            await interaction.get_usergroup(),
             group, (
                 await Guild.get_by_id(interaction.guild_id)
                 if interaction.guild_id
@@ -205,7 +205,7 @@ async def slash_member_new(
     group: Group | None = None,
     simply_plural_id: str | None = None
 ) -> None:
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     group = group or await Group.default(
         usergroup.id,
@@ -661,7 +661,7 @@ async def slash_member_set_name(
         )
 
     if member.userproxy is not None:
-        usergroup = await Usergroup.get_by_user(interaction.author_id)
+        usergroup = await interaction.get_usergroup()
 
         userproxy_name = name + (
             (group.tag or usergroup.config.account_tag or '')
@@ -730,7 +730,7 @@ async def slash_member_set_pronouns(
 
     group_edit_check(group, interaction.author_id)
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     member.pronouns = pronouns
 

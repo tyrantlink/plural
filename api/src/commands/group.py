@@ -31,7 +31,7 @@ async def _set_tag(
 ) -> list[Embed]:
     from .userproxy import _userproxy_sync
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     embeds = [Embed.success(
         f'Set group `{group.name}` tag to `{tag}`'
@@ -148,7 +148,7 @@ async def slash_group_accept(
         )
 
     sharer = await Usergroup.get_by_user(user.id)
-    sharee = await Usergroup.get_by_user(interaction.author_id)
+    sharee = await interaction.get_usergroup()
 
     if (
         group.account in {sharer.id, sharee.id} or
@@ -245,7 +245,7 @@ async def slash_group_kick(
     group: Group,
     user: User
 ) -> None:
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     if usergroup.id != group.account:
         raise InteractionError(
@@ -307,7 +307,7 @@ async def slash_group_new(
     avatar: Attachment | None = None,
     tag: str | None = None
 ) -> None:
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     if await Group.find_one({
         '$or': [
@@ -427,7 +427,7 @@ async def slash_group_share(
             'You can only have one pending group share per user.'
         )
 
-    sharer = await Usergroup.get_by_user(interaction.author_id)
+    sharer = await interaction.get_usergroup()
     sharee = await Usergroup.get_by_user(user.id)
 
     if sharer.id == sharee.id:

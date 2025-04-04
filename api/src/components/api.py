@@ -4,8 +4,8 @@ from asyncio import gather
 from beanie import PydanticObjectId
 
 from plural.db.enums import ApplicationScope
-from plural.db import Application, Usergroup
 from plural.errors import InteractionError
+from plural.db import Application
 
 from src.discord import (
     TextInputStyle,
@@ -277,7 +277,7 @@ async def button_delete_application(
     application, usergroup = await gather(
         Application.get(
             PydanticObjectId(application_id)),
-        Usergroup.get_by_user(interaction.author_id)
+        interaction.get_usergroup()
     )
 
     if application is None:
@@ -367,7 +367,7 @@ async def _application(
 ) -> None:
     application, usergroup = await gather(
         Application.get(application_id),
-        Usergroup.get_by_user(interaction.author_id)
+        interaction.get_usergroup()
     )
 
     if application is None:
@@ -457,7 +457,7 @@ async def button_authorize(
     if application is None:
         raise InteractionError('Application not found')
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     set_scope = ApplicationScope(int(scope))
 

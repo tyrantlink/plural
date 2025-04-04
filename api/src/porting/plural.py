@@ -82,10 +82,10 @@ class PluralExport(BaseExport):
                 'developer': user_id
             }).to_list(),
             AutoProxy.find({
-                'user': user_id
+                'user': usergroup.id
             }).to_list(),
             Message.find({
-                'author_id': user_id
+                'user': usergroup.id
             }).to_list(),
             ProxyLog.find({
                 'author_id': user_id

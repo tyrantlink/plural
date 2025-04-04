@@ -29,6 +29,8 @@ class Message(BaseDocument):
         description='the id of the proxy message')
     author_id: int = Field(
         description='the author id')
+    user: PydanticObjectId = Field(
+        description='the usergroup author id')
     channel_id: int = Field(
         description='the channel id')
     member_id: PydanticObjectId = Field(

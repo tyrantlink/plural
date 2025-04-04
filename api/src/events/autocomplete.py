@@ -7,7 +7,7 @@ from beanie import PydanticObjectId
 from bson.errors import InvalidId
 from thefuzz import process
 
-from plural.db import ProxyMember, Group, Usergroup, redis
+from plural.db import ProxyMember, Group, redis
 
 from src.discord import (
     ApplicationCommandInteractionData,
@@ -134,7 +134,7 @@ async def autocomplete_member(
         sort: bool
     ) -> list[ApplicationCommand.Option.Choice]:
         hide_groups = (len(groups) == 1 or (
-            (user := await Usergroup.get_by_user(interaction.author_id))
+            (user := await interaction.get_usergroup())
             and not user.config.groups_in_autocomplete
         ))
 
@@ -202,7 +202,7 @@ async def autocomplete_member(
     if (cached := await cache_check(redis_key)):
         return cached
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     groups = await Group.find({
         '$or': [
@@ -275,7 +275,7 @@ async def autocomplete_group(
     if (cached := await cache_check(redis_key)):
         return cached
 
-    usergroup = await Usergroup.get_by_user(interaction.author_id)
+    usergroup = await interaction.get_usergroup()
 
     groups = await Group.find({
         '$or': [

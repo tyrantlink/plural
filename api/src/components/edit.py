@@ -43,7 +43,7 @@ async def _edit(
     await can_edit(interaction, message)
 
     db_message = await DBMessage.find_one({
-        'author_id': interaction.author_id,
+        'user': (await interaction.get_usergroup()).id,
         'channel_id': interaction.channel_id,
         '$or': [
             {'original_id': message.id},
