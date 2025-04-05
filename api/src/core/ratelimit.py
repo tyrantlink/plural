@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from datetime import timedelta
 from typing import NamedTuple
+from hashlib import sha256
 from time import time
 
 
@@ -16,12 +17,15 @@ class RateLimitResponse(NamedTuple):
     remaining: int
     retry_after: int
     reset: int
+    bucket: str
 
     def as_headers(self) -> dict[str, str]:
         headers = {
             'X-RateLimit-Limit': str(self.limit),
             'X-RateLimit-Remaining': str(self.remaining),
-            'X-RateLimit-Reset': str(self.reset)
+            'X-RateLimit-Reset': str(self.reset),
+            'X-RateLimit-Reset-After': str(int(self.reset - time())),
+            'X-RateLimit-Bucket': self.bucket
         }
 
         if self.block:
@@ -71,9 +75,16 @@ async def ratelimit_check(
         if key in limit.keys
     ])
 
+    base_key, bucket = (
+        f'ratelimit:{key}:',
+        sha256(
+            f'{function.__name__}:{int(auth)}:{keys}'.encode()
+        ).hexdigest()[:32]
+    )
+
     response = await redis.execute_command(
         'CL.THROTTLE',
-        f'ratelimit:{key}:{function.__name__}:{int(auth)}:{keys}',
+        base_key + bucket,
         limit.limit - 1,
         limit.limit,
         limit.interval
@@ -84,5 +95,6 @@ async def ratelimit_check(
         limit=response[1],
         remaining=response[2],
         retry_after=response[3],
-        reset=int(time() + response[4])
+        reset=int(time() + response[4]),
+        bucket=bucket
     )
