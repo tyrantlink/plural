@@ -96,21 +96,17 @@ class MemberModel(BaseModel):
         if token.internal:
             return data
 
+        scope = usergroup.data.applications.get(
+            str(token.app_id), ApplicationScope.NONE
+        ).value
+
         if member.userproxy is not None and not (
-            usergroup.data.applications.get(
-                str(token.app_id), ApplicationScope.NONE
-            ).value &
-            ApplicationScope.USERPROXY_TOKENS.value
+            scope & ApplicationScope.USERPROXY_TOKENS.value
         ):
             data.userproxy.public_key = ''
             data.userproxy.token = ''
 
-        if not (
-            usergroup.data.applications.get(
-                str(token.app_id), ApplicationScope.NONE
-            ).value &
-            ApplicationScope.SP_TOKENS.value
-        ):
+        if not scope & ApplicationScope.SP_TOKENS.value:
             data.simplyplural_id = None
 
         return data

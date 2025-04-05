@@ -17,7 +17,9 @@ class AutoProxyPutModel(BaseModel):
     guild: str | None = Field(
         description='The guild id of the autoproxy; None if global')
     mode: AutoProxyMode = Field(
-        description='The mode of the autoproxy')
+        description='The mode of the autoproxy\n\nModes:\n\n' + '\n\n'.join([
+            f'`{mode.value}`: {mode.name.capitalize()}\n\n{mode.description}'
+            for mode in AutoProxyMode]))
     member: PydanticObjectId | None = Field(
         description='The member to proxy as')
     ts: datetime | None = Field(
