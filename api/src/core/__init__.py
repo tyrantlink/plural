@@ -44,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         from src.routers import (
             application,
             redis_proxy,
+            autoproxy,
             donation,
             discord,
             message,
@@ -59,12 +60,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         await sync_commands(env.bot_token)
 
         app.include_router(application.router)
-        app.include_router(redis_proxy.router)
-        app.include_router(donation.router)
+        app.include_router(autoproxy.router)
         app.include_router(discord.router)
-        app.include_router(message.router)
-        app.include_router(member.router)
+        app.include_router(donation.router)
         app.include_router(group.router)
+        app.include_router(member.router)
+        app.include_router(message.router)
+        app.include_router(redis_proxy.router)
         app.include_router(user.router)
 
     create_strong_task(install_count_loop())
