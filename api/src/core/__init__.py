@@ -48,6 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
             discord,
             message,
             member,
+            group,
             user
         )
 
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         app.include_router(discord.router)
         app.include_router(message.router)
         app.include_router(member.router)
+        app.include_router(group.router)
         app.include_router(user.router)
 
     create_strong_task(install_count_loop())

@@ -34,8 +34,12 @@ def _snowflake_to_age(snowflake: int) -> float:
 @router.head(
     '/{channel_id}/{message_id}',
     name='Check Message',
-    description="""
-        Check if a message was either deleted or created by /plu/ral""",
+    description=dedent("""
+    Check if a message was either deleted or created by /plu/ral
+
+    This endpoint *can* be used unauthorized, but rate limits are much higher when an auth token is provided.
+
+    Note: unlike the GET endpoint, this one does not block, /plu/ral knows when a proxy is in progress and will return a 200 immediately."""),
     responses={
         200: response(
             description='Message found',
