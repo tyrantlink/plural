@@ -24,7 +24,7 @@ class RateLimitResponse(NamedTuple):
             'X-RateLimit-Limit': str(self.limit),
             'X-RateLimit-Remaining': str(self.remaining),
             'X-RateLimit-Reset': str(self.reset),
-            'X-RateLimit-Reset-After': str(int(self.reset - time())),
+            'X-RateLimit-Reset-After': f'{self.reset - time():.3f}',
             'X-RateLimit-Bucket': self.bucket
         }
 
