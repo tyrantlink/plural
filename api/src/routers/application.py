@@ -18,7 +18,7 @@ router = APIRouter(prefix='/application', tags=['Applications'])
 
 
 @router.get(
-    '/',
+    '',
     name='Get Current Application',
     description="""
     Get the current application""",

@@ -6,7 +6,7 @@ from plural.missing import MISSING, Optional, is_not_missing
 @dataclass
 class Example:
     name: str
-    value: dict
+    value: dict | list
     mimetype: str = 'application/json'
 
 

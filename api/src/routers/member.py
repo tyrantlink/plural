@@ -62,7 +62,7 @@ async def get__member(
             await (await member.get_group()).get_usergroup(),
             member,
             token
-        ).model_dump())
+        ).model_dump(mode='json'))
     )
 
 

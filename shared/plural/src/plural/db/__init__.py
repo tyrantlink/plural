@@ -1,5 +1,5 @@
 from redis.asyncio import Redis, BlockingConnectionPool
-from pymongo import AsyncMongoClient
+from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
 
 from plural.otel import span
@@ -41,7 +41,7 @@ redis: Redis
 async def mongo_init() -> None:
     with span('initializing mongo'):
         await init_beanie(
-            AsyncMongoClient(env.mongo_url)['plural'],
+            AsyncIOMotorClient(env.mongo_url)['plural'],
             document_models=[
                 Application,
                 AutoProxy,

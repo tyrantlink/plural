@@ -134,8 +134,8 @@ async def get__message(
     if _snowflake_to_age(message_id) > 604_800:  # 7 days
         return Response(
             status_code=410,
-            headers={'Cache-Control': 'public, max-age=604800'},
             media_type='application/json',
+            headers={'Cache-Control': 'public, max-age=604800'},
             content=dumps(
                 {'detail': 'Message is older than 7 days; status is unknown'}
             )
@@ -163,8 +163,8 @@ async def get__message(
     if message is None and not pending:
         return Response(
             status_code=404,
-            headers={'Cache-Control': 'public, max-age=604800'},
             media_type='application/json',
+            headers={'Cache-Control': 'public, max-age=604800'},
             content=dumps({'detail': 'Message not found'})
         )
 
@@ -183,8 +183,8 @@ async def get__message(
     if message is None:
         return Response(
             status_code=404,
-            headers={'Cache-Control': 'public, max-age=604800'},
             media_type='application/json',
+            headers={'Cache-Control': 'public, max-age=604800'},
             content=dumps({'detail': 'Message not found (timeout)'})
         )
 
@@ -192,9 +192,9 @@ async def get__message(
         status_code=200,
         media_type='application/json',
         headers={'Cache-Control': 'public, max-age=604800'},
-        content=MessageModel.from_message(
+        content=dumps(MessageModel.from_message(
             message
-        ).model_dump_json()
+        ).model_dump(mode='json'))
     )
 
 
@@ -266,8 +266,8 @@ async def get__message_member(
     if message is None and not pending:
         return Response(
             status_code=404,
-            headers={'Cache-Control': 'public, max-age=604800'},
             media_type='application/json',
+            headers={'Cache-Control': 'public, max-age=604800'},
             content=dumps({'detail': 'Message not found'})
         )
 
@@ -286,8 +286,8 @@ async def get__message_member(
     if message is None:
         return Response(
             status_code=404,
-            headers={'Cache-Control': 'public, max-age=604800'},
             media_type='application/json',
+            headers={'Cache-Control': 'public, max-age=604800'},
             content=dumps({'detail': 'Message not found (timeout)'})
         )
 
@@ -296,8 +296,8 @@ async def get__message_member(
     if member is None:
         return Response(
             status_code=404,
-            headers={'Cache-Control': 'public, max-age=604800'},
             media_type='application/json',
+            headers={'Cache-Control': 'public, max-age=604800'},
             content=dumps({'detail': 'Member not found'})
         )
 
@@ -306,8 +306,8 @@ async def get__message_member(
     return Response(
         status_code=200,
         media_type='application/json',
-        content=AuthorModel.from_member(
+        content=dumps(AuthorModel.from_member(
             usergroup,
             member
-        ).model_dump_json()
+        ).model_dump(mode='json'))
     )
