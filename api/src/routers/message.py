@@ -54,7 +54,7 @@ def _snowflake_to_age(snowflake: int) -> float:
             content=None)})
 @name('/messages/:id/:id')
 @ratelimit(5, timedelta(seconds=5), auth=False)
-@ratelimit(500, timedelta(seconds=1))
+@ratelimit(30, timedelta(seconds=10), ['channel_id'])
 async def head__message(
     channel_id: int,
     message_id: int
@@ -125,7 +125,7 @@ async def head__message(
                 name='Message is older than 7 days',
                 value={'detail': 'Message is older than 7 days; status is unknown'})])})
 @name('/messages/:id/:id')
-@ratelimit(500, timedelta(seconds=1))
+@ratelimit(20, timedelta(seconds=10), ['channel_id'])
 async def get__message(
     channel_id: int,
     message_id: int,
@@ -228,7 +228,7 @@ async def get__message(
                 name='Message is older than 7 days',
                 value={'detail': 'Message is older than 7 days; status is unknown'})])})
 @name('/messages/:id/:id/member')
-@ratelimit(500, timedelta(seconds=1))
+@ratelimit(20, timedelta(seconds=10), ['channel_id'])
 async def get__message_member(
     channel_id: int,
     message_id: int,

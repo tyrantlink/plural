@@ -77,6 +77,7 @@ async def post__interaction(
     '/discord/event',
     dependencies=[Depends(discord_key_validator)])
 @name('/event')
+@suppress()
 async def post__event(
     event: WebhookEvent
 ) -> Response:
