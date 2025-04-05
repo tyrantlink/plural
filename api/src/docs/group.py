@@ -48,7 +48,7 @@ group_response = response(
 )
 
 multi_group_response = response(
-    description='Members Found',
+    description='Groups Found',
     model=list[GroupModel],
     examples=[
         Example(

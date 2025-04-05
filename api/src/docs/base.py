@@ -8,6 +8,8 @@ class Example:
     name: str
     value: dict | list
     mimetype: str = 'application/json'
+    summary: Optional[str] = MISSING
+    description: Optional[str] = MISSING
 
 
 def response(
@@ -39,12 +41,30 @@ def response(
                     'examples': {}
                 }
 
+            detail = {
+                'value': example.value
+            }
+
+            if is_not_missing(example.summary):
+                detail['summary'] = example.summary
+
             out['content'
                 ][example.mimetype
                   ]['examples'][
                 example.name
-            ] = {
-                'value': example.value
-            }
+            ] = detail
 
     return out
+
+
+def request(
+    examples: list[Example]
+) -> dict:
+    return {
+        example.name: {'value': example.value} |
+        ({'summary': example.summary}
+         if is_not_missing(example.summary) else {}) |
+        ({'description': example.description}
+         if is_not_missing(example.description) else {})
+        for example in examples
+    }

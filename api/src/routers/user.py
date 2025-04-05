@@ -93,7 +93,7 @@ async def get__user(
                     value={'detail': 'User has not registered with /plu/ral.'})])})
 @name('/users/:id/authorize')
 @ratelimit(1, timedelta(hours=1), ['user_id'])
-async def post__users_authorize(
+async def post__user_authorize(
     user_id: int,
     token: TokenData = Security(api_key_validator),  # noqa: B008
     oauth: str | None = None,
