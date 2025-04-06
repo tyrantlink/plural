@@ -167,7 +167,7 @@ async def message_plural_proxy_info(
     ).add_field(
         name='Author',
         value=f'<@{db_message.author_id}>',
-        inline=True
+        inline=False
     ).set_footer(
         'original message id: ' + (
             str(db_message.original_id)
@@ -184,25 +184,32 @@ async def message_plural_proxy_info(
     )
 
     if not usergroup.config.private_member_info:
-        embed.add_field(
-            name='Proxy Reason',
-            value=db_message.reason,
-            inline=False
-        )
-
         if member.pronouns:
-            embed.fields.insert(1, Embed.Field(
+            embed.add_field(
                 name='Pronouns',
                 value=member.pronouns,
                 inline=True
-            ))
+            )
 
         if member.birthday:
-            embed.fields.insert(2, Embed.Field(
+            embed.add_field(
                 name='Birthday',
                 value=member.birthday,
                 inline=True
-            ))
+            )
+
+        if member.color:
+            embed.add_field(
+                name='Color',
+                value=f'#{member.color:06x}',
+                inline=True
+            )
+
+    embed.add_field(
+        name='Proxy Reason',
+        value=db_message.reason,
+        inline=False
+    )
 
     if usergroup.data.supporter_tier == SupporterTier.SUPPORTER:
         embed.footer.text += '\n🌟/plu/ral supporter🌟'

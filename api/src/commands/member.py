@@ -73,11 +73,11 @@ async def slash_member_info(
                 await Guild.get_by_id(interaction.guild_id)
                 if interaction.guild_id
                 else None)),
-        inline=False
+        inline=True
     ).add_field(
         name='Meta',
         value=member.meta or 'None',
-        inline=False
+        inline=True
     ).add_field(
         name='Group',
         value=group.name,
@@ -85,11 +85,18 @@ async def slash_member_info(
     ).add_field(
         name='Pronouns',
         value=member.pronouns or 'None',
-        inline=False
+        inline=True
     ).add_field(
         name='Birthday',
         value=member.birthday or 'None',
-        inline=False
+        inline=True
+    ).add_field(
+        name='Color',
+        value=(
+            f'`#{member.color:06x}`'
+            if member.color else
+            'None'),
+        inline=True
     )
 
     avatar_url = (
