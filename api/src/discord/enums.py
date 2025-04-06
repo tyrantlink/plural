@@ -21,6 +21,8 @@ class ApplicationCommandScope(Enum):
     """Command will be registered to the primary app (/plu/ral)"""
     USERPROXY = 2
     """Command will be registered to userproxies"""
+    INFO = 3
+    """Only the proxy info command will be registered"""
 
 
 class CharEnumMeta(EnumMeta):

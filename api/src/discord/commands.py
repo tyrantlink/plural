@@ -31,7 +31,8 @@ commands: dict[
     dict[str, ApplicationCommand]
 ] = {
     ApplicationCommandScope.PRIMARY: {},
-    ApplicationCommandScope.USERPROXY: {}
+    ApplicationCommandScope.USERPROXY: {},
+    ApplicationCommandScope.INFO: {}
 }
 
 COMMAND_REF_MAP: dict[str, int] = {}
@@ -50,6 +51,8 @@ async def _put_all_commands(
         commands[(
             ApplicationCommandScope.PRIMARY
             if application_id == env.application_id else
+            ApplicationCommandScope.INFO
+            if application_id == env.info_application_id else
             ApplicationCommandScope.USERPROXY
         )]
     )
@@ -112,15 +115,17 @@ async def sync_commands(
     application_id = get_bot_id_from_token(token)
 
     with span(f'sync_commands with {application_id}'):
-        scope = (
-            ApplicationCommandScope.PRIMARY
-            if application_id == env.application_id else
-            ApplicationCommandScope.USERPROXY
-        )
+        match application_id:
+            case env.application_id:
+                scope = ApplicationCommandScope.PRIMARY
+            case env.info_application_id:
+                scope = ApplicationCommandScope.INFO
+            case _:
+                scope = ApplicationCommandScope.USERPROXY
 
         usergroup, member = None, None
 
-        if token != env.bot_token:
+        if token not in env.fp_tokens:
             if user_id is None:
                 raise ValueError(
                     'user_id must be provided when syncing userproxy commands'
@@ -308,6 +313,12 @@ def _base_command(
         )
 
         commands[scope][name] = command
+
+        if (
+            command.type == ApplicationCommandType.MESSAGE and
+            command.name == '/plu/ral proxy info'
+        ):
+            commands[ApplicationCommandScope.INFO][name] = command
 
         return command
 

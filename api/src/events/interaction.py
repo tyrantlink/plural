@@ -76,6 +76,8 @@ async def _on_application_command(interaction: Interaction) -> None:
     scope = (
         ApplicationCommandScope.PRIMARY
         if interaction.application_id == env.application_id else
+        ApplicationCommandScope.INFO
+        if interaction.application_id == env.info_application_id else
         ApplicationCommandScope.USERPROXY
     )
 

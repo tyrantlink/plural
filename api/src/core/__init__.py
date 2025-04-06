@@ -34,8 +34,8 @@ PATH_PATTERN = compile(
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator:
     with span(f'initializing api instance {INSTANCE}'):
+        await env.init()
         await gather(
-            env.init(),
             mongo_init(),
             redis_init(),
             emoji_init()
@@ -58,6 +58,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         import src.commands  # noqa: F401
 
         await sync_commands(env.bot_token)
+
+        if env.info_bot_token:
+            await sync_commands(env.info_bot_token)
 
         app.include_router(application.router)
         app.include_router(autoproxy.router)

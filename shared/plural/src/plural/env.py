@@ -21,6 +21,7 @@ class Env(BaseModel):
     cdn_upload_token: str
     admins: set[int]
     patreon_secret: str
+    info_bot_token: str
 
     @classmethod
     def new(cls) -> Self:
@@ -36,7 +37,8 @@ class Env(BaseModel):
             'admins': (
                 set(map(int, environ.get('ADMINS', '').split(',')))
                 if environ.get('ADMINS') else set()),
-            'patreon_secret': environ.get('PATREON_SECRET', '')
+            'patreon_secret': environ.get('PATREON_SECRET', ''),
+            'info_bot_token': environ.get('INFO_BOT_TOKEN', '')
         })
 
     @property

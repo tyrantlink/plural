@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field, field_validator
-from beanie import PydanticObjectId
+from beanie import PydanticObjectId  # noqa: TC002
 
 from plural.db.enums import ApplicationScope
 

@@ -144,6 +144,8 @@ async def _discord_key_validator(
     match application_id:
         case env.application_id:
             verify_key = VerifyKey(bytes.fromhex(env.public_key))
+        case env.info_application_id:
+            verify_key = VerifyKey(bytes.fromhex(env.info_public_key))
         case _:
             member = await ProxyMember.find_one({
                 'userproxy.bot_id': application_id
@@ -171,9 +173,9 @@ async def _discord_key_validator(
             400, 'Invalid interaction or webhook event'
         ) from invalid
 
-    if (  # ? always accept pings and interactions directed at the main bot
+    if (  # ? always accept pings and interactions directed at the main bots
         interaction.type.value == 1 or
-        interaction.application_id == env.application_id
+        interaction.application_id in env.fp_application_ids
     ):
         return True
 

@@ -83,7 +83,7 @@ async def get__user_autoproxy(
     responses={
         200: member_response,
         400: response(
-            description='Autoproxy member is not set;',
+            description='Autoproxy member is not set',
             examples=[Example(
                 name='Autoproxy member is not set',
                 value={'detail': 'Autoproxy member is not set.'})]),
