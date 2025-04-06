@@ -131,7 +131,7 @@ async def message_plural_edit(
 
 @message_command(
     name='/plu/ral proxy info',
-    contexts=ApplicationIntegrationType.ALL(),
+    contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
 async def message_plural_proxy_info(
     interaction: Interaction,
