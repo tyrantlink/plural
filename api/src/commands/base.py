@@ -150,6 +150,8 @@ async def message_plural_proxy_info(
     if member is None:
         raise InteractionError('Member not found')
 
+    group = await member.get_group()
+
     usergroup = await Usergroup.get_by_user(db_message.author_id)
 
     embed = Embed(
@@ -176,7 +178,7 @@ async def message_plural_proxy_info(
             if db_message.reason == '/say command' else
             'sent through /plu/ral api')
     ).set_thumbnail(
-        member.avatar_url or (await member.get_group()).avatar_url
+        member.avatar_url or group.avatar_url
         if db_message.reason == '/say command' else
         message.author.avatar_url
     )
@@ -205,8 +207,28 @@ async def message_plural_proxy_info(
     if usergroup.data.supporter_tier == SupporterTier.SUPPORTER:
         embed.footer.text += '\n🌟/plu/ral supporter🌟'
 
+    embeds = [embed]
+
+    if interaction.author_id in env.admins:
+        embeds.append(Embed(
+            title='Debug Info',
+            color=0xd0aa78
+        ).add_field(
+            name='Member ID',
+            value=str(member.id),
+        ).add_field(
+            name='Group ID',
+            value=str(group.id),
+        ).add_field(
+            name='Usergroup ID',
+            value=str(usergroup.id),
+        ).add_field(
+            name='Avatar URL',
+            value=member.avatar_url or group.avatar_url or 'None'
+        ))
+
     await interaction.response.send_message(
-        embeds=[embed]
+        embeds=embeds
     )
 
 
