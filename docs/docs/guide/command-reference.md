@@ -23,6 +23,16 @@ Running this command will respond with a pop-up, allowing you to make changes to
 ### /plu/ral proxy info
 This command is used to tie a proxied message to the original sender. Use on any proxied message to get the original sender's information.
 
+#### proxy info without /plu/ral
+If you do not use /plu/ral and would like to see the original sender's information, <br>
+you can add the [/plu/ral info bot](https://discord.com/oauth2/authorize?client_id=1358295664882094090) to your account.
+
+This is a minimal bot with just the proxy info command, that can be used anywhere.
+
+You do **NOT** need to add this bot to your account if you are using /plu/ral, as it is already included in the bot.
+
+This bot cannot be added to servers.
+
 ## General
 ### /ping
 - Interaction latency
