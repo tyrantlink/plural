@@ -34,11 +34,10 @@ class Env(BaseEnv):
                 await self._init_token(self.bot_token)
             )
 
-            if not self.info_bot_token:
-                return
-
             self._info_application_id, self._info_public_key = (
                 await self._init_token(self.info_bot_token)
+                if self.info_bot_token else
+                (None, None)
             )
 
     @property
@@ -56,17 +55,11 @@ class Env(BaseEnv):
         return self._public_key
 
     @property
-    def info_application_id(self) -> str:
-        if getattr(self, '_info_application_id', None) is None:
-            raise ValueError('env not initialized')
-
+    def info_application_id(self) -> int | None:
         return self._info_application_id
 
     @property
-    def info_public_key(self) -> str:
-        if getattr(self, '_info_public_key', None) is None:
-            raise ValueError('env not initialized')
-
+    def info_public_key(self) -> str | None:
         return self._info_public_key
 
     @property

@@ -97,7 +97,7 @@ async def _bio(
                 label='Bio',
                 min_length=0,
                 max_length=max_length,
-                required=True,
+                required=False,
                 value=current_bio[:max_length])],
             extra=[member]
         )
