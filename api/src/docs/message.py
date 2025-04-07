@@ -1,3 +1,5 @@
+from beanie import PydanticObjectId
+
 from src.models.message import MessageModel, AuthorModel
 
 from .base import Example, response
@@ -14,6 +16,7 @@ message_response = response(
                 proxy_id='1353206397420179466',
                 author_id='250797109022818305',
                 channel_id='1307354421394669608',
+                member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Matched proxy tag ​`text`​`--steve`',
                 webhook_id='1347606225851912263'
             ).model_dump(mode='json')),
@@ -24,6 +27,7 @@ message_response = response(
                 proxy_id='1353202124502073398',
                 author_id='250797109022818305',
                 channel_id='1292096869974937736',
+                member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Matched proxy tag ​`text`​`--steve`',
                 webhook_id=None
             ).model_dump(mode='json')),
@@ -34,6 +38,7 @@ message_response = response(
                 proxy_id='1353212365616709693',
                 author_id='250797109022818305',
                 channel_id='1307354421394669608',
+                member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Userproxy /proxy command',
                 webhook_id=None
             ).model_dump(mode='json')),
@@ -44,6 +49,7 @@ message_response = response(
                 proxy_id='1353206397420179466',
                 author_id='250797109022818305',
                 channel_id='1307354421394669608',
+                member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Matched proxy tag ​`text`​`--steve`',
                 webhook_id='1347606225851912263'
             ).model_dump(mode='json')),
@@ -54,6 +60,7 @@ message_response = response(
                 proxy_id='1353202124502073398',
                 author_id='250797109022818305',
                 channel_id='1292096869974937736',
+                member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Matched proxy tag ​`text`​`--steve`',
                 webhook_id=None
             ).model_dump(mode='json')
@@ -69,6 +76,7 @@ author_response = response(
         Example(
             name='Message Author',
             value=AuthorModel(
+                id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 name='steve',
                 pronouns='any/all',
                 bio='example bio',
@@ -81,6 +89,7 @@ author_response = response(
         Example(
             name='Message Author (Private)',
             value=AuthorModel(
+                id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 name='steve',
                 pronouns='',
                 bio='',

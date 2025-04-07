@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from beanie import PydanticObjectId  # noqa: TC002
 from pydantic import BaseModel
 
 from plural.db.enums import SupporterTier
@@ -15,6 +16,7 @@ class MessageModel(BaseModel):
     proxy_id: str
     author_id: str
     channel_id: str
+    member_id: PydanticObjectId
     reason: str
     webhook_id: str | None
 
@@ -28,6 +30,7 @@ class MessageModel(BaseModel):
             proxy_id=str(message.proxy_id),
             author_id=str(message.author_id),
             channel_id=str(message.channel_id),
+            member_id=message.member_id,
             reason=message.reason,
             webhook_id=(
                 str(message.webhook_id)
@@ -38,6 +41,7 @@ class MessageModel(BaseModel):
 
 
 class AuthorModel(BaseModel):
+    id: PydanticObjectId
     name: str
     pronouns: str
     bio: str
@@ -55,6 +59,7 @@ class AuthorModel(BaseModel):
     ) -> AuthorModel:
         private = usergroup.config.private_member_info
         return cls(
+            id=member.id,
             name=member.name,
             pronouns=member.pronouns if not private else '',
             bio=member.bio if not private else '',
