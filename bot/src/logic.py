@@ -20,6 +20,7 @@ from plural.db.enums import AutoProxyMode, ReplyFormat
 from plural.otel import span, cx, get_counter, inject
 from plural.errors import (
     PluralExceptionCritical,
+    PluralException,
     HTTPException,
     Unauthorized,
     Forbidden,
@@ -55,6 +56,10 @@ CHANNEL_MENTION_PATTERN = compile(r'<#(\d+)>')
 NQN_EMOJI_PATTERN = compile(
     r'\[.+\]\((https://cdn\.discordapp\.com/emojis/\d+\..+size(?:.+animated)?.+name.+)\)')
 BLOCK_PATTERN = compile(r'{{(.+?)}}')
+
+
+class OverWebhookLimit(PluralException):
+    ...
 
 
 @dataclass
@@ -656,6 +661,9 @@ async def get_webhook(
          )),
         {}
     )
+
+    if not webhook and len(webhooks) >= 15:
+        raise OverWebhookLimit('Webhook limit reached.')
 
     return webhook or await _new_webhook(
         channel_id,
@@ -1499,6 +1507,10 @@ async def webhook_handler(
     except (NotFound, Forbidden):
         debug_log.append(
             'Bot does not have permission to create webhooks.')
+        return ProxyResponse.failure(False)
+    except OverWebhookLimit:
+        debug_log.append(
+            'Webhook limit (15) reached for this channel. /plu/ral requires 2 webhooks. Please contact a moderator.')
         return ProxyResponse.failure(False)
 
     if webhook.get('application_id', '1') is not None:
