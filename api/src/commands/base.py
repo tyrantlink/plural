@@ -1006,7 +1006,7 @@ async def slash_reproxy(
             autocomplete=True)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
-async def slash_proxy(
+async def slash_say(
     interaction: Interaction,
     message: str,
     member: ProxyMember | None = None

@@ -1431,6 +1431,7 @@ async def _process_proxy(
             member_id=proxy.member.id,
             reason=proxy.reason,
             webhook_id=message.get('webhook_id'),
+            reference_id=event.get('referenced_message', {}).get('id')
         ).save()
 
         pipeline = redis.pipeline()

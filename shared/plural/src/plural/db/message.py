@@ -41,6 +41,9 @@ class Message(BaseDocument):
     webhook_id: int | None = Field(
         None,
         description='the webhook id of the message')
+    reference_id: int | None = Field(
+        None,
+        description='the id of the referenced message; None if not a reply')
     bot_id: int | None = Field(
         None,
         description='the bot id of the message')

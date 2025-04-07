@@ -19,6 +19,7 @@ class MessageModel(BaseModel):
     member_id: PydanticObjectId
     reason: str
     webhook_id: str | None
+    reference_id: str | None
 
     @classmethod
     def from_message(cls, message: Message) -> MessageModel:
@@ -35,6 +36,10 @@ class MessageModel(BaseModel):
             webhook_id=(
                 str(message.webhook_id)
                 if message.webhook_id is not None else
+                None),
+            reference_id=(
+                str(message.reference_id)
+                if message.reference_id is not None else
                 None
             )
         )

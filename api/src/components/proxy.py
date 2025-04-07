@@ -82,6 +82,7 @@ async def modal_proxy(
             member_id=(await ProxyMember.find_one({
                 'userproxy.bot_id': interaction.application_id})).id,
             reason=f'Userproxy {'Reply' if reply_id else '/proxy'} command',
+            reference_id=reply_id,
             bot_id=interaction.application_id,
             interaction_token=interaction.token
         ).save()
@@ -141,6 +142,7 @@ async def modal_proxy(
         member_id=(await ProxyMember.find_one({
             'userproxy.bot_id': interaction.application_id})).id,
         reason='Userproxy Reply command',
+        reference_id=reply_id,
         bot_id=interaction.application_id,
         interaction_token=interaction.token,
     ).save()

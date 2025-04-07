@@ -18,7 +18,8 @@ message_response = response(
                 channel_id='1307354421394669608',
                 member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Matched proxy tag ​`text`​`--steve`',
-                webhook_id='1347606225851912263'
+                webhook_id='1347606225851912263',
+                reference_id=None
             ).model_dump(mode='json')),
         Example(
             name='Userproxy bot proxy',
@@ -29,7 +30,8 @@ message_response = response(
                 channel_id='1292096869974937736',
                 member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Matched proxy tag ​`text`​`--steve`',
-                webhook_id=None
+                webhook_id=None,
+                reference_id=None
             ).model_dump(mode='json')),
         Example(
             name='Userproxy command',
@@ -40,7 +42,8 @@ message_response = response(
                 channel_id='1307354421394669608',
                 member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Userproxy /proxy command',
-                webhook_id=None
+                webhook_id=None,
+                reference_id=None
             ).model_dump(mode='json')),
         Example(
             name='Webhook proxy (api)',
@@ -51,7 +54,8 @@ message_response = response(
                 channel_id='1307354421394669608',
                 member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Matched proxy tag ​`text`​`--steve`',
-                webhook_id='1347606225851912263'
+                webhook_id='1347606225851912263',
+                reference_id=None
             ).model_dump(mode='json')),
         Example(
             name='Userproxy bot proxy (api)',
@@ -62,7 +66,8 @@ message_response = response(
                 channel_id='1292096869974937736',
                 member_id=PydanticObjectId('67cab2a55f8b2e7fd3d27d0c'),
                 reason='Matched proxy tag ​`text`​`--steve`',
-                webhook_id=None
+                webhook_id=None,
+                reference_id=None
             ).model_dump(mode='json')
         )
     ]
