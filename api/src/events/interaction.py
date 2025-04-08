@@ -293,13 +293,12 @@ async def parse_command_options(
                     case _:
                         kwargs[option.name] = option.value
                         continue
-                try:
-                    kwargs[option.name] = await converter(
-                        interaction,
-                        option.value,
-                        **converter_kwargs)
-                except InteractionError as e:
-                    await on_interaction_error(interaction, e)
+
+                kwargs[option.name] = await converter(
+                    interaction,
+                    option.value,
+                    **converter_kwargs
+                )
             case _:
                 kwargs[option.name] = option.value
 
