@@ -40,7 +40,7 @@ usergroup_response = response(
                 include_attribution=True),
             data=UsergroupModel.Data(
                 supporter_tier=SupporterTier.DEVELOPER,
-                image_limit=1000,
+                image_limit=5000,
                 sp_token=None,
                 sp_id=None
             )

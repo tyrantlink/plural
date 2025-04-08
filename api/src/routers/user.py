@@ -146,7 +146,11 @@ async def post__user_authorize(
             title='Authorization Request',
             message=(
                 f'{token.application.name} is requesting '
-                'access to your /plu/ral data.')
+                'access to your /plu/ral data.\n\n'
+                'Authorized Applcations can access all of your /plu/ral data, '
+                'even when the Private Member Info option is enabled.\n\n'
+                'Applications can **not** access userproxy/simplyplural tokens unless '
+                'you have given them access in the application command. (coming at some point)')
         )], [ActionRow(components=[
             button_authorize.with_overrides(
                 extra=[str(token.app_id), token.application.scope.value]),

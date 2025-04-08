@@ -96,7 +96,7 @@ class Usergroup(BaseDocument):
             default_factory=dict,
             description='the applications the user has authorized')
         image_limit: int = Field(
-            default=1000,
+            default=5000,
             description='the maximum number of images a user can upload')
         sp_token: str | None = Field(
             None,
