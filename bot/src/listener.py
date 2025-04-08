@@ -29,7 +29,7 @@ async def on_event(redis_id: str, event_json: str, start_time: int) -> None:
         case 'WEBHOOKS_UPDATE':
             await on_webhooks_update(event['d'], start_time)
         case _:
-            raise ValueError(f'Unknown event type: {event["t"]}')
+            raise ValueError(f'Unknown event type: {event['t']}')
 
     await redis.xack('discord_events', 'plural_consumers', redis_id)
 
@@ -84,12 +84,12 @@ async def on_message_update(event: dict, start_time: int) -> None:
     if _preproxy_check(event):
         return
 
-    channel = await Cache.get(f'discord:channel:{event["channel_id"]}')
+    channel = await Cache.get(f'discord:channel:{event['channel_id']}')
 
     if (
         channel is None or
         channel.data.get('last_message_id') != event['id'] or
-        await redis.get(f'pending_proxy:{event["id"]}')
+        await redis.get(f'pending_proxy:{event['channel_id']}:{event['id']}')
     ):
         return
 
@@ -117,7 +117,7 @@ async def on_reaction_add(event: dict, start_time: int) -> None:
     if int(event['user_id']) != db_message.author_id:
         return
 
-    channel = await Cache.get(f'discord:channel:{event["channel_id"]}')
+    channel = await Cache.get(f'discord:channel:{event['channel_id']}')
 
     if channel is None:
         return
@@ -161,7 +161,7 @@ async def on_reaction_add(event: dict, start_time: int) -> None:
 
         await request(Route(
             'DELETE',
-            f'/channels/{event["channel_id"]}/messages/{event["message_id"]}',
+            f'/channels/{event['channel_id']}/messages/{event['message_id']}',
             token=member.userproxy.token
         ))
 
