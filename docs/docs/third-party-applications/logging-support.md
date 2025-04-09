@@ -36,7 +36,7 @@ async def check_plural(message_id: int | str) -> bool:
         return response.status == 200
 
 async def on_message_delete(message: Message) -> None:
-    if await check_plural(message.id):
+    if message.author.bot and await check_plural(message.id):
         print(f'message {message.id} was deleted by /plu/ral; skipping')
         return
     ...
@@ -59,7 +59,7 @@ def check_plural(message_id: int | str) -> bool:
     return response.status_code == 200
 
 async def on_message_delete(message: Message) -> None:
-    if await check_plural(message.id):
+    if message.author.bot and await check_plural(message.id):
         print(f'message {message.id} was deleted by /plu/ral; skipping')
         return
     ...
