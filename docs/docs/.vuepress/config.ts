@@ -27,7 +27,7 @@ export default defineUserConfig({
     hostname: 'https://plural.gg',
     logo: '/images/plural.png',
     repo: 'tyrantlink/plural',
-    docsDir: 'docs',
+    docsDir: '/docs/docs',
     locales: {
       '/': {
         navbar: navbarEn,
