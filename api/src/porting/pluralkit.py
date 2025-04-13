@@ -188,7 +188,7 @@ class PluralKitExport(BaseExport):
                 bio=member.description or '',
                 birthday=member.birthday or '',
                 color=get_color(member.color),
-                avatar_url=member.avatar_url,
+                avatar_url=member.webhook_avatar_url or member.avatar_url,
                 proxy_tags=[StandardExport.Member.ProxyTag(
                     prefix=proxy_tag.prefix or '',
                     suffix=proxy_tag.suffix or '',
