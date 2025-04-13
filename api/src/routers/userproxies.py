@@ -51,6 +51,6 @@ async def get__user_userproxies(
         status_code=200,
         media_type='application/json',
         headers={
-            'Etag': usergroup.data.userproxy_version},
+            'x-userproxy-version': usergroup.data.userproxy_version},
         content=value
     )
