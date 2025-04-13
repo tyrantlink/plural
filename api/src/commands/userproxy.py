@@ -299,7 +299,7 @@ async def _delete_userproxy(
 async def _permission_check(
     interaction: Interaction
 ) -> bool:
-    if not (interaction.member and interaction.member.permissions):
+    if not interaction.member:
         return False
 
     error = ''
