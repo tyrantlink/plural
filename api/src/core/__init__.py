@@ -44,6 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         from src.routers import (
             application,
             redis_proxy,
+            userproxies,
             autoproxy,
             donation,
             discord,
@@ -71,6 +72,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
         app.include_router(message.router)
         app.include_router(redis_proxy.router)
         app.include_router(user.router)
+        app.include_router(userproxies.router)
 
     create_strong_task(install_count_loop())
 
@@ -186,7 +188,7 @@ async def ratelimiter(
     call_next: Callable[..., Awaitable[Any]]
 ) -> Any:  # noqa: ANN401
     from src.core.ratelimit import ratelimit_check
-    from src.core.auth import api_key_validator
+    from src.core.auth import api_key_validator, selfhosting_key_validator
 
     if (
         request.headers.get('authorization') ==
@@ -210,7 +212,11 @@ async def ratelimiter(
 
     if auth:
         try:
-            await api_key_validator(request.headers['Authorization'])
+            await (
+                selfhosting_key_validator
+                if route.path in {'/userproxies'} else
+                api_key_validator
+            )(request.headers['Authorization'])
         except HTTPException as e:
             return Response(
                 dumps(e.detail)

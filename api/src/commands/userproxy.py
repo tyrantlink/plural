@@ -645,6 +645,17 @@ async def slash_userproxy_remove(
 
 
 @userproxy.command(
+    name='selfhost',
+    description='Generate a userproxy self-hosting token',
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def slash_userproxy_selfhost(
+    interaction: Interaction
+) -> None:
+    await PAGES['selfhost'](interaction, None, None)
+
+
+@userproxy.command(
     name='sync',
     description='Sync member with userproxy, generally not required unless something is broken',
     options=[

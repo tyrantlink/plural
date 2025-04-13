@@ -1,4 +1,5 @@
 from .pagination import PAGES as PAGINATION_PAGES
+from .selfhost import PAGES as SELFHOST_PAGES
 from .config import PAGES as CONFIG_PAGES
 from .proxy import PAGES as PROXY_PAGES
 from .help import PAGES as HELP_PAGES
@@ -17,6 +18,7 @@ __all__ = (
 
 PAGES = (
     PAGINATION_PAGES |
+    SELFHOST_PAGES |
     CONFIG_PAGES |
     PROXY_PAGES |
     HELP_PAGES |

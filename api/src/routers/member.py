@@ -83,7 +83,7 @@ async def get__member(
                 value={'detail': 'No Members found.'})])})
 @name('/users/:id/members')
 @ratelimit(1, timedelta(seconds=5), ['user_id'])
-async def get__users_members(
+async def get__user_members(
     user_id: int | PydanticObjectId,  # noqa: ARG001
     token: TokenData = Security(api_key_validator),  # noqa: B008
     usergroup: Usergroup = Depends(authorized_user),  # noqa: B008

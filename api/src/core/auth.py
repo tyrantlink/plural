@@ -58,8 +58,10 @@ class TokenData:
 
     @property
     def redis_key(self) -> str:
-        return 'token:' + sha256(
-            f'{int.from_bytes(self.app_id.binary)}.{self.timestamp}'.encode()
+        return 'token:' + sha256('.'.join([
+            str(int.from_bytes(self.app_id.binary)),
+            str(self.timestamp),
+            str(self.key)]).encode()
         ).hexdigest()
 
     @property
@@ -123,6 +125,40 @@ async def api_key_validator(token: str = Security(API_KEY)) -> TokenData:
     await redis.set(token_data.redis_key, '1', ex=3600)
 
     return token_data
+
+
+async def selfhosting_key_validator(token: str = Security(API_KEY)) -> Usergroup:
+    regex = match(TOKEN_MATCH_PATTERN, token)
+
+    if regex is None:
+        raise INVALID_TOKEN
+
+    token_data = TokenData(
+        app_id=PydanticObjectId(decode_b66(regex.group(1)).to_bytes(12)),
+        timestamp=decode_b66(regex.group(2)),
+        key=decode_b66(regex.group(3))
+    )
+
+    usergroup = await Usergroup.get(token_data.app_id)
+
+    if usergroup is None:
+        raise EXPIRED_TOKEN
+
+    if usergroup.data.selfhosting_token is None:
+        raise INVALID_TOKEN
+
+    cx().set_attribute('usergroup_id', str(usergroup.id))
+
+    if await redis.get(token_data.redis_key):
+        # ? token already validated, bcrypt is slow
+        return usergroup
+
+    if not await acheckpw(token, usergroup.data.selfhosting_token):
+        raise EXPIRED_TOKEN
+
+    await redis.set(token_data.redis_key, '1', ex=3600)
+
+    return usergroup
 
 
 async def _discord_key_validator(

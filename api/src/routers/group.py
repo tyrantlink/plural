@@ -70,7 +70,7 @@ async def get__member(
                 value={'detail': 'No Groups found.'})])})
 @name('/users/:id/groups')
 @ratelimit(1, timedelta(seconds=5), ['user_id'])
-async def get__users_groups(
+async def get__user_groups(
     user_id: int | PydanticObjectId,  # noqa: ARG001
     token: TokenData = Security(api_key_validator),  # noqa: ARG001, B008
     usergroup: Usergroup = Depends(authorized_user),  # noqa: B008

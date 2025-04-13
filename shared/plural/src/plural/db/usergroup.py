@@ -1,8 +1,14 @@
 from typing import ClassVar, Self
 from datetime import timedelta
+from secrets import token_hex
+from hashlib import sha256
+from time import time
 
 from pydantic import BaseModel, Field
 from beanie import PydanticObjectId
+from bcrypt import hashpw, gensalt
+
+from plural.crypto import encode_b66, TOKEN_EPOCH
 
 from .enums import ReplyFormat, SupporterTier, ApplicationScope, PaginationStyle
 from .member import ProxyMember
@@ -89,6 +95,12 @@ class Usergroup(BaseDocument):
             description='whether to include attribution at the end of bio')
 
     class Data(BaseModel):
+        selfhosting_token: str | None = Field(
+            None,
+            description='the self-hosting token of the user')
+        userproxy_version: str | None = Field(
+            None,
+            description='hash of last response to GET /userproxies')
         supporter_tier: SupporterTier = Field(
             default=SupporterTier.NONE,
             description='the supporter tier of the user')
@@ -162,6 +174,32 @@ class Usergroup(BaseDocument):
         avatars.discard(None)
 
         return len(avatars)
+
+    async def update_token(self) -> str:
+        from . import redis
+
+        token = '.'.join([
+            encode_b66(int.from_bytes(self.id.binary)),
+            encode_b66(int((time()*1000)-TOKEN_EPOCH)),
+            encode_b66(int(token_hex(20), 16))
+        ])
+
+        if self.data.selfhosting_token:
+            await redis.delete(
+                'token:' + sha256(
+                    '.'.join(self.data.selfhosting_token.split(
+                        '.')[:2]).encode()
+                ).hexdigest()
+            )
+
+        self.data.selfhosting_token = hashpw(
+            token.encode(),
+            gensalt()
+        ).decode()
+
+        await self.save()
+
+        return token
 
 
 class AvatarOnlyGroup(BaseModel):

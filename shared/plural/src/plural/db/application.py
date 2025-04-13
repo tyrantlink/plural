@@ -1,8 +1,7 @@
+from typing import ClassVar, Self
 from datetime import timedelta
 from secrets import token_hex
-from typing import ClassVar
 from hashlib import sha256
-from typing import Self
 from time import time
 
 from beanie import PydanticObjectId
