@@ -92,6 +92,9 @@ async def modal_proxy(
         raise ValueError('Reply author is None')
 
     usergroup = await interaction.get_usergroup()
+    member = await ProxyMember.find_one(
+        {'userproxy.bot_id': interaction.application_id}
+    )
 
     reply_format = (
         usergroup.userproxy_config.reply_format
@@ -103,7 +106,8 @@ async def modal_proxy(
         message,
         reply,
         reply_format,
-        interaction.guild_id or None
+        interaction.guild_id or None,
+        member.color
     )[0]
 
     embeds = []
@@ -139,8 +143,7 @@ async def modal_proxy(
         author_id=interaction.author_id,
         user=usergroup.id,
         channel_id=interaction.channel_id,
-        member_id=(await ProxyMember.find_one({
-            'userproxy.bot_id': interaction.application_id})).id,
+        member_id=member.id,
         reason='Userproxy Reply command',
         reference_id=reply_id,
         bot_id=interaction.application_id,

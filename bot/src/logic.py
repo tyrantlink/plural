@@ -859,7 +859,8 @@ def parse_allowed_mentions(
 def format_reply(
     proxy_content: str,
     reference: dict[str, Any],
-    format: ReplyFormat
+    format: ReplyFormat,
+    embed_color: int | None = None
 ) -> tuple[str | dict | None, set[str]]:
     if format == ReplyFormat.NONE:
         return None, set()
@@ -914,7 +915,8 @@ def format_reply(
                 return format_reply(
                     '',
                     reference,
-                    ReplyFormat.EMBED
+                    ReplyFormat.EMBED,
+                    embed_color
                 )
 
             return (
@@ -947,7 +949,7 @@ def format_reply(
                 'author': {
                     'name': f'{display_name} ↩️',
                     'icon_url': avatar_url},
-                'color': 0x7289da,
+                'color': embed_color or 0x7289da,
                 'description': (
                     f'{'✉️ ' if reference.get('attachments') else ''}'
                     f'**[Reply to:]({jump_url})** {content}'
@@ -1535,7 +1537,8 @@ async def webhook_handler(
         reply, mention_ignore = format_reply(
             proxy.content,
             event['referenced_message'] | {'guild_id': event['guild_id']},
-            usergroup.config.reply_format
+            usergroup.config.reply_format,
+            proxy.member.color
         )
 
         match reply:

@@ -554,7 +554,8 @@ def format_reply(
     proxy_content: str,
     reference: Message | Reply,
     format: ReplyFormat,
-    guild_id: int | None = None
+    guild_id: int | None = None,
+    embed_color: int | None = None
 ) -> tuple[str | Embed | None, set[int]]:
     if format == ReplyFormat.NONE:
         return None, set()
@@ -635,7 +636,7 @@ def format_reply(
             )
 
             return Embed(
-                color=0x7289da,
+                color=embed_color or 0x7289da,
                 description=(
                     f'{'✉️ ' if reference.attachments else ''}'
                     f'**[Reply to:]({jump_url})** {content}'

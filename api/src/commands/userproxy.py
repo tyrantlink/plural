@@ -856,6 +856,9 @@ async def umessage_reply(
     ]
 
     usergroup = await interaction.get_usergroup()
+    member = await ProxyMember.find_one(
+        {'userproxy.bot_id': interaction.application_id}
+    )
 
     reply_format = (
         usergroup.userproxy_config.reply_format
@@ -867,7 +870,8 @@ async def umessage_reply(
         reply.content or '',
         message,
         reply_format,
-        interaction.guild_id or None
+        interaction.guild_id or None,
+        member.color
     )
 
     embeds = []
@@ -907,8 +911,7 @@ async def umessage_reply(
             author_id=interaction.author_id,
             user=usergroup.id,
             channel_id=interaction.channel_id,
-            member_id=(await ProxyMember.find_one({
-                'userproxy.bot_id': interaction.application_id})).id,
+            member_id=member.id,
             reason='Userproxy Reply command',
             reference_id=message.id,
             bot_id=interaction.application_id,

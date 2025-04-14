@@ -34,9 +34,10 @@ async def modal_proxy(
 
     member.bio = bio.strip()
 
-    embeds = [Embed.success(
+    embeds = [Embed(
         title=f'Updated {member.name}\'s bio',
-        message=member.bio
+        description=member.bio,
+        color=member.color or 0x69ff69
     )]
 
     if member.userproxy:
