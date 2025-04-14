@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from contextlib import suppress
 from datetime import datetime  # noqa: TC003
 
-from pydantic import Field
+from pydantic import field_validator
 
 from .base import BaseExport, MissingBaseModel
 
@@ -14,9 +14,28 @@ if TYPE_CHECKING:
 
 class TupperboxExport(BaseExport):
     class Tupper(MissingBaseModel):
+        @field_validator('brackets')
+        @classmethod
+        def validate_brackets(cls, value: list[str]) -> list[str]:
+            if len(value) % 2 != 0:
+                raise ValueError('brackets must be even length')
+
+            return value
+
+        @field_validator('birthday', 'created_at', mode='before')
+        @classmethod
+        def validate_datetime(cls, value: str | None) -> str | None:
+            if value is None:
+                return None
+
+            if value.startswith('0000'):
+                return value.replace('0000', '1970')
+
+            return value
+
         id: int
         name: str
-        brackets: list[str] = Field(min_length=2, max_length=2)
+        brackets: list[str]
         avatar_url: str | None
         avatar: str | None
         banner: str | None
@@ -105,10 +124,11 @@ class TupperboxExport(BaseExport):
                 color=None,
                 avatar_url=tupper.avatar_url,
                 proxy_tags=[StandardExport.Member.ProxyTag(
-                    prefix=tupper.brackets[0],
-                    suffix=tupper.brackets[1],
+                    prefix=bracket_prefix,
+                    suffix=bracket_suffix,
                     regex=False,
-                    case_sensitive=False)],
+                    case_sensitive=False)
+                    for bracket_prefix, bracket_suffix in zip(tupper.brackets[::2], tupper.brackets[1::2], strict=True)],
                 group_id=groups[tupper.group_id].id if tupper.group_id is not None else default_group_id())
             for index, tupper in enumerate(self.tuppers)
         ]
