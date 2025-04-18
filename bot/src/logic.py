@@ -829,29 +829,27 @@ def handle_discord_markdown(text: str) -> str:
     return text
 
 
-def parse_allowed_mentions(
-    content: str,
-    replied_user: bool,
-    ignore: set[str]
+def handle_allowed_mentions(
+    proxy: ProxyData,
+    replied_user: bool
 ) -> dict[str, list[str] | bool]:
-    parsed = {
-        'roles': {
-            match_.group(1)
-            for match_ in ROLE_MENTION_PATTERN.finditer(content)},
-        'users': {
-            match_.group(1)
-            for match_ in USER_MENTION_PATTERN.finditer(content)
-        }
-    }
-
-    for snowflake in ignore:
-        parsed['roles'].discard(snowflake)
-        parsed['users'].discard(snowflake)
+    content = (
+        proxy.content.split('\n', 1)[1]
+        if INLINE_REPLY_PATTERN.match(proxy.content) else
+        proxy.content
+    )
 
     return {
-        'parse': ['everyone'],
-        'roles': list(parsed['roles']),
-        'users': list(parsed['users']),
+        'parse': (
+            ['everyone']
+            if '@everyone' in content or '@here' in content else
+            []),
+        'roles': [
+            match_.group(1)
+            for match_ in ROLE_MENTION_PATTERN.finditer(content)],
+        'users': [
+            match_.group(1)
+            for match_ in USER_MENTION_PATTERN.finditer(content)],
         'replied_user': replied_user
     }
 
@@ -861,9 +859,9 @@ def format_reply(
     reference: dict[str, Any],
     format: ReplyFormat,
     embed_color: int | None = None
-) -> tuple[str | dict | None, set[str]]:
+) -> str | dict | None:
     if format == ReplyFormat.NONE:
-        return None, set()
+        return None
 
     content = reference.get('content', '')
 
@@ -919,11 +917,7 @@ def format_reply(
                     embed_color
                 )
 
-            return (
-                proxy_content,
-                set(parse_allowed_mentions(
-                    content, False, set()
-                )['users']))
+            return proxy_content
         case ReplyFormat.EMBED:
             content = (
                 content
@@ -958,9 +952,9 @@ def format_reply(
                     if reference.get('attachments') else
                     f'*[click to see message]({jump_url})*'
                 )
-            }, set()
+            }
 
-    return None, set()
+    return None
 
 
 def do_roll(input: str) -> tuple[str, str, str, float]:
@@ -1497,8 +1491,6 @@ async def webhook_handler(
     debug_log: list[str],
     emojis: list[ClonedEmoji]
 ) -> ProxyResponse:
-    original_content = proxy.content
-
     channel = await Cache.get(
         f'discord:channel:{event['channel_id']}'
     )
@@ -1525,7 +1517,6 @@ async def webhook_handler(
         )
 
     embeds = []
-    mention_ignore = set()
 
     usergroup = await Usergroup.get_by_user(int(event['author']['id']))
 
@@ -1534,7 +1525,7 @@ async def webhook_handler(
     )
 
     if event.get('referenced_message') is not None:
-        reply, mention_ignore = format_reply(
+        reply = format_reply(
             proxy.content,
             event['referenced_message'] | {'guild_id': event['guild_id']},
             usergroup.config.reply_format,
@@ -1567,14 +1558,13 @@ async def webhook_handler(
                 proxy.group,
                 await Guild.get_by_id(int(event['guild_id']))),
             'avatar_url': proxy.avatar_url,
-            'allowed_mentions': parse_allowed_mentions(
-                original_content,
+            'allowed_mentions': handle_allowed_mentions(
+                proxy,
                 (
                     event.get('referenced_message') is not None and
                     event.get('referenced_message')['author']['id'] in [
                         user['id']
-                        for user in event.get('mentions', [])]),
-                mention_ignore),
+                        for user in event.get('mentions', [])])),
             'embeds': embeds},
         params=params,
         token=env.bot_token,
