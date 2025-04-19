@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
 async def install_count_loop() -> None:
     from asyncio import sleep
 
-    from plural.db import redis
+    from plural.db import redis, Usergroup
 
     from src.discord.models import Application
 
@@ -117,7 +117,7 @@ async def install_count_loop() -> None:
 
         application = await Application.fetch(env.bot_token, silent=True)
 
-        users = application.approximate_user_install_count
+        users = await Usergroup.count()
         guilds = application.approximate_guild_count
 
         if (
