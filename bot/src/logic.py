@@ -46,7 +46,14 @@ from .caith import roll
 
 EMOJI_SHARDS = 10
 MENTION_PATTERN = compile(
-    r'<(?:(?:[@#]|sound:|a?:[\S_]+|\/(?:\w+ ?){1,3}:)\d+|https?:\/\/[^\s]+)>')
+    r'<(?:'  # ? handles when proxy tags are <text> and ensures mentions are preserved
+    r'(?:[@#/][!&]?\d+)|'        # ? users, channels, roles
+    r'(?:/(?:\w+ ?){1,3}:)\d+|'  # ? slash commands
+    r'(?:a?:\S+:\d+)|'           # ? custom emoji
+    r'(?:t:\d+:[tTdDfFR])|'      # ? timestamps
+    r'(?:id:customize)|'         # ? guild navigation
+    r'(?:sound:\d+)|'            # ? soundmoji (might be deprecated)
+    r'(?:https?://[^\s]+))>')    # ? urls
 INLINE_REPLY_PATTERN = compile(
     r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\)')
 EMOJI_PATTERN = compile(r'<(a)?:(\w{2,32}):(\d+)>')
