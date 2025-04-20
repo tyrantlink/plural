@@ -1663,11 +1663,10 @@ async def userproxy_handler(
 
     embeds = []
 
-    if roll_embed:
-        usergroup = await Usergroup.get_by_user(int(event['author']['id']))
+    usergroup = await Usergroup.get_by_user(int(event['author']['id']))
 
-        if usergroup.config.roll_embed:
-            embeds.append(roll_embed)
+    if roll_embed and usergroup.config.roll_embed:
+        embeds.append(roll_embed)
 
     return ProxyResponse(
         success=True,
