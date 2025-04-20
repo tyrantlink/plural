@@ -829,7 +829,7 @@ def handle_discord_markdown(text: str) -> str:
     return text
 
 
-def handle_allowed_mentions(
+def allowed_mentions(
     proxy: ProxyData,
     replied_user: bool
 ) -> dict[str, list[str] | bool]:
@@ -844,12 +844,12 @@ def handle_allowed_mentions(
             ['everyone']
             if '@everyone' in content or '@here' in content else
             []),
-        'roles': [
+        'roles': list({
             match_.group(1)
-            for match_ in ROLE_MENTION_PATTERN.finditer(content)],
-        'users': [
+            for match_ in ROLE_MENTION_PATTERN.finditer(content)}),
+        'users': list({
             match_.group(1)
-            for match_ in USER_MENTION_PATTERN.finditer(content)],
+            for match_ in USER_MENTION_PATTERN.finditer(content)}),
         'replied_user': replied_user
     }
 
@@ -1558,7 +1558,7 @@ async def webhook_handler(
                 proxy.group,
                 await Guild.get_by_id(int(event['guild_id']))),
             'avatar_url': proxy.avatar_url,
-            'allowed_mentions': handle_allowed_mentions(
+            'allowed_mentions': allowed_mentions(
                 proxy,
                 (
                     event.get('referenced_message') is not None and
