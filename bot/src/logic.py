@@ -682,6 +682,7 @@ async def insert_emojis(
     content: str,
     token: str,
     emojis: list[ClonedEmoji],
+    debug_log: list[str],
     force_clone: bool = False
 ) -> str:
     emojis_used: dict[int, list[ProbableEmoji]] = {}
@@ -778,11 +779,25 @@ async def insert_emojis(
         )
 
     with span(f'cloning {len(to_clone)} emojis'):
-        await gather(*[
+        clone_responses = await gather(*[
             _clone_emoji(emoji)
             for emoji in
-            to_clone
-        ])
+            to_clone],
+            return_exceptions=True)
+
+        if (count := len([
+            isinstance(response, BaseException)
+            for response in
+            clone_responses
+        ])):
+            await delete_emojis([
+                ClonedEmoji(
+                    id=emoji.id,
+                    token=token)
+                for emoji in
+                app_emojis.values()])
+            debug_log.append(f'Failed to clone {count} emoji.')
+            return content
 
     for emoji, exists in zip(unsharded_used, redis_response, strict=True):
         if exists:
@@ -1523,7 +1538,8 @@ async def webhook_handler(
         proxy.content = await insert_emojis(
             proxy.content,
             env.bot_token,
-            emojis
+            emojis,
+            debug_log
         )
 
     embeds = []
@@ -1649,6 +1665,7 @@ async def userproxy_handler(
             proxy.content,
             proxy.member.userproxy.token,
             emojis,
+            debug_log,
             force_clone=True)
     except Unauthorized:
         debug_log.append(
