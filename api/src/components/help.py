@@ -37,6 +37,8 @@ SUB_PAGES = {
 
         Then, you can start proxying by using your set tags in a message, or enabling the autoproxy with {cmd_ref[autoproxy]}.
 
+        Nearly everything is configurable via {cmd_ref[config]}, including both user and server settings.
+
         That\'s all the basics, otherwise, simply type `/` and see what commands are available, or check out the [wiki](https://{env.domain}) for more info.
     ''').strip(),
     'userproxies': dedent(f'''

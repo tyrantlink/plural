@@ -37,6 +37,9 @@ See [Proxy Tags](/guide/members.md#proxy-tags) for more information.
   - Animated avatars will only be animated for userproxy bots (see [Userproxies](/guide/userproxies.md)).
     - This is a Discord limitation.
 
+## Other Config
+Nearly all config is done via the `/config` command, and all config options have built-in descriptions when using the command.
+
 ## Proxying in DMs
 
 In order to proxy in DMs you need to attach a userproxy to a member.
