@@ -785,11 +785,12 @@ async def insert_emojis(
             to_clone],
             return_exceptions=True)
 
-        if (count := len([
-            isinstance(response, BaseException)
+        if (count := sum(
+            1
             for response in
             clone_responses
-        ])):
+            if isinstance(response, BaseException)
+        )):
             await delete_emojis([
                 ClonedEmoji(
                     id=emoji.id,
