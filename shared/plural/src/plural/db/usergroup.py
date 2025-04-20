@@ -33,6 +33,9 @@ class Usergroup(BaseDocument):
         reply_format: ReplyFormat = Field(
             default=ReplyFormat.INLINE,
             description='format for message references in servers')
+        ping_replies: bool = Field(
+            default=False,
+            description='whether to ping when you reply to someone')
         groups_in_autocomplete: bool = Field(
             default=True,
             description='whether to show groups in member autocomplete')

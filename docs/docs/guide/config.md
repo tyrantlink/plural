@@ -12,15 +12,18 @@ All config options have built-in descriptions when using the command, so this pa
 ## User Config
 ### Account Tag
 ### Reply Format
+### Ping Replies
 ### Groups in Autocomplete
 ### Button Style
 ### Dice Roll Embed
+### Private Member Info
+
+## Name Formatting Config
 ### Tag Format
 ### Pronoun Format
 ### Include Tag in Member Name
 ### Include Pronouns in Member Name
 ### Display Name Order
-### Private Member Info
 
 ## Userproxy Config
 ### Server Reply Format

@@ -20,6 +20,7 @@ usergroup_response = response(
             config=UsergroupModel.Config(
                 account_tag='',
                 reply_format=ReplyFormat.INLINE,
+                ping_replies=False,
                 groups_in_autocomplete=True,
                 pagination_style=PaginationStyle.REM_AND_RAM,
                 roll_embed=False,

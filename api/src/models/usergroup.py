@@ -25,6 +25,8 @@ class UsergroupModel(BaseModel):
             description='the global account tag; overridden by group tags')
         reply_format: ReplyFormat = Field(
             description='Format for message references in servers')
+        ping_replies: bool = Field(
+            description='Whether to ping when you reply to someone')
         groups_in_autocomplete: bool = Field(
             description='Whether to show groups in member autocomplete')
         pagination_style: PaginationStyle = Field(

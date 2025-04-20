@@ -55,7 +55,7 @@ MENTION_PATTERN = compile(
     r'(?:sound:\d+)|'            # ? soundmoji (might be deprecated)
     r'(?:https?://[^\s]+))>')    # ? urls
 INLINE_REPLY_PATTERN = compile(
-    r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\)')
+    r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\) <@(\d+)>')
 EMOJI_PATTERN = compile(r'<(a)?:(\w{2,32}):(\d+)>')
 ROLE_MENTION_PATTERN = compile(r'<@&(\d+)>')
 USER_MENTION_PATTERN = compile(r'<@!?(\d+)>')
@@ -840,11 +840,13 @@ def allowed_mentions(
     proxy: ProxyData,
     replied_user: bool
 ) -> dict[str, list[str] | bool]:
-    content = (
-        proxy.content.split('\n', 1)[1]
-        if INLINE_REPLY_PATTERN.match(proxy.content) else
-        proxy.content
-    )
+    content, replied_user_id = proxy.content, None
+
+    if (match := INLINE_REPLY_PATTERN.match(content)) is not None:
+        content = proxy.content.split('\n', 1)[1]
+
+        if replied_user:
+            replied_user_id = match.group(1)
 
     return {
         'parse': (
@@ -856,7 +858,8 @@ def allowed_mentions(
             for match_ in ROLE_MENTION_PATTERN.finditer(content)}),
         'users': list({
             match_.group(1)
-            for match_ in USER_MENTION_PATTERN.finditer(content)}),
+            for match_ in USER_MENTION_PATTERN.finditer(content)
+        } | {replied_user_id} if replied_user_id else set()),
         'replied_user': replied_user
     }
 
@@ -1567,11 +1570,7 @@ async def webhook_handler(
             'avatar_url': proxy.avatar_url,
             'allowed_mentions': allowed_mentions(
                 proxy,
-                (
-                    event.get('referenced_message') is not None and
-                    event.get('referenced_message')['author']['id'] in [
-                        user['id']
-                        for user in event.get('mentions', [])])),
+                usergroup.config.ping_replies),
             'embeds': embeds},
         params=params,
         token=env.bot_token,
@@ -1679,11 +1678,9 @@ async def userproxy_handler(
                 **event['message_reference'],
                 'fail_if_not_exists': False
             } if event.get('message_reference') else None,
-            'allowed_mentions': {'replied_user': (
-                event.get('referenced_message') is not None and
-                event.get('referenced_message')['author']['id'] in [
-                    user['id']
-                    for user in event.get('mentions', [])])},
+            'allowed_mentions': allowed_mentions(
+                proxy,
+                usergroup.config.ping_replies),
             'flags': (  # ? suppress only if suppress was not already there
                 1 << 12  # ? suppress notifications
                 & int(event.get('flags', 0)) ^

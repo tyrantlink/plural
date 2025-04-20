@@ -80,9 +80,6 @@ CONFIG_OPTIONS = {
             description=dedent('''
                 The format for message references using webhooks.
 
-                - None: No embedded reply, replies will only be part of the command.
-                    - Note that these replies will not be visible to mobile users
-
                 - Inline: Reply will be at the top of your message.
                     - This is the default behavior
 
@@ -92,10 +89,6 @@ CONFIG_OPTIONS = {
             type=ConfigOptionType.SELECT,
             choices=[
                 SelectMenu.Option(
-                    label='None',
-                    value='0',
-                    description='No embedded reply'),
-                SelectMenu.Option(
                     label='Inline',
                     value='1',
                     description='Reply will be at the top of your message'),
@@ -104,6 +97,17 @@ CONFIG_OPTIONS = {
                     value='2',
                     description='Reply will be in an Embed')],
             parser=lambda value: ReplyFormat(int(value))),
+        'ping_replies': ConfigOption(
+            name='Ping Replies',
+            description=dedent('''
+                Whether to ping when you reply to someone.
+
+                Only compatible with the inline reply format.
+
+                Only works in servers, (webhook proxies and server userproxies)
+            ''').strip(),
+            type=ConfigOptionType.BOOLEAN,
+            parser=lambda value: value == 'Enabled'),
         'groups_in_autocomplete': ConfigOption(
             name='Groups in Autocomplete',
             description=dedent('''
@@ -151,6 +155,26 @@ CONFIG_OPTIONS = {
             ''').strip(),
             type=ConfigOptionType.BOOLEAN,
             parser=lambda value: value == 'Enabled'),
+        'private_member_info': ConfigOption(
+            name='Private Member Info',
+            description=dedent('''
+                Whether to show member details in the proxy info command.
+
+                If enabled, **anyone** will see the following information in the proxy info command:
+                - Pronouns
+                - Bio
+                - Birthday
+                - Color
+
+                Note that since this requires the proxy info command, these values will only be visible when the member is *used*
+
+                This is a global option, and will affect all members.
+
+                Default: Disabled
+            ''').strip(),
+            type=ConfigOptionType.BOOLEAN,
+            parser=lambda value: value == 'Enabled')},
+    'name_formatting': {
         'tag_format': ConfigOption(
             name='Tag Format',
             description=dedent('''
@@ -237,26 +261,7 @@ CONFIG_OPTIONS = {
                     label='Pronouns, Tag, Name',
                     value='2,1,0')],
             parser=lambda value: [
-                int(index) for index in value.split(',')]),
-        'private_member_info': ConfigOption(
-            name='Private Member Info',
-            description=dedent('''
-                Whether to show member details in the proxy info command.
-
-                If enabled, **anyone** will see the following information in the proxy info command:
-                - Pronouns
-                - Bio
-                - Birthday
-                - Color
-
-                Note that since this requires the proxy info command, these values will only be visible when the member is *used*
-
-                This is a global option, and will affect all members.
-
-                Default: Disabled
-            ''').strip(),
-            type=ConfigOptionType.BOOLEAN,
-            parser=lambda value: value == 'Enabled')},
+                int(index) for index in value.split(',')])},
     'userproxy': {
         'reply_format': ConfigOption(
             name='Server Reply Format',
@@ -518,7 +523,7 @@ async def select_config_value(
         )
 
     match category:
-        case 'user':
+        case 'user' | 'name_formatting':
             parent = await interaction.get_usergroup()
             config = parent.config
         case 'userproxy':
@@ -536,7 +541,7 @@ async def select_config_value(
     await parent.save()
 
     synced = False
-    if category in {'user', 'userproxy'}:
+    if category in {'user', 'name_formatting', 'userproxy'}:
         synced = await userproxy_sync(
             interaction,
             category,
@@ -590,7 +595,7 @@ async def _button_bool(
     value: bool
 ) -> None:
     match category:
-        case 'user':
+        case 'user' | 'name_formatting':
             parent = await interaction.get_usergroup()
             config = parent.config
         case 'userproxy':
@@ -608,7 +613,7 @@ async def _button_bool(
     await parent.save()
 
     synced = False
-    if category in {'user', 'userproxy'}:
+    if category in {'user', 'name_formatting', 'userproxy'}:
         synced = await userproxy_sync(
             interaction,
             category,
@@ -638,7 +643,7 @@ async def modal_set(
         )
 
     match category:
-        case 'user':
+        case 'user' | 'name_formatting':
             parent = await interaction.get_usergroup()
             config = parent.config
         case 'userproxy':
@@ -656,7 +661,7 @@ async def modal_set(
     await parent.save()
 
     synced = False
-    if category in {'user', 'userproxy'}:
+    if category in {'user', 'name_formatting', 'userproxy'}:
         synced = await userproxy_sync(
             interaction,
             category,
@@ -677,7 +682,7 @@ async def button_set(
     option: str
 ) -> None:
     match category:
-        case 'user':
+        case 'user' | 'name_formatting':
             parent = await interaction.get_usergroup()
             config = parent.config
         case 'userproxy':
@@ -716,6 +721,10 @@ async def _home(
             value='user',
             description='Configure this account\'s settings'),
         SelectMenu.Option(
+            label='Name Formatting Config',
+            value='name_formatting',
+            description='Configure how member names are formatted'),
+        SelectMenu.Option(
             label='Userproxy Config',
             value='userproxy',
             description='Configure userproxy settings')
@@ -747,11 +756,14 @@ async def _category(
     usergroup = await interaction.get_usergroup()
 
     match category:
-        case 'user' | 'userproxy':
+        case 'user' | 'name_formatting' | 'userproxy':
             userproxy = category == 'userproxy'
 
             embed = Embed(
-                title=f'User{'proxy' if userproxy else ''} Config',
+                title=(
+                    'Name Formatting Config'
+                    if category == 'name_formatting' else
+                    f'User{'proxy' if userproxy else ''} Config'),
                 color=0x69ff69
             ).set_author(
                 name=interaction.author.display_name,
@@ -845,7 +857,7 @@ async def _option(
         )
 
     match category:
-        case 'user':
+        case 'user' | 'name_formatting':
             config = usergroup.config
             embed.set_author(
                 name=interaction.author.display_name,
@@ -944,13 +956,13 @@ async def userproxy_sync(
     match category, option:
         case ('user', 'account_tag'):
             patch_filter.add('username')
-        case ('user', 'tag_format'):
+        case ('name_formatting', 'tag_format'):
             if usergroup.userproxy_config.include_tag:
                 patch_filter.add('username')
-        case ('user', 'pronoun_format'):
+        case ('name_formatting', 'pronoun_format'):
             if usergroup.userproxy_config.include_pronouns:
                 patch_filter.add('username')
-        case ('user', 'display_name_order'):
+        case ('name_formatting', 'display_name_order'):
             patch_filter.add('username')
         case ('userproxy', 'include_tag'):
             patch_filter.add('username')
