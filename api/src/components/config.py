@@ -158,15 +158,15 @@ CONFIG_OPTIONS = {
         'private_member_info': ConfigOption(
             name='Private Member Info',
             description=dedent('''
-                Whether to show member details in the proxy info command.
+                Whether to hide member details in the proxy info command.
 
-                If enabled, **anyone** will see the following information in the proxy info command:
+                If enabled, the following details will be removed from the proxy info command:
                 - Pronouns
                 - Bio
                 - Birthday
                 - Color
 
-                Note that since this requires the proxy info command, these values will only be visible when the member is *used*
+                Note that since this requires the proxy info command, these values will only be visible when the member is *used*. Member info is never public otherwise.
 
                 This is a global option, and will affect all members.
 
