@@ -55,7 +55,7 @@ MENTION_PATTERN = compile(
     r'(?:sound:\d+)|'            # ? soundmoji (might be deprecated)
     r'(?:https?://[^\s]+))>')    # ? urls
 INLINE_REPLY_PATTERN = compile(
-    r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\) <@(\d+)>')
+    r'^-# \[↪\]\(<https:\/\/discord\.com\/channels\/\d+\/\d+\/\d+>\) (?:<@(\d+)>)?')
 EMOJI_PATTERN = compile(r'<(a)?:(\w{2,32}):(\d+)>')
 ROLE_MENTION_PATTERN = compile(r'<@&(\d+)>')
 USER_MENTION_PATTERN = compile(r'<@!?(\d+)>')
