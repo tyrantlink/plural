@@ -249,6 +249,34 @@ async def ratelimiter(
     return response
 
 
+# @app.middleware('http')
+# async def cache(
+#     request: Request,
+#     call_next: Callable[..., Awaitable[Any]]
+# ) -> Any:  # noqa: ANN401
+#     from src.core.cache import cache_check
+
+#     if (
+#         request.headers.get('authorization') ==
+#         f'Bearer {env.cdn_upload_token}'
+#     ):
+#         return await call_next(request)
+
+#     for route in app.routes:
+#         match, data = route.matches(request.scope)
+
+#         if match == Match.FULL and isinstance(route, APIRoute):
+#             break
+#     else:
+#         return await call_next(request)
+
+#     auth, key = (
+#         (True, request.headers['Authorization'].split('.')[0].strip())
+#         if 'Authorization' in request.headers else
+#         (False, request.scope['client'][0])
+#     )
+
+
 @app.middleware('http')
 async def otel_trace(
     request: Request,
