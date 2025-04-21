@@ -1,4 +1,4 @@
-from .autoproxy import AutoProxyModel, AutoProxyPutModel
+from .autoproxy import AutoproxyModel, AutoproxyPutModel, AutoproxyPatchModel
 from .message import MessageModel, AuthorModel
 from .member import MemberModel, UserproxySync
 from .application import ApplicationModel
@@ -9,8 +9,9 @@ from .group import GroupModel
 __all__ = (
     'ApplicationModel',
     'AuthorModel',
-    'AutoProxyModel',
-    'AutoProxyPutModel',
+    'AutoproxyModel',
+    'AutoproxyPatchModel',
+    'AutoproxyPutModel',
     'GroupModel',
     'MemberModel',
     'MessageModel',

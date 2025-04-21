@@ -5,10 +5,10 @@ from beanie import PydanticObjectId
 from pydantic import Field
 
 from .base import BaseDocument, ttl
-from .enums import AutoProxyMode
+from .enums import AutoproxyMode
 
 
-class AutoProxy(BaseDocument):
+class Autoproxy(BaseDocument):
     class Settings:
         name = 'autoproxy'
         validate_on_save = True
@@ -26,8 +26,8 @@ class AutoProxy(BaseDocument):
         description='the usergroup id')
     guild: int | None = Field(
         description='the guild id; None if global')
-    mode: AutoProxyMode = Field(
-        default=AutoProxyMode.LATCH,
+    mode: AutoproxyMode = Field(
+        default=AutoproxyMode.LATCH,
         description='the mode of the autoproxy')
     member: PydanticObjectId | None = Field(
         description='the member to proxy to')

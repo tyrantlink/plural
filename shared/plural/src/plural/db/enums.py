@@ -3,7 +3,7 @@ from enum import Enum, Flag
 
 __all__ = (
     'ApplicationScope',
-    'AutoProxyMode',
+    'AutoproxyMode',
     'GroupSharePermissionLevel',
     'PaginationStyle',
     'ReplyFormat',
@@ -50,7 +50,7 @@ class ApplicationScope(Flag):
         )
 
 
-class AutoProxyMode(Enum):
+class AutoproxyMode(Enum):
     LATCH = 0
     FRONT = 1
     LOCKED = 2
@@ -59,10 +59,10 @@ class AutoProxyMode(Enum):
     @property
     def description(self) -> str:
         return {
-            AutoProxyMode.LATCH: 'Using proxy tags will switch the autoproxied member',
-            AutoProxyMode.FRONT: 'Using proxy tags will not modify the autoproxied member',
-            AutoProxyMode.LOCKED: 'Proxy tags will be ignored and the autoproxied member will always be used',
-            AutoProxyMode.DISABLED: 'All proxying is disabled (including with proxy tags)',
+            AutoproxyMode.LATCH: 'Using proxy tags will switch the autoproxied member',
+            AutoproxyMode.FRONT: 'Using proxy tags will not modify the autoproxied member',
+            AutoproxyMode.LOCKED: 'Proxy tags will be ignored and the autoproxied member will always be used',
+            AutoproxyMode.DISABLED: 'All proxying is disabled (including with proxy tags)',
         }[self]
 
 

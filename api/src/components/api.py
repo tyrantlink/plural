@@ -395,7 +395,7 @@ async def _application(
     if token is not None:
         embed.add_field(
             name='API Token',
-            value=f'||{token}||',
+            value=f'This will only be shown once.\n||{token}||',
             inline=False
         )
 

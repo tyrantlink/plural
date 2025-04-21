@@ -6,7 +6,7 @@ from plural.otel import span
 from plural.env import env
 
 from .application import Application
-from .autoproxy import AutoProxy
+from .autoproxy import Autoproxy
 from .migration import Migration
 from .usergroup import Usergroup
 from .proxy_log import ProxyLog
@@ -20,7 +20,7 @@ from .share import Share
 
 __all__ = (
     'Application',
-    'AutoProxy',
+    'Autoproxy',
     'Group',
     'Guild',
     'Message',
@@ -44,7 +44,7 @@ async def mongo_init() -> None:
             AsyncIOMotorClient(env.mongo_url)['plural'],
             document_models=[
                 Application,
-                AutoProxy,
+                Autoproxy,
                 Group,
                 Guild,
                 Message,

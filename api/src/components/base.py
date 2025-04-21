@@ -4,7 +4,7 @@ from asyncio import gather
 from beanie import PydanticObjectId
 from pydantic import Field
 
-from plural.db import Usergroup, Group, Message, AutoProxy, ProxyMember, redis
+from plural.db import Usergroup, Group, Message, Autoproxy, ProxyMember, redis
 from plural.db.usergroup import AvatarOnlyMember as _AvatarOnlyMember
 from plural.errors import PluralExceptionCritical, InteractionError
 
@@ -153,7 +153,7 @@ async def button_delete_confirm(interaction: Interaction) -> None:
         'author_id': interaction.author_id
     }).delete_many())
 
-    tasks.append(AutoProxy.find({
+    tasks.append(Autoproxy.find({
         'user': usergroup.id,
     }).delete_many())
 

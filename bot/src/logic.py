@@ -16,7 +16,7 @@ from regex import match, escape, sub, compile, IGNORECASE
 from beanie import PydanticObjectId
 from orjson import dumps
 
-from plural.db.enums import AutoProxyMode, ReplyFormat
+from plural.db.enums import AutoproxyMode, ReplyFormat
 from plural.otel import span, cx, get_counter, inject
 from plural.errors import (
     PluralExceptionCritical,
@@ -29,7 +29,7 @@ from plural.errors import (
 from plural.db import (
     ProxyMember,
     Usergroup,
-    AutoProxy,
+    Autoproxy,
     ProxyLog,
     Message,
     Group,
@@ -72,7 +72,7 @@ class OverWebhookLimit(PluralException):
 @dataclass
 class ProxyData:
     member: ProxyMember
-    autoproxy: AutoProxy | None
+    autoproxy: Autoproxy | None
     content: str
     reason: str
     group: Group
@@ -309,7 +309,7 @@ async def get_proxy_data(
 
     autoproxies = {
         autoproxy.guild: autoproxy
-        for autoproxy in await AutoProxy.find({
+        for autoproxy in await Autoproxy.find({
             'user': usergroup.id,
             'guild': {'$in': [int(event['guild_id']), None]},
         }).to_list()
@@ -322,7 +322,7 @@ async def get_proxy_data(
 
     if (
         autoproxy and
-        autoproxy.mode == AutoProxyMode.DISABLED
+        autoproxy.mode == AutoproxyMode.DISABLED
     ):
         debug_log.append(
             'Autoproxy mode is "disabled". All proxying is disabled.')
@@ -400,7 +400,7 @@ async def get_proxy_data(
 
     if (
         autoproxy and
-        autoproxy.mode == AutoProxyMode.LOCKED and
+        autoproxy.mode == AutoproxyMode.LOCKED and
         (member := await ProxyMember.get(autoproxy.member))
     ):
         group = next(
@@ -470,7 +470,7 @@ async def get_proxy_data(
                 debug_log.append(
                     'Matched member in restricted group and different from autoproxy. '
                     'Auto-creating server autoproxy.')
-                autoproxy = await AutoProxy(
+                autoproxy = await Autoproxy(
                     user=usergroup.id,
                     guild=int(event['guild_id']),
                     member=member.id,
@@ -527,7 +527,7 @@ async def get_proxy_data(
                     debug_log.append(
                         'Matched member in restricted group and different from autoproxy. '
                         'Auto-creating server autoproxy.')
-                    autoproxy = await AutoProxy(
+                    autoproxy = await Autoproxy(
                         user=usergroup.id,
                         guild=int(event['guild_id']),
                         member=member.id,
@@ -1216,7 +1216,7 @@ async def _process_proxy(
 
         if (
             proxy.member.id != proxy.autoproxy.member and
-            proxy.autoproxy.mode == AutoProxyMode.LATCH
+            proxy.autoproxy.mode == AutoproxyMode.LATCH
         ):
             proxy.autoproxy.member = proxy.member.id
             await proxy.autoproxy.save()

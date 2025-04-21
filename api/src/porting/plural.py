@@ -7,7 +7,7 @@ from plural.db import (
     ProxyMember,
     Application,
     Usergroup,
-    AutoProxy,
+    Autoproxy,
     ProxyLog,
     Message,
     Group,
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 class PluralExport(BaseExport):
     applications: list[Application]
-    autoproxies: list[AutoProxy]
+    autoproxies: list[Autoproxy]
     groups: list[Group]
     messages: list[Message]
     proxy_logs: list[ProxyLog]
@@ -81,7 +81,7 @@ class PluralExport(BaseExport):
             Application.find({
                 'developer': user_id
             }).to_list(),
-            AutoProxy.find({
+            Autoproxy.find({
                 'user': usergroup.id
             }).to_list(),
             Message.find({

@@ -5,15 +5,16 @@ from fastapi import APIRouter, Security, Depends, Response, Body
 from beanie import PydanticObjectId
 from orjson import dumps
 
-from plural.db import Usergroup, AutoProxy, ProxyMember, redis
+from plural.db import Usergroup, Autoproxy, ProxyMember, redis
 
 from src.core.auth import TokenData, api_key_validator, authorized_user
 from src.core.ratelimit import ratelimit
 from src.core.route import name
 
 from src.models import (
-    AutoProxyPutModel,
-    AutoProxyModel,
+    AutoproxyPatchModel,
+    AutoproxyPutModel,
+    AutoproxyModel,
     MemberModel,
 )
 
@@ -51,7 +52,7 @@ async def get__user_autoproxy(
     token: TokenData = Security(api_key_validator),  # noqa: ARG001, B008
     usergroup: Usergroup = Depends(authorized_user)  # noqa: B008
 ) -> Response:
-    autoproxy = await AutoProxy.find_one({
+    autoproxy = await Autoproxy.find_one({
         'user': usergroup.id,
         'guild': guild_id,
     })
@@ -66,7 +67,7 @@ async def get__user_autoproxy(
     return Response(
         status_code=200,
         media_type='application/json',
-        content=dumps(AutoProxyModel.model_validate(
+        content=dumps(AutoproxyModel.model_validate(
             autoproxy,
             from_attributes=True
         ).model_dump(mode='json'))
@@ -104,7 +105,7 @@ async def get__user_autoproxy_member(
     token: TokenData = Security(api_key_validator),  # noqa: B008
     usergroup: Usergroup = Depends(authorized_user)  # noqa: B008
 ) -> Response:
-    autoproxy = await AutoProxy.find_one({
+    autoproxy = await Autoproxy.find_one({
         'user': usergroup.id,
         'guild': guild_id,
     })
@@ -160,9 +161,9 @@ async def get__user_autoproxy_member(
                 value={'detail': 'Invalid guild id. Guild 844127424526680084 not found in /plu/ral database.'})])})
 @name('/users/:id/autoproxy')
 @ratelimit(2, timedelta(seconds=10), ['user_id'])
-async def set__user_autoproxy(
+async def put__user_autoproxy(
     user_id: int | PydanticObjectId,  # noqa: ARG001
-    autoproxy: Annotated[AutoProxyPutModel, Body(
+    autoproxy: Annotated[AutoproxyPutModel, Body(
         openapi_examples=autoproxy_put_request)],
     token: TokenData = Security(api_key_validator),  # noqa: ARG001, B008
     usergroup: Usergroup = Depends(authorized_user)  # noqa: B008
@@ -179,7 +180,7 @@ async def set__user_autoproxy(
             )
         )
 
-    existing_autoproxy = await AutoProxy.find_one({
+    existing_autoproxy = await Autoproxy.find_one({
         'user': usergroup.id,
         'guild': autoproxy.guild,
     })
@@ -200,8 +201,61 @@ async def set__user_autoproxy(
     return Response(
         status_code=status_code,
         media_type='application/json',
-        content=dumps(AutoProxyModel.model_validate(
+        content=dumps(AutoproxyModel.model_validate(
             final_autoproxy,
+            from_attributes=True
+        ).model_dump(mode='json'))
+    )
+
+
+@router.patch(
+    '/{user_id}/autoproxy',
+    name='Update User Autoproxy',
+    description="""
+    Update a user's autoproxy by id or usergroup id. All fields are optional. Only provided fields will be updated.
+
+    Requires authorized user""",
+    responses={
+        200: autoproxy_response | {'description': 'Autoproxy Updated'},
+        404: response(
+            description='Autoproxy not found',
+            examples=[Example(
+                name='Autoproxy not found',
+                value={'detail': 'Autoproxy not found.'})])})
+@name('/users/:id/autoproxy')
+@ratelimit(2, timedelta(seconds=10), ['user_id'])
+async def patch__user_autoproxy(
+    user_id: int | PydanticObjectId,  # noqa: ARG001
+    autoproxy: AutoproxyPatchModel,
+    guild_id: int | None = None,
+    token: TokenData = Security(api_key_validator),  # noqa: ARG001, B008
+    usergroup: Usergroup = Depends(authorized_user)  # noqa: B008
+) -> Response:
+    existing_autoproxy = await Autoproxy.find_one({
+        'user': usergroup.id,
+        'guild': guild_id
+    })
+
+    if existing_autoproxy is None:
+        return Response(
+            status_code=404,
+            media_type='application/json',
+            content=dumps({'detail': 'Autoproxy not found.'})
+        )
+
+    await autoproxy.validate_patch(usergroup)
+
+    updated_autoproxy = existing_autoproxy.model_copy(
+        update=autoproxy.model_dump(exclude_unset=True)
+    )
+
+    await updated_autoproxy.save()
+
+    return Response(
+        status_code=200,
+        media_type='application/json',
+        content=dumps(AutoproxyModel.model_validate(
+            updated_autoproxy,
             from_attributes=True
         ).model_dump(mode='json'))
     )

@@ -10,7 +10,7 @@ from beanie import PydanticObjectId
 from orjson import loads, dumps
 from regex import compile
 
-from plural.db.enums import AutoProxyMode, SupporterTier, ShareType
+from plural.db.enums import AutoproxyMode, SupporterTier, ShareType
 from plural.db.usergroup import AvatarOnlyGroup, AvatarOnlyMember
 from plural.errors import InteractionError, NotFound, Forbidden
 from plural.missing import MISSING
@@ -18,7 +18,7 @@ from plural.otel import inject, cx
 from plural.db import (
     Message as DBMessage,
     ProxyMember,
-    AutoProxy,
+    Autoproxy,
     Usergroup,
     Group,
     Share,
@@ -420,22 +420,22 @@ async def slash_autoproxy(
 ) -> None:
     match (mode.lower() if mode else None):
         case 'front':
-            mode = AutoProxyMode.FRONT
+            mode = AutoproxyMode.FRONT
         case 'latch':
-            mode = AutoProxyMode.LATCH
+            mode = AutoproxyMode.LATCH
         case 'locked':
-            mode = AutoProxyMode.LOCKED
+            mode = AutoproxyMode.LOCKED
         case 'disabled':
-            mode = AutoProxyMode.DISABLED
+            mode = AutoproxyMode.DISABLED
         case None:
-            mode = AutoProxyMode.LATCH
+            mode = AutoproxyMode.LATCH
         case _:
             raise InteractionError(f'invalid mode `{mode}`')
-    mode: AutoProxyMode
+    mode: AutoproxyMode
 
     usergroup = await interaction.get_usergroup()
 
-    autoproxy = await AutoProxy.find_one({
+    autoproxy = await Autoproxy.find_one({
         'user': usergroup.id,
         'guild': None if global_ else interaction.guild_id
     })
@@ -459,7 +459,7 @@ async def slash_autoproxy(
                 footer=(
                     'Global autoproxy still enabled; Messages will still be proxied'
                     if (not global_ and
-                        (await AutoProxy.find_one(
+                        (await Autoproxy.find_one(
                             {'user': usergroup.id, 'guild': None}
                         )) is not None)
                     else None
@@ -479,7 +479,7 @@ async def slash_autoproxy(
             )
 
         if interaction.guild_id and (
-            await AutoProxy.find_one({
+            await Autoproxy.find_one({
                 'user': usergroup.id,
                 'guild': interaction.guild_id if global_ else None})
         ) is not None:
@@ -529,7 +529,7 @@ async def slash_autoproxy(
         )
 
     tasks = [
-        AutoProxy(
+        Autoproxy(
             user=usergroup.id,
             guild=None if global_ else str(interaction.guild_id),
             mode=mode,
@@ -1015,7 +1015,7 @@ async def slash_say(
 
     autoproxies = {
         autoproxy.guild: autoproxy
-        for autoproxy in await AutoProxy.find({
+        for autoproxy in await Autoproxy.find({
             'user': usergroup.id,
             'guild': {'$in': [int(interaction.guild_id or 0), None]},
         }).to_list()
@@ -1068,7 +1068,7 @@ async def slash_say(
         return
 
     if (
-        autoproxy.mode == AutoProxyMode.LATCH and
+        autoproxy.mode == AutoproxyMode.LATCH and
         member.id != autoproxy.member
     ):
         autoproxy.member = member.id
