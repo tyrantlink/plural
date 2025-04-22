@@ -75,8 +75,8 @@ async def slash_member_info(
                 else None)),
         inline=True
     ).add_field(
-        name='Meta',
-        value=member.meta or 'None',
+        name='Custom ID',
+        value=member.custom_id or 'None',
         inline=True
     ).add_field(
         name='Group',
@@ -148,8 +148,8 @@ async def slash_member_list(
             required=True),
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.STRING,
-            name='meta',
-            description='Custom identifier shown in autocomplete; Combination with name must be unique within a group',
+            name='custom_id',
+            description='Custom identifier shown in autocomplete; Combination of group, name, and custom id must be unique',
             max_length=50,
             required=False),
         ApplicationCommand.Option(
@@ -202,7 +202,7 @@ async def slash_member_list(
 async def slash_member_new(
     interaction: Interaction,
     name: str,
-    meta: str = '',
+    custom_id: str = '',
     avatar: Attachment | None = None,
     tag_prefix: str | None = None,
     tag_suffix: str | None = None,
@@ -231,23 +231,22 @@ async def slash_member_new(
             'Color must be a valid hex color'
         ) from e
 
-    if await group.get_member_by_name(name, meta) is not None:
+    if await group.get_member_by_name(name, custom_id) is not None:
         error = [
             *(
-                [f'Member `{name}` with meta `{meta}` already exists in group `{group.name}`']
-                if meta else
-                [f'Member `{name}` without meta field already exists in group `{group.name}`',
-                 'Consider setting the meta field to make the member name unique',
-                 f'See [the documentation](https://{env.domain}/guide/command-reference#member-new) for more information']
-            ),
-            'A name and meta combination must be unique within a group'
+                [f'Member `{name}` with custom id `{custom_id}` already exists in group `{group.name}`']
+                if custom_id else
+                [f'Member `{name}` without custom id already exists in group `{group.name}`',
+                 'Consider setting the custom id to make the member name unique',
+                 f'See [the documentation](https://{env.domain}/guide/command-reference#member-new) for more information']),
+            'A name and custom id combination must be unique within a group'
         ]
 
         raise InteractionError('\n\n'.join(error))
 
     member = ProxyMember(
         name=name,
-        meta=meta,
+        custom_id=custom_id,
         pronouns=pronouns or '',
         birthday=birthday or '',
         color=int_color,
@@ -278,8 +277,8 @@ async def slash_member_new(
         interaction.send(embeds=[Embed(
             title='Member Created',
             description=(
-                f'Member `{name}` with meta `{meta}` created in group {group.name}'
-                if meta else
+                f'Member `{name}` with custom id `{custom_id}` created in group {group.name}'
+                if custom_id else
                 f'Member `{name}` created in group {group.name}'),
             color=member.color or 0x69ff69
         )])
@@ -549,9 +548,9 @@ async def slash_member_set_group(
             f'Member `{member.name}` is already in group `{group.name}`'
         )
 
-    if await group.get_member_by_name(member.name, member.meta) is not None:
+    if await group.get_member_by_name(member.name, member.custom_id) is not None:
         raise InteractionError(
-            f'Member `{member.name}` with meta `{member.meta}` already exists in group `{group.name}`'
+            f'Member `{member.name}` with custom id `{member.custom_id}` already exists in group `{group.name}`'
         )
 
     current_group.members.discard(member.id)
@@ -585,49 +584,49 @@ async def slash_member_set_group(
 
 
 @member_set.command(
-    name='meta',
-    description='Set a member\'s meta field',
+    name='custom_id',
+    description='Set a member\'s custom id field',
     options=[
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.STRING,
             name='member',
-            description='Member to give new meta field',
+            description='Member to give new custom id field',
             required=True,
             autocomplete=True),
         ApplicationCommand.Option(
             type=ApplicationCommandOptionType.STRING,
-            name='meta',
-            description='New member meta field (leave empty to remove)',
+            name='custom_id',
+            description='New member custom id (leave empty to remove)',
             max_length=50,
             required=False)],
     contexts=InteractionContextType.ALL(),
     integration_types=ApplicationIntegrationType.ALL())
-async def slash_member_set_meta(
+async def slash_member_set_custom_id(
     interaction: Interaction,
     member: ProxyMember,
-    meta: str | None = None
+    custom_id: str | None = None
 ) -> None:
     group = await member.get_group()
 
     group_edit_check(group, interaction.author_id)
 
-    if await group.get_member_by_name(member.name, meta or '') is not None:
+    if await group.get_member_by_name(member.name, custom_id or '') is not None:
         raise InteractionError(
-            f'Member `{member.name}` with meta `{meta}` already exists in group `{group.name}`'
-            if meta else
-            f'Member `{member.name}` without meta field already exists in group `{group.name}`'
+            f'Member `{member.name}` with custom id `{custom_id}` already exists in group `{group.name}`'
+            if custom_id else
+            f'Member `{member.name}` without custom id already exists in group `{group.name}`'
         )
 
-    member.meta = meta or ''
+    member.custom_id = custom_id or ''
 
     await gather(
         member.save(),
         interaction.response.send_message(embeds=[Embed(
-            title='Member Meta Updated',
+            title='Member Custom ID Updated',
             description=(
-                f'Member `{member.name}` meta field changed to `{meta}`'
-                if meta else
-                f'Member `{member.name}` meta field removed'),
+                f'Member `{member.name}` custom id changed to `{custom_id}`'
+                if custom_id else
+                f'Member `{member.name}` custom id removed'),
             color=member.color or 0x69ff69
         )])
     )
@@ -660,11 +659,11 @@ async def slash_member_set_name(
 
     group_edit_check(group, interaction.author_id)
 
-    if await group.get_member_by_name(name, member.meta) is not None:
+    if await group.get_member_by_name(name, member.custom_id) is not None:
         raise InteractionError(
-            f'Member `{name}` with meta `{member.meta}` already exists in group `{group.name}`'
-            if member.meta else
-            f'Member `{name}` without meta field already exists in group `{group.name}`'
+            f'Member `{name}` with custom id `{member.custom_id}` already exists in group `{group.name}`'
+            if member.custom_id else
+            f'Member `{name}` without custom id already exists in group `{group.name}`'
         )
 
     if member.userproxy is not None:

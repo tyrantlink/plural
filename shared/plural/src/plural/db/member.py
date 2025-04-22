@@ -30,7 +30,7 @@ class ProxyMember(BaseDocument):
         use_cache = True
         cache_expiration_time = timedelta(milliseconds=500)
         indexes: ClassVar = [
-            ('name', 'meta'),
+            ('name', 'custom_id'),
             'userproxy.bot_id',
             'avatar'
         ]
@@ -129,9 +129,9 @@ class ProxyMember(BaseDocument):
         description='the name of the member',
         min_length=1,
         max_length=80)
-    meta: str = Field(
+    custom_id: str = Field(
         '',
-        description='the meta information of the member; only shown in autocomplete',
+        description='the custom identifier of the member; only shown in autocomplete',
         max_length=50)
     pronouns: str = Field(
         '',

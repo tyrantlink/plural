@@ -141,8 +141,8 @@ async def autocomplete_member(
         responses = [
             ApplicationCommand.Option.Choice(
                 name=(base_name + (
-                    f' ({member.meta[:97-len(base_name)]})'
-                    if member.meta else
+                    f' ({member.custom_id[:97-len(base_name)]})'
+                    if member.custom_id else
                     ''
                 ))[:100],
                 value=str(member.id))

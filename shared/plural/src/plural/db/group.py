@@ -133,11 +133,11 @@ class Group(BaseDocument):
     async def get_member_by_name(
         self,
         name: str,
-        meta: str
+        custom_id: str
     ) -> ProxyMember | None:
         return await ProxyMember.find_one({
             'name': name,
-            'meta': meta,
+            'custom_id': custom_id,
             '_id': {'$in': list(self.members)}
         })
 

@@ -5,7 +5,7 @@ If you're coming from PluralKit or Tupperbox, see the [importing](/guide/importi
 ## Create a member
 
 - Use `/member new` and specify a name
-  - The combination of name and meta must be unique within a group
+  - The combination of name and custom id must be unique within a group
   - If you don't specify a group, "default" will be used (or created if it doesn't exist)
   - You can also add an avatar, and proxy tag with this command
 

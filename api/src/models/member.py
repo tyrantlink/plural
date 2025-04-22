@@ -61,8 +61,8 @@ class MemberModel(BaseModel):
         description='The name of the member',
         min_length=1,
         max_length=80)
-    meta: str = Field(
-        description='The meta information of the member; only shown in autocomplete',
+    custom_id: str = Field(
+        description='The custom identifier of the member; only shown in autocomplete',
         max_length=50)
     pronouns: str = Field(
         description='The pronouns of the member')
