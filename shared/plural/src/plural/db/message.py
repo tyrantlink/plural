@@ -17,6 +17,7 @@ class Message(BaseDocument):
             'original_id',
             'proxy_id',
             'author_id',
+            ('user', ('ts', -1)),
             ttl(days=7)
         ]
 

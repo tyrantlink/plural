@@ -7,7 +7,7 @@ from beanie import PydanticObjectId
 from bson.errors import InvalidId
 from thefuzz import process
 
-from plural.db import ProxyMember, Group, redis
+from plural.db import ProxyMember, Group, Message as DBMessage, redis
 
 from src.discord import (
     ApplicationCommandInteractionData,
@@ -157,17 +157,24 @@ async def autocomplete_member(
         ]
 
         if sort:
-            recent_proxies = dict(await redis.zrange(
-                f'recent_proxies:{interaction.author_id}',
-                0,
-                -1,
-                withscores=True
-            ))
+            recent_proxies = {
+                str(member_id): index
+                for index, member_id in enumerate(
+                    (await DBMessage.get_motor_collection().aggregate([
+                        {'$match': {'user': usergroup.id}},
+                        {'$sort': {'ts': -1}},
+                        {'$group': {'_id': '$member_id', 'ts': {'$first': '$ts'}}},
+                        {'$sort': {'ts': -1}},
+                        {'$group': {'_id': None, 'm': {'$push': '$_id'}}},
+                        {'$project': {'_id': False, 'm': True}},
+                        {'$limit': 25}
+                    ]).to_list() or [{}])[0].get('m', [])
+                )
+            }
 
             responses.sort(
-                reverse=True,
                 key=lambda choice: (
-                    recent_proxies.get(choice.value, 0),
+                    recent_proxies.get(choice.value, 30),
                     choice.name
                 )
             )
@@ -314,7 +321,7 @@ async def autocomplete_group(
 
 @autocomplete('proxy_tag')
 async def autocomplete_proxy_tag(
-    interaction: Interaction,
+    _interaction: Interaction,
     options: dict[str, ApplicationCommandInteractionData.Option]
 ) -> list[ApplicationCommand.Option.Choice]:
     member_id = options.get('member')
@@ -331,17 +338,6 @@ async def autocomplete_proxy_tag(
         (query := options.get('proxy_tag'))
         and str(query.value)
     )
-
-    redis_key = ':'.join((
-        'autocomplete',
-        str(interaction.author_id),
-        'proxy_tag',
-        str(member_id.value),
-        query or ''
-    ))
-
-    if (cached := await cache_check(redis_key)):
-        return cached
 
     try:
         member_id = PydanticObjectId(str(member_id.value))
@@ -369,18 +365,14 @@ async def autocomplete_proxy_tag(
     }
 
     if not full_process(query):
-        responses = [
+        return [
             ApplicationCommand.Option.Choice(
                 name=tag,
                 value=index)
             for index, tag in proxy_tags.items()
         ]
 
-        await cache_add(redis_key, responses)
-
-        return responses
-
-    responses = [
+    return [
         ApplicationCommand.Option.Choice(
             name=processed[0],
             value=str(processed[2]))
@@ -391,7 +383,3 @@ async def autocomplete_proxy_tag(
             limit=10
         )
     ]
-
-    await cache_add(redis_key, responses)
-
-    return responses
