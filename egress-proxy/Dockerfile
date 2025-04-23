@@ -13,7 +13,7 @@ RUN apt-get update && \
 
 
 COPY Cargo.toml .
-COPY shared/version shared/version
+COPY core core
 COPY gateway gateway
 COPY egress-proxy egress-proxy
 

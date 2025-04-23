@@ -19,7 +19,7 @@ use reqwest::{Client as ReqwestClient, Method, StatusCode as ReqwestStatusCode};
 use tokio::sync::Semaphore;
 use tokio::time::{Duration, Instant};
 
-use version::get_version;
+use plural_core::get_version;
 
 const DISCORD_API_URL: &str = "https://discord.com";
 

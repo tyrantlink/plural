@@ -1,5 +1,6 @@
 from asyncio import set_event_loop_policy, run, gather
 from contextlib import suppress
+from sys import argv
 
 from uvloop import EventLoopPolicy
 
@@ -25,5 +26,13 @@ async def main() -> None:
 
 
 if __name__ == '__main__':
+    # ? when building the docker image, uv sync doesn't install
+    # ? the maturin stuff (caith) for some reason, so it adds like
+    # ? 30 seconds to startup time
+    # ? so we add this so we can uv run at build time
+    # ? without actually running
+    if 'stupid-workaround-docker-pain' in argv:
+        exit(0)
+
     with suppress(KeyboardInterrupt):
         run(main())

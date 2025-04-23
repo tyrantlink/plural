@@ -25,8 +25,7 @@ include = ["*.pyi"]
 cache-keys = [{file = "pyproject.toml"}, {file = "caith/Cargo.toml"}, {file = "**/*.rs"}]
 
 [tool.uv.sources]
-version = { path = "../shared/version" }
-plural = { path = "../shared/plural" }
+plural = { path = "../shared" }
 
 [tool.mypy]
 enable_incomplete_feature = ["NewGenericSyntax"]

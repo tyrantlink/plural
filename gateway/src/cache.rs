@@ -1,4 +1,4 @@
-use std::{hash::{Hash, Hasher}, time::SystemTime, vec, env};
+use std::{hash::{Hash, Hasher}, time::SystemTime, vec};
 
 use base64::{prelude::BASE64_STANDARD_NO_PAD, Engine as _};
 use fred::{
@@ -17,13 +17,12 @@ use opentelemetry::global;
 use lazy_static::lazy_static;
 use rustc_hash::FxHasher;
 use serde_json::{Value, json};
-
+use plural_core::{env, redis};
 
 lazy_static! {
     static ref APPLICATION_ID: String = std::str::from_utf8(
         &BASE64_STANDARD_NO_PAD.decode(
-            env::var("BOT_TOKEN")
-                .expect("BOT_TOKEN not found")
+            env().bot_token
                 .split('.')
                 .next()
                 .expect("invalid BOT_TOKEN")
@@ -62,10 +61,9 @@ enum CacheHandler {
 
 
 pub async fn cache_and_publish(
-    redis: RedisClient,
     json: Value
 ) -> Result<Response, fred::error::Error> {
-    if is_duplicate(&redis, &json).await? {
+    if is_duplicate(&json).await? {
         return Ok(Response::Duplicate);
     }
 
@@ -84,10 +82,10 @@ pub async fn cache_and_publish(
         opentelemetry::KeyValue::new("event", event_name.clone())
     ]);
 
-    let pipeline = redis.pipeline();
+    let pipeline = redis().pipeline();
 
-    //? cloning here so i don't have to deal with the lifetime issues of the guild create event futures
-    let mut response = if cache(&redis, &pipeline, json.clone()).await? {
+    // ? cloning here so i don't have to deal with the lifetime issues of the guild create event futures
+    let mut response = if cache(&pipeline, json.clone()).await? {
         Ok(Response::Cached)
     } else {
         Ok(Response::Unsupported)
@@ -104,7 +102,6 @@ pub async fn cache_and_publish(
 }
 
 async fn is_duplicate(
-    redis: &RedisClient,
     json: &Value
 ) -> Result<bool, fred::error::Error> {
     let hash = {
@@ -118,7 +115,7 @@ async fn is_duplicate(
     }
 
     // ? try to figure out why this takes 7ms sometimes
-    let response: Option<bool> = redis.set(
+    let response: Option<bool> = redis().set(
         format!("discord:event:{}:{}", json["t"].as_str().unwrap_or("UNKNOWN"), hash),
         "1",
         Some(Expiration::EX(10)),
@@ -130,7 +127,6 @@ async fn is_duplicate(
 }
 
 async fn cache(
-    redis: &RedisClient,
     pipeline: &Pipeline<RedisClient>,
     json: Value
 ) -> Result<bool, fred::error::Error> {
@@ -157,14 +153,14 @@ async fn cache(
             let author_id = json["d"]["author"]["id"].as_str()
                 .expect("author id not found");
 
-            update_user(redis, pipeline, &json["d"]["author"]).await?;
+            update_user(pipeline, &json["d"]["author"]).await?;
 
             if let Some(member) = json["d"].get("member") {
                 let mut member = member.clone();
                 member["guild_id"] = json["d"]["guild_id"].clone();
                 member["user_id"] = Value::String(author_id.to_string());
 
-                update_member(redis, pipeline, &mut member).await?;
+                update_member(pipeline, &mut member).await?;
             }
 
             data = { //? redact important fields for privacy
@@ -214,7 +210,6 @@ async fn cache(
             if json["d"]["channels"].is_array() {
                 for channel in json["d"]["channels"].as_array().unwrap() {
                     futures.push(cache(
-                        redis,
                         pipeline,
                         json_merge(
                             &json!({
@@ -236,7 +231,6 @@ async fn cache(
             if json["d"]["threads"].is_array() {
                 for thread in json["d"]["threads"].as_array().unwrap() {
                     futures.push(cache(
-                        redis,
                         pipeline,
                         json_merge(
                             &json!({
@@ -257,7 +251,6 @@ async fn cache(
 
             if json["d"]["emojis"].is_array() {
                 futures.push(cache(
-                    redis,
                     pipeline,
                     json!({
                         "t": "GUILD_EMOJIS_UPDATE",
@@ -276,7 +269,6 @@ async fn cache(
             if json["d"]["members"].is_array() {
                 for member in json["d"]["members"].as_array().unwrap() {
                     futures.push(cache(
-                        redis,
                         pipeline,
                         json_merge(
                             &json!({
@@ -298,7 +290,6 @@ async fn cache(
             if json["d"]["roles"].is_array() {
                 for role in json["d"]["roles"].as_array().unwrap() {
                     futures.push(cache(
-                        redis,
                         pipeline,
                         json!({
                             "t": "GUILD_ROLE_CREATE",
@@ -325,7 +316,7 @@ async fn cache(
                     .expect("guild id not found"))
             ];
 
-            let channels: Option<Vec<String>> = redis.smembers(
+            let channels: Option<Vec<String>> = redis().smembers(
                 format!(
                     "discord:guild:{}:channels",
                     json["d"]["id"].as_str()
@@ -339,7 +330,7 @@ async fn cache(
                 }));
             }
 
-            let emojis: Option<Vec<String>> = redis.smembers(
+            let emojis: Option<Vec<String>> = redis().smembers(
                 format!(
                     "discord:guild:{}:emojis",
                     json["d"]["id"].as_str()
@@ -353,7 +344,7 @@ async fn cache(
                 }));
             }
 
-            let members: Option<Vec<String>> = redis.smembers(
+            let members: Option<Vec<String>> = redis().smembers(
                 format!(
                     "discord:guild:{}:members",
                     json["d"]["id"].as_str()
@@ -372,7 +363,7 @@ async fn cache(
                 }));
             }
 
-            let roles: Option<Vec<String>> = redis.smembers(
+            let roles: Option<Vec<String>> = redis().smembers(
                 format!(
                     "discord:guild:{}:roles",
                     json["d"]["id"].as_str()
@@ -432,7 +423,7 @@ async fn cache(
             ).await?;
         }
         "GUILD_EMOJIS_UPDATE" => {
-            let emojis: Option<Vec<String>> = redis.smembers(
+            let emojis: Option<Vec<String>> = redis().smembers(
                 format!(
                     "discord:guild:{}:emojis",
                     json["d"]["guild_id"].as_str()
@@ -558,7 +549,6 @@ async fn cache(
         "THREAD_LIST_SYNC" => {
             for thread in json["d"]["threads"].as_array().unwrap() {
                 futures.push(cache(
-                    redis,
                     pipeline,
                     json_merge(
                         &json!({
@@ -578,7 +568,6 @@ async fn cache(
         }
         "GUILD_MEMBER_UPDATE" => {
             update_member(
-                redis,
                 pipeline,
                 &mut json["d"].clone()
             ).await?;
@@ -592,7 +581,6 @@ async fn cache(
             }
 
             update_member(
-                redis,
                 pipeline,
                 &mut json_merge(
                     &json["d"]["member"],
@@ -611,7 +599,7 @@ async fn cache(
         }
     }
 
-    let cached: Option<Value> = redis.json_get(
+    let cached: Option<Value> = redis().json_get(
         &key,
         None::<String>,
         None::<String>,
@@ -735,14 +723,13 @@ fn json_merge(
 }
 
 async fn update_user(
-    redis: &RedisClient,
     pipeline: &Pipeline<RedisClient>,
     json: &Value
 ) -> Result<(), fred::error::Error> {
     let key = format!("discord:user:{}", json["id"].as_str()
         .expect("user id not found"));
 
-    let cached: Option<Value> = redis.json_get(
+    let cached: Option<Value> = redis().json_get(
         &key,
         None::<String>,
         None::<String>,
@@ -779,12 +766,11 @@ async fn update_user(
 }
 
 async fn update_member(
-    redis: &RedisClient,
     pipeline: &Pipeline<RedisClient>,
     json: &mut Value
 ) -> Result<(), fred::error::Error> {
     let user_id = if json.get("user").is_some() {
-        update_user(redis, pipeline, &json["user"]).await?;
+        update_user(pipeline, &json["user"]).await?;
         json["user"]["id"].as_str()
             .expect("user id not found")
             .to_string()
@@ -805,7 +791,7 @@ async fn update_member(
         user_id
     );
 
-    let cached: Option<Value> = redis.json_get(
+    let cached: Option<Value> = redis().json_get(
         &key,
         None::<String>,
         None::<String>,
@@ -832,7 +818,7 @@ async fn update_member(
         }
     }
 
-    // ? don't expire self, required for permission calculations
+    // ? never expire self, required for permission calculations
     if user_id != APPLICATION_ID.as_str() {
         let _: () = pipeline.expire(
             &key,

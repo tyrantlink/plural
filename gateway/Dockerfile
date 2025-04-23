@@ -11,9 +11,12 @@ RUN apt-get update && \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# do this better
-COPY . . 
-RUN cargo build --release
+COPY Cargo.toml .
+COPY core core
+COPY gateway gateway
+COPY egress-proxy egress-proxy
+
+RUN cargo build -rp gateway
 
 # runtime
 FROM debian:bookworm-slim

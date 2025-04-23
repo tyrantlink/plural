@@ -9,7 +9,6 @@ dependencies = [
     "pynacl>=1.5.0",
     "uvicorn>=0.34.0",
     "uvloop>=0.21.0",
-    "version",
     "plural",
     "thefuzz>=0.22.1",
     "regex>=2024.11.6",
@@ -18,8 +17,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-version = { path = "../shared/version" }
-plural = { path = "../shared/plural" }
+plural = { path = "../shared" }
 
 [tool.mypy]
 enable_incomplete_feature = ["NewGenericSyntax"]

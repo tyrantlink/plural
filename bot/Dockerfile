@@ -29,4 +29,6 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 
 RUN uv sync
 
+RUN uv run main.py stupid-workaround-docker-pain
+
 CMD uv run main.py
