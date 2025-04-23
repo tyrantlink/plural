@@ -1629,13 +1629,19 @@ async def userproxy_handler(
         except NotFound:
             debug_log.append(
                 'Userproxy member not found in server.')
-            await GENERAL_SESSION.post(
+            response = await GENERAL_SESSION.post(
                 f'https://api.{env.domain}/members/{proxy.member.id}/userproxy/sync',
                 headers=inject({
                     'Authorization': f'Bearer {env.cdn_upload_token}'}),
                 json={
                     'author_id': int(event['author']['id']),
                     'patch_filter': ['guilds']})
+            if response.status == 400:
+                # ? userproxy bot token is likely invalid
+                # ? manually ensure guild id is removed from list
+                proxy.member.userproxy.guilds.discard(
+                    int(event['guild_id']))
+                await proxy.member.save()
             return ProxyResponse.failure(publish_latency)
 
         member = await Cache(

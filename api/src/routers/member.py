@@ -198,7 +198,8 @@ async def post__member_userproxy_sync(
                 author_name=user.username),
             member,
             body.patch_filter,
-            silent=True)
+            silent=True,
+            raw_errors=True)
     except HTTPException as e:
         return Response(
             status_code=400,

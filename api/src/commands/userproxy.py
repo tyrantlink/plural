@@ -96,6 +96,7 @@ async def _userproxy_sync(
     silent: bool = False,
     usergroup: Usergroup | None = None,
     group: Group | None = None,
+    raw_errors: bool = False
 ) -> None:
     if member.userproxy is None:
         raise ValueError('Member has no userproxy')
@@ -108,6 +109,9 @@ async def _userproxy_sync(
             member.userproxy.token,
             False)
     except HTTPException as e:
+        if raw_errors:
+            raise e
+
         raise InteractionError(
             'Invalid bot token\n\nPlease go to the '
             f'[discord developer portal](https://discord.com/developers/applications/{member.userproxy.bot_id}/bot) '
