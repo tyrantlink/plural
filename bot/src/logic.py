@@ -761,6 +761,11 @@ async def insert_emojis(
     if not to_clone:
         return content
 
+    if len(to_clone) > 10:
+        debug_log.append(
+            'Max emoji clone limit (10) reached.')
+        to_clone = to_clone[:10]
+
     app_emojis: dict[int, ProbableEmoji] = {}
 
     async def _clone_emoji(emoji: ProbableEmoji) -> None:
@@ -1543,6 +1548,11 @@ async def webhook_handler(
             debug_log
         )
 
+        if len(proxy.content) > 2000:
+            debug_log.append(
+                'Message too long after emoji replacement.')
+            return ProxyResponse.failure(False)
+
     embeds = []
 
     usergroup = await Usergroup.get_by_user(int(event['author']['id']))
@@ -1550,6 +1560,11 @@ async def webhook_handler(
     proxy.content, roll_embed, publish_latency = (
         await insert_blocks(proxy.content, debug_log)
     )
+
+    if len(proxy.content) > 2000:
+        debug_log.append(
+            'Message too long after dice roll.')
+        return ProxyResponse.failure(False)
 
     if event.get('referenced_message') is not None:
         reply = format_reply(
@@ -1679,9 +1694,19 @@ async def userproxy_handler(
             'Userproxy bot token is invalid or expired.')
         return ProxyResponse.failure(publish_latency)
 
+    if len(proxy.content) > 2000:
+        debug_log.append(
+            'Message too long after emoji replacement.')
+        return ProxyResponse.failure(False)
+
     proxy.content, roll_embed, block_publish_latency = (
         await insert_blocks(proxy.content, debug_log)
     )
+
+    if len(proxy.content) > 2000:
+        debug_log.append(
+            'Message too long after dice roll.')
+        return ProxyResponse.failure(False)
 
     publish_latency = publish_latency and block_publish_latency
 
