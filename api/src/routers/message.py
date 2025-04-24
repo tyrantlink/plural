@@ -106,7 +106,7 @@ async def head__message(
     description=dedent("""
     Get a message by its id
 
-    Note: Because /plu/ral deletes and proxies messages simultaneously, this endpoint may block for up to 5 seconds waiting for the proxied message to be created, returning a 404 on timeout."""),
+    Note: Because /plu/ral deletes and proxies messages simultaneously, this endpoint may block for up to 5 seconds waiting for the proxied message to be created, returning a 408 on timeout."""),
     responses={
         200: message_response,
         400: response(
@@ -119,10 +119,14 @@ async def head__message(
             examples=[
                 Example(
                     name='Message not found',
-                    value={'detail': 'Message not found'}),
-                Example(
-                    name='Message not found (timeout)',
-                    value={'detail': 'Message not found (timeout)'})]),
+                    value={'detail': 'Message not found'})]),
+        408: response(
+            description='Message proxy is pending but took longer than 5 seconds to complete',
+            examples=[Example(
+                name='Message proxy is pending but took longer than 5 seconds to complete',
+                value={'detail': (
+                    'Message proxy is pending but took '
+                    'longer than 5 seconds to complete.')})]),
         410: response(
             description='Message is older than 7 days; status is unknown',
             examples=[Example(
@@ -186,10 +190,13 @@ async def get__message(
 
     if message is None:
         return Response(
-            status_code=404,
+            status_code=408,
             media_type='application/json',
             headers={'Cache-Control': 'public, max-age=604800'},
-            content=dumps({'detail': 'Message not found (timeout)'})
+            content=dumps({'detail': (
+                'Message proxy is pending but took '
+                'longer than 5 seconds to complete.'
+            )})
         )
 
     return Response(
