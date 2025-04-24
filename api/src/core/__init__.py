@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator, Callable, Awaitable
 from contextlib import asynccontextmanager
+from textwrap import dedent
 from asyncio import gather
 from random import randint
 from typing import Any
@@ -166,7 +167,21 @@ class PatchedFastAPI(FastAPI):
 
 app = PatchedFastAPI(
     title='/plu/ral API',
-    description='Get an application token by running `/api` from the bot',
+    description=dedent(f"""
+        Get an application token by running `/api` from the bot
+
+        A note about versioning:
+        /plu/ral uses [epoch semantic versioning](https://antfu.me/posts/epoch-semver)
+
+        This splits the version into four parts, rather than three:
+        - Epoch ({VERSION.split('.')[0]})
+          - Incremented on significant architectural changes (basically bumped whenever I want)
+        - Major ({VERSION.split('.')[1]})
+          - Incremented on breaking changes
+        - Minor ({VERSION.split('.')[2]})
+          - Incremented on new features
+        - Patch ({VERSION.split('.')[3]})
+          - Incremented on every commit"""),
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
