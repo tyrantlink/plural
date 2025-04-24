@@ -171,7 +171,7 @@ app = PatchedFastAPI(
         Get an application token by running `/api` from the bot
 
         A note about versioning:
-        /plu/ral uses [epoch semantic versioning](https://antfu.me/posts/epoch-semver)
+        /plu/ral uses [Epoch Semantic Versioning](https://antfu.me/posts/epoch-semver)
 
         This splits the version into four parts, rather than three:
         - Epoch ({VERSION.split('.')[0]})
@@ -181,7 +181,12 @@ app = PatchedFastAPI(
         - Minor ({VERSION.split('.')[2]})
           - Incremented on new features
         - Patch ({VERSION.split('.')[3]})
-          - Incremented on every commit"""),
+          - Incremented on every commit (bug fixes, documentation changes, etc.)
+
+        When a part is incremented, all parts below are reset to 0.
+
+        For example, if the version is `3.1.2.13` and the major version is incremented,
+        the version becomes `3.2.0.0`"""),
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
