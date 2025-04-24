@@ -116,10 +116,9 @@ async def head__message(
                 value={'detail': 'Message is in the future; status is unknown'})]),
         404: response(
             description='Message not found',
-            examples=[
-                Example(
-                    name='Message not found',
-                    value={'detail': 'Message not found'})]),
+            examples=[Example(
+                name='Message not found',
+                value={'detail': 'Message not found'})]),
         408: response(
             description='Message proxy is pending but took longer than 5 seconds to complete',
             examples=[Example(
@@ -137,6 +136,7 @@ async def head__message(
 async def get__message(
     channel_id: int,
     message_id: int,
+    member: bool = False,
     token: TokenData = Security(api_key_validator)  # noqa: ARG001, B008
 ) -> Response:
     if _snowflake_to_age(message_id) > 604_800:  # 7 days
@@ -204,16 +204,29 @@ async def get__message(
         media_type='application/json',
         headers={'Cache-Control': 'public, max-age=604800'},
         content=dumps(MessageModel.from_message(
-            message
-        ).model_dump(mode='json'))
+            message, ((
+                await (await member_data.get_group()).get_usergroup(),
+                member_data)
+                if member and
+                (member_data := await ProxyMember.get(message.member_id)) is not None
+                else None)
+        ).model_dump(
+            mode='json',
+            exclude=None if member else {'member'}
+        ))
     )
 
 
 @router.get(
     '/{channel_id}/{message_id}/member',
     name='Get Message Member',
-    description="""
-    Get a message author by message id""",
+    description=dedent("""
+    Get a message author by message id
+
+    THIS ENDPOINT IS DEPRECATED AND WILL BE REMOVED IN THE FUTURE
+
+    Please use `GET /messages/:channel/:id?member=true` instead"""),
+    deprecated=True,
     responses={
         200: author_response,
         400: response(
@@ -228,11 +241,15 @@ async def get__message(
                     name='Message not found',
                     value={'detail': 'Message not found'}),
                 Example(
-                    name='Message not found (timeout)',
-                    value={'detail': 'Message not found (timeout)'}),
-                Example(
                     name='Member not found',
                     value={'detail': 'Member not found'})]),
+        408: response(
+            description='Message proxy is pending but took longer than 5 seconds to complete',
+            examples=[Example(
+                name='Message proxy is pending but took longer than 5 seconds to complete',
+                value={'detail': (
+                    'Message proxy is pending but took '
+                    'longer than 5 seconds to complete.')})]),
         410: response(
             description='Message is older than 7 days; status is unknown',
             examples=[Example(
@@ -296,10 +313,13 @@ async def get__message_member(
 
     if message is None:
         return Response(
-            status_code=404,
+            status_code=408,
             media_type='application/json',
             headers={'Cache-Control': 'public, max-age=604800'},
-            content=dumps({'detail': 'Message not found (timeout)'})
+            content=dumps({'detail': (
+                'Message proxy is pending but took '
+                'longer than 5 seconds to complete.'
+            )})
         )
 
     member = await ProxyMember.get(message.member_id)

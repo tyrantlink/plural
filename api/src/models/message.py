@@ -20,9 +20,14 @@ class MessageModel(BaseModel):
     reason: str
     webhook_id: str | None
     reference_id: str | None
+    member: AuthorModel | None
 
     @classmethod
-    def from_message(cls, message: Message) -> MessageModel:
+    def from_message(
+        cls,
+        message: Message,
+        member_data: tuple[Usergroup, ProxyMember] | None = None
+    ) -> MessageModel:
         return cls(
             original_id=(
                 str(message.original_id)
@@ -40,6 +45,10 @@ class MessageModel(BaseModel):
             reference_id=(
                 str(message.reference_id)
                 if message.reference_id is not None else
+                None),
+            member=(
+                AuthorModel.from_member(*member_data)
+                if member_data else
                 None
             )
         )
