@@ -806,7 +806,7 @@ async def insert_emojis(
             return content
 
     for emoji, exists in zip(unsharded_used, redis_response, strict=True):
-        if exists:
+        if exists or emoji.id not in app_emojis:
             continue
 
         content = content.replace(
