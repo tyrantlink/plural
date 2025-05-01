@@ -2,13 +2,13 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY api api
+COPY interactions interactions
 COPY .git .git
 COPY shared shared
 
 RUN pip install uv
 
-WORKDIR /app/api
+WORKDIR /app/interactions
 
 RUN uv sync
 

@@ -1,11 +1,11 @@
 [package]
-name = "gateway"
+name = "plural-gateway"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+plural-core = { path = "../core", features = ["version", "env", "otel", "redis"]}
 base64 = "0.22"
-fred = { version = "10.0", default-features = false, features = ["enable-native-tls", "i-streams", "i-sets", "i-keys", "i-redis-json"] }
 futures = "0.3"
 lazy_static = "1.5"
 opentelemetry = "0.27"
@@ -16,4 +16,3 @@ tokio = { version = "1.0", features = ["rt", "net", "signal"] }
 twilight-gateway = { version = "0.16", default-features = false, features = ["rustls-platform-verifier", "twilight-http", "zlib-simd", "rustls-aws_lc_rs"] }
 twilight-http = { version = "0.16", default-features = false, features = ["rustls-platform-verifier", "simd-json", "rustls-aws_lc_rs", "hickory"] }
 twilight-model = "0.16"
-plural-core = { path = "../core", features = ["version", "env", "otel", "redis"]}

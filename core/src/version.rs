@@ -1,5 +1,4 @@
-use std::env;
-use std::process::Command;
+use std::{env, process::Command};
 
 
 fn read_commits(service: &str) -> Vec<(String, String)> {
@@ -30,17 +29,17 @@ fn read_commits(service: &str) -> Vec<(String, String)> {
 }
 
 fn find_start_commit(commits: &[(String, String)]) -> &[(String, String)] {
-    let start = &env::var("START_COMMIT")
-        .unwrap_or("".to_string());
+    let start = &env::var("START_COMMIT").unwrap_or("".to_string());
 
     if start.is_empty() {
         return commits;
     }
 
-    commits.iter()
+    commits
+        .iter()
         .position(|(hash, _)| hash == start)
         .map(|index| &commits[index..])
-        .unwrap_or_else(|| panic!("Start commit {} not found", start))
+        .unwrap_or_else(|| panic!("Start commit {start} not found"))
 }
 
 fn calculate_version(commits: &[(String, String)]) -> String {
@@ -52,8 +51,19 @@ fn calculate_version(commits: &[(String, String)]) -> String {
     let mut version = [0, 0, 0];
 
     for (_, message) in commits {
-        let prefix = message.trim().to_lowercase().chars().take(6).collect::<String>();
+        let prefix = message
+            .trim()
+            .to_lowercase()
+            .chars()
+            .take(6)
+            .collect::<String>();
+
         match &prefix[..] {
+            s if s.starts_with("epoch;") => {
+                version[0] = 0;
+                version[1] = 0;
+                version[2] = 0;
+            }
             s if s.starts_with("major;") => {
                 version[0] += 1;
                 version[1] = 0;
@@ -63,28 +73,23 @@ fn calculate_version(commits: &[(String, String)]) -> String {
                 version[1] += 1;
                 version[2] = 0;
             }
-            _ => version[2] += 1,
+            _ => version[2] += 1
         }
     }
 
     let dev_env = env::var("DEV").unwrap_or("1".to_string());
 
-    let dev_suffix = if !(
-        dev_env == "false" ||
-        dev_env == "0"
-    ) {
+    let dev_suffix = if !(dev_env == "false" || dev_env == "0") {
         "-dev"
     } else {
         ""
     };
 
-    format!("{}.{}.{}.{}{}", epoch, version[0], version[1], version[2], dev_suffix)
+    let (major, minor, patch) = (version[0], version[1], version[2]);
+
+    format!("{epoch}.{major}.{minor}.{patch}{dev_suffix}")
 }
 
 pub fn get_version(service: &str) -> String {
-    calculate_version(
-        find_start_commit(
-            &read_commits(service)
-        )
-    )
+    calculate_version(find_start_commit(&read_commits(service)))
 }

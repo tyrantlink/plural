@@ -52,7 +52,6 @@ def ratelimit(
             int(interval.total_seconds()),
             keys or [])
         return function
-
     return decorator
 
 

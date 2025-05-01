@@ -1,8 +1,9 @@
 # build
-FROM rust:1.85-slim as builder
-WORKDIR /app
+from rustlang/rust:nightly as builder
 
-RUN apt-get update && \
+workdir /app
+
+run apt-get update && \
     apt-get install -y \
     cmake \
     pkg-config \
@@ -11,19 +12,28 @@ RUN apt-get update && \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
+copy Cargo.toml .
+copy rust-toolchain.toml .
+copy core core
 
-COPY Cargo.toml .
-COPY core core
-COPY gateway gateway
-COPY egress-proxy egress-proxy
+copy egress-proxy egress-proxy
 
-RUN cargo build -rp egress-proxy
+copy api/Cargo.toml api/Cargo.toml
+copy api/src/main.rs api/src/main.rs
+copy bot/Cargo.toml bot/Cargo.toml
+copy bot/src/main.rs bot/src/main.rs
+copy gateway/Cargo.toml gateway/Cargo.toml
+copy gateway/src/main.rs gateway/src/main.rs
+copy metrics/Cargo.toml metrics/Cargo.toml
+copy metrics/src/main.rs metrics/src/main.rs
+
+run cargo build -rp egress-proxy
 
 # runtime
-FROM debian:bookworm-slim
-WORKDIR /app
+from debian:bookworm-slim
+workdir /app
 
-RUN apt-get update && \
+run apt-get update && \
     apt-get install -y \
     git \
     libssl-dev \
@@ -32,10 +42,11 @@ RUN apt-get update && \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/egress-proxy ./egress-proxy
-COPY .git .git
-RUN chmod +x ./egress-proxy
+copy --from=builder /app/target/release/egress-proxy ./egress-proxy
+copy .git .git
 
-EXPOSE 8086
+run chmod +x ./egress-proxy
 
-CMD ["./egress-proxy"]
+expose 8086
+
+cmd ["./egress-proxy"]

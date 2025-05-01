@@ -1,24 +1,30 @@
-use std::error::Error;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
-
-use fred::serde_json;
-use futures::StreamExt;
-use fred::interfaces::KeysInterface;
-use tokio::signal;
-use twilight_gateway::{Config, Intents, Message, Shard};
-use twilight_http::Client;
-use twilight_model::gateway::payload::outgoing::UpdatePresence;
-use serde_json::Value;
-
-use twilight_model::gateway::presence;
-
 mod cache;
 
-use plural_core::{get_version, init_otel, env, init_redis, redis};
-use cache::{cache_and_publish, Response, UNSUPPORTED_EVENTS};
+use std::{
+    error::Error,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering}
+    },
+    time::Duration
+};
 
+use cache::{Response, UNSUPPORTED_EVENTS, cache_and_publish};
+use futures::StreamExt;
+use plural_core::{
+    env,
+    get_version,
+    init_otel,
+    init_redis,
+    redis,
+    redis::KeysInterface,
+    shutdown_otel
+};
+use serde_json::Value;
+use tokio::signal;
+use twilight_gateway::{CloseFrame, Config, Intents, Message, Shard};
+use twilight_http::Client;
+use twilight_model::gateway::{payload::outgoing::UpdatePresence, presence};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -33,16 +39,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let bot = Client::new(env().bot_token.clone());
     let config = Config::new(
         env().bot_token.clone(),
-        Intents::GUILDS
-            | Intents::GUILD_EMOJIS_AND_STICKERS
-            | Intents::GUILD_WEBHOOKS
-            | Intents::GUILD_MESSAGES
-            | Intents::GUILD_MESSAGE_REACTIONS
-            | Intents::MESSAGE_CONTENT,
+        Intents::GUILDS |
+            Intents::GUILD_EMOJIS_AND_STICKERS |
+            Intents::GUILD_WEBHOOKS |
+            Intents::GUILD_MESSAGES |
+            Intents::GUILD_MESSAGE_REACTIONS |
+            Intents::MESSAGE_CONTENT
     );
 
     let shards =
-        twilight_gateway::create_recommended(&bot, config, |_, builder| builder.build()).await?;
+        twilight_gateway::create_recommended(&bot, config, |_, builder| {
+            builder.build()
+        })
+        .await?;
+
     let mut senders = Vec::with_capacity(shards.len());
     let mut tasks = Vec::with_capacity(shards.len());
 
@@ -53,7 +63,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         tasks.push(tokio::spawn(runner(shard)));
     }
 
-    let _ = tokio::spawn({
+    let presence_task = tokio::spawn({
         let senders = senders.clone();
         let guild_count = guild_count.clone();
         let user_count = user_count.clone();
@@ -69,10 +79,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     redis().get::<Option<u64>, _>("discord_users").await
                 ) {
                     (Ok(Some(guilds)), Ok(Some(users))) => {
-                        let previous_guilds = guild_count.swap(guilds, Ordering::SeqCst);
-                        let previous_users = user_count.swap(users, Ordering::SeqCst);
+                        let previous_guilds =
+                            guild_count.swap(guilds, Ordering::SeqCst);
 
-                        if previous_guilds == guilds && previous_users == users {
+                        let previous_users =
+                            user_count.swap(users, Ordering::SeqCst);
+
+                        if previous_guilds == guilds && previous_users == users
+                        {
                             continue;
                         }
 
@@ -82,7 +96,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                             format_count(users)
                         );
 
-                        println!("Updating presence to: {}", status);
+                        println!("Updating presence to: {status}");
 
                         let presence = UpdatePresence::new(
                             vec![presence::Activity {
@@ -101,11 +115,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
                                 secrets: None,
                                 state: Some(status),
                                 timestamps: None,
-                                url: None}],
+                                url: None
+                            }],
                             false,
                             None,
-                            presence::Status::Online,
-                        ).unwrap();
+                            presence::Status::Online
+                        )
+                        .unwrap();
 
                         for sender in &senders {
                             let _ = sender.command(&presence);
@@ -117,11 +133,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
         }
-    }).await?;
+    });
 
-    signal::ctrl_c().await?;
+    tokio::select! {
+        _ = signal::ctrl_c() => {}
+        _ = presence_task => {}
+    }
 
-    Ok(())
+    for shard in senders {
+        shard.close(CloseFrame::NORMAL)?;
+    }
+
+    shutdown_otel()
 }
 
 fn format_count(n: u64) -> String {
@@ -139,40 +162,37 @@ async fn runner(mut shard: Shard) {
     while let Some(message) = shard.next().await {
         match message {
             Ok(Message::Text(json_str)) => tokio::spawn(handle_message(json_str)),
-            _ =>  continue
+            _ => continue
         };
     }
-} 
+}
 
 async fn handle_message(json_str: String) {
     let json: Value = serde_json::from_str(&json_str).unwrap();
 
-    let event_name = json["t"]
-        .as_str()
-        .unwrap_or("UNKNOWN")
-        .to_string();
+    let event_name = json["t"].as_str().unwrap_or("UNKNOWN").to_string();
 
     if UNSUPPORTED_EVENTS.contains(&event_name.as_str()) ||
-       json.get("d").is_none() {
+        json.get("d").is_none()
+    {
         return;
     }
 
-    match cache_and_publish(json).await
-    {
+    match cache_and_publish(json).await {
         Ok(Response::Published) => {
-            println!("published {}", event_name);
+            println!("published {event_name}");
         }
         Ok(Response::Duplicate) => {
-            println!("duplicate {}", event_name);
+            println!("duplicate {event_name}");
         }
         Ok(Response::Cached) => {
-            println!("cached    {}", event_name);
+            println!("cached    {event_name}");
         }
         Ok(Response::Unsupported) => {
-            println!("unsupport {}", event_name);
+            println!("unsupport {event_name}");
         }
         Err(e) => {
-            println!("Failed to publish event: {:?}", e);
+            println!("Failed to publish event: {e:?}");
         }
     }
 }

@@ -1,0 +1,15 @@
+[package]
+name = "plural-bot"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+plural-core = { path = "../core", features = ["mongo", "redis", "otel"]}
+
+bson = { version = "2.14" }
+caith = { version = "4.2" }
+http-body-util = "0.1"
+hyper = { version = "1.6", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio", "http1"] }
+opentelemetry = { version = "0.27" }
+tokio = { version = "1.0" }

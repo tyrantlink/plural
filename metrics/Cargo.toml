@@ -1,0 +1,9 @@
+[package]
+name = "plural-metrics"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+plural-core = { path = "../core", features = ["mongo", "otel", "discord", "env"] }
+opentelemetry = { version = "0.27" }
+tokio = { version = "1.44", features = ["full"] }

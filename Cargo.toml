@@ -1,7 +1,16 @@
 [workspace]
 resolver = "2"
 members = [
+    "api",
+    "bot",
     "core",
     "egress-proxy",
-    "gateway"
+    "gateway",
+    "metrics"
 ]
+
+[profile.release]
+opt-level = 3
+strip = true
+lto = "fat"
+panic = "abort"

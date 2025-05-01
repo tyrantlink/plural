@@ -2,13 +2,13 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-COPY bot bot
+COPY botpy botpy
 COPY .git .git
 COPY shared shared
 
 RUN pip install uv
 
-WORKDIR /app/bot
+WORKDIR /app/botpy
 
 RUN apt-get update && \
     apt-get install -y \
