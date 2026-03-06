@@ -1262,6 +1262,14 @@ async def _process_proxy(
         await save_debug_log(event, debug_log)
         return ProxyResult(False, emojis)
 
+    if ('@everyone' in proxy.content or '@here' in proxy.content) and (
+        not permission & Permission.MENTION_EVERYONE
+    ):
+        debug_log.append(
+            'Messages containing @everyone or @here cannot be proxied without the MENTION_EVERYONE permission.')
+        await save_debug_log(event, debug_log)
+        return ProxyResult(False, emojis)
+
     if len(proxy.content) > 2000:
         debug_log.append(
             '/plu/ral cannot send messages longer than 2000 characters.')
