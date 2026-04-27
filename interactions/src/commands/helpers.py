@@ -1,6 +1,6 @@
 from datetime import timedelta
 from asyncio import gather
-from typing import Any
+from typing import Any, Never
 
 from beanie import PydanticObjectId
 from regex import (
@@ -271,10 +271,30 @@ async def edit_message(
         )]
     )
 
+async def forbidden_error(
+        action: str,
+        *reasons: str,
+        src: Exception | None = None,
+) -> Never:
+    if len(reasons) == 0:
+        reasons = (
+            'it is either not a /plu/ral message, older than 7 days, ',
+            'or you are not the author of the message',
+        )
+    if src is None:
+        raise InteractionError(
+            f"You cannot {action} this message, ",
+            *reasons
+        )
+    raise InteractionError(
+        f"You cannot {action} this message, ",
+        *reasons
+    ) from src
 
-async def can_edit(
+
+async def can_delete(
     interaction: Interaction,
-    message: Message
+    message: Message,
 ) -> None:
     db_message = await DBMessage.find_one({
         'user': (await interaction.get_usergroup()).id,
@@ -286,11 +306,7 @@ async def can_edit(
     })
 
     if db_message is None:
-        raise InteractionError(
-            'You cannot edit this message, '
-            'it is either not a /plu/ral message, older than 7 days, '
-            'or you are not the author of the message'
-        )
+        await forbidden_error('delete')
 
     match db_message.reason:
         case 'Userproxy /proxy command' | 'Userproxy Reply command':
@@ -309,10 +325,8 @@ async def can_edit(
                 usergroup.id == group.account or
                 interaction.author_id in group.users
             ):
-                raise InteractionError(
-                    'You cannot edit this message, '
-                    'it is either not a /plu/ral message, older than 7 days, '
-                    'or you are not the author of the message'
+                await forbidden_error(
+                    'delete'
                 )
 
             if not db_message.expired:
@@ -323,11 +337,80 @@ async def can_edit(
                     message.channel_id,
                     userproxy.userproxy.token)
             except HTTPException as e:
-                raise InteractionError(
-                    'You cannot edit this message, '
+                await forbidden_error(
+                    'delete',
+                    'Userproxy messages can be deleted normally',
+                    src=e
+                )
+        case '/say command' if (
+            message.interaction_metadata and
+            message.interaction_metadata.user.id == interaction.author_id
+        ):
+            return
+        case _ if message.webhook_id:
+            if message.webhook_id != db_message.webhook_id:
+                await forbidden_error(
+                    'delete'
+                )
+        case _ if message.author.bot:
+            pass
+        case _:
+            await forbidden_error(
+                'delete'
+            )
+
+
+async def can_edit(
+    interaction: Interaction,
+    message: Message,
+) -> None:
+    db_message = await DBMessage.find_one({
+        'user': (await interaction.get_usergroup()).id,
+        'channel_id': interaction.channel_id,
+        '$or': [
+            {'original_id': message.id},
+            {'proxy_id': message.id}
+        ]
+    })
+
+    if db_message is None:
+        await forbidden_error('edit')
+
+    match db_message.reason:
+        case 'Userproxy /proxy command' | 'Userproxy Reply command':
+            userproxy = await ProxyMember.find_one({
+                'userproxy.bot_id': message.author.id
+            })
+
+            if userproxy is None:
+                raise InteractionError('Userproxy not found')
+
+            usergroup = await interaction.get_usergroup()
+
+            group = await userproxy.get_group()
+
+            if not (
+                usergroup.id == group.account or
+                interaction.author_id in group.users
+            ):
+                await forbidden_error(
+                    'edit'
+                )
+
+            if not db_message.expired:
+                return
+
+            try:
+                await Channel.fetch(
+                    message.channel_id,
+                    userproxy.userproxy.token)
+            except HTTPException as e:
+                await forbidden_error(
+                    'edit',
                     'Userproxy messages can only be edited within 15 minutes'
-                    ' of sending them unless the userproxy bot is in the server'
-                ) from e
+                    ' of sending them unless the userproxy bot is in the server',
+                    src=e
+                )
         case '/say command' if (
             message.interaction_metadata and
             message.interaction_metadata.user.id == interaction.author_id
@@ -337,16 +420,12 @@ async def can_edit(
             if message.webhook_id != db_message.webhook_id:
                 raise InteractionError(
                     'You cannot edit this message, '
-                    'it is either not a /plu/ral message, older than 7 days, '
-                    'or you are not the author of the message'
                 )
         case _ if message.author.bot:
             pass
         case _:
-            raise InteractionError(
-                'You cannot edit this message, '
-                'it is either not a /plu/ral message, older than 7 days, '
-                'or you are not the author of the message'
+            await forbidden_error(
+                'edit'
             )
 
 
