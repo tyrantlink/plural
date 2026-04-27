@@ -117,6 +117,15 @@ async def message_plural_debug(
         )
     )])
 
+@message_command(
+    name='/plu/ral delete',
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL())
+async def message_plural_delete(
+        interaction: Interaction,
+        message: Message
+) -> None:
+    await PAGES['delete'](interaction, message)
 
 @message_command(
     name='/plu/ral edit',
@@ -567,6 +576,49 @@ async def slash_delete_all_data(
     interaction: Interaction
 ) -> None:
     await PAGES['delete_all_data'](interaction)
+
+
+@slash_command(
+    name='delete',
+    description='Delete your most recent message',
+    contexts=InteractionContextType.ALL(),
+    integration_types=ApplicationIntegrationType.ALL()
+)
+async def slash_delete(
+    interaction: Interaction
+) -> None:
+    db_message = await DBMessage.find_one(
+        {'user': (await interaction.get_usergroup()).id,
+         'channel_id': interaction.channel_id},
+        sort=[('ts', -1)]
+    )
+
+    if db_message is None:
+        raise InteractionError('No messages found to delete')
+
+    if db_message.interaction_token and db_message.expired:
+        raise InteractionError(
+            'No message found\n\n'
+            'Messages older than 15 minutes cannot be deleted'
+        )
+
+    try:
+        message = await (
+            Webhook.from_db_message(
+                db_message
+            ).fetch_message(
+                db_message.proxy_id)
+            if db_message.interaction_token else
+            Message.fetch(
+                interaction.channel_id,
+                db_message.proxy_id))
+    except Forbidden as e:
+        raise InteractionError(
+            'Unable to read messages in this channel, please use the /plu/ral delete message command'
+            '\n\n(right-click on the message -> Apps -> /plu/ral delete)'
+        ) from e
+
+    await PAGES['delete'](interaction, message)
 
 
 @slash_command(
