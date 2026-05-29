@@ -5,6 +5,7 @@ from hashlib import md5
 
 from aiohttp import ClientSession, ClientResponse
 from pyvips import Image, Error as VipsError
+from redis.exceptions import ConnectionError
 
 from plural.db import redis, Group, ProxyMember
 from plural.errors import PluralException
@@ -208,9 +209,12 @@ async def delete_avatar(
     session: ClientSession,
     tries: int = 0
 ) -> None:
-    if await redis.scard(f'avatar:{hash}') - 1:
-        await redis.srem(f'avatar:{hash}', parent_id)
-        return None
+    try:
+        if await redis.scard(f'avatar:{hash}') - 1:
+            await redis.srem(f'avatar:{hash}', parent_id)
+            return None
+    except ConnectionError:
+        pass
 
     async with session.delete(
         env.avatar_url.format(parent_id=parent_id, hash=hash),
