@@ -1175,7 +1175,8 @@ def filesize_check(
 async def _process_proxy(
     event: dict,
     start_time: int,
-    emojis: list[ClonedEmoji]
+    emojis: list[ClonedEmoji],
+    retries: int = 0
 ) -> ProxyResult:
     publish_latency = True
     debug_log: list[str] = []
@@ -1418,6 +1419,12 @@ async def _process_proxy(
                     await save_debug_log(event, debug_log)
                     return ProxyResult(False, emojis)
                 case (BaseException(), message):
+                    if retries:
+                        debug_log.append(
+                            'Successfully proxied message.')
+                        cx().update_name(f'proxying message ({name})')
+                        break
+
                     await request(Route(
                         'DELETE',
                         '/channels/{channel_id}/messages/{message_id}',
@@ -1431,29 +1438,21 @@ async def _process_proxy(
                     await delete_emojis(emojis)
                     original_deleted = True
 
-                    if name == 'webhook':
-                        with suppress(BaseException):
-                            await request(Route(
-                                'POST',
-                                f'/channels/{event["channel_id"]}/messages',
-                                token=env.bot_token
-                            ), json={
-                                'embeds': [{
-                                    'title': 'Proxy Failed',
-                                    'description': 'Proxy deleted original message but failed to send proxy.',
-                                    'color': 0xff6969,
-                                    'fields': [{
-                                        'name': 'Reason',
-                                        'value': str(getattr(
-                                            discord_responses[1],
-                                            'detail',
-                                            discord_responses[1]))[:1024],
-                                        'inline': True}],
-                                    'footer': {
-                                        'text': 'Please report this in the support server, if possible.'}}]})
+                    if name == 'webhook' and 'Unknown Webhook' in str(getattr(
+                            discord_responses[1],
+                            'detail',
+                            discord_responses[1]))[:1024]:
+                        # ? delete cached webhook and retry proxy
+                        await redis.delete(f'discord:webhooks:{event["channel_id"]}')
+
+                        if retries < 3:
+                            cx().set_attributes({
+                                'proxy.retries': retries + 1,
+                            })
+                            return await _process_proxy(event, start_time, emojis, retries + 1)
+                        
                         raise PluralExceptionCritical(
-                            'Proxy deleted original message but failed to send proxy.'
-                        ) from discord_responses[1]
+                            'Failed to send proxy after 3 retries.')
 
                     debug_log.append(
                         'Userproxy bot failed to send message in this channel.')
