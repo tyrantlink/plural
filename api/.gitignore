@@ -2,3 +2,5 @@
 __pycache__
 .mypy_cache
 uv.lock
+target/
+*.so

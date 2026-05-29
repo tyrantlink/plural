@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import NamedTuple, Protocol, TYPE_CHECKING
+from typing import Protocol, TYPE_CHECKING
 
-from thefuzz.utils import full_process
 from beanie import PydanticObjectId
 from bson.errors import InvalidId
-from thefuzz import process
+from src.fuzzy_search import search as fuzzy_search
 
 from plural.db import ProxyMember, Group, Message as DBMessage, redis
 
@@ -29,12 +28,6 @@ class AutocompleteCallback(Protocol):
 ) -> list[ApplicationCommand.Option.Choice]:
         ...
 
-
-class ProcessedMember(NamedTuple):
-    name: str
-    score: int
-    member: ProxyMember
-    group: Group
 
 
 __callbacks: dict[str, AutocompleteCallback] = {}
@@ -227,27 +220,23 @@ async def autocomplete_member(
     if not members:
         return []
 
-    if not full_process(query):
+    if not query:
         return await return_members(members, sort=True)
 
-    return await return_members([
-        (member, group)
-        for _, score, member, group in [
-            ProcessedMember(
-                processed[0],
-                processed[1],
-                processed[2][0],
-                processed[2][1])
-            for processed in
-            process.extract(
+    # ? this is gross and bad but it's python and i'm tired
+    id_to_member = {str(member.id): (member, group) for member, group in members}
+
+    return await return_members(
+        [
+            id_to_member[member_id]
+            for _, member_id in
+            fuzzy_search(
                 query,
-                {
-                    (member, group): member.name
-                    for member, group in members
-                },
-                limit=10)]
-        if score > 60
-    ], sort=False)
+                [(member.name, str(member.id)) for member, _ in members]
+            ) if member_id in id_to_member
+        ],
+        sort=False
+    )
 
 
 @autocomplete('userproxy')
@@ -290,29 +279,15 @@ async def autocomplete_group(
             {f'users.{interaction.author_id}': {'$exists': True}}]
     }).to_list()
 
-    responses = (
-        [
-            ApplicationCommand.Option.Choice(
-                name=processed[0],
-                value=str(processed[2].id))
-            for processed in
-            process.extract(
-                query,
-                {
-                    group: group.name
-                    for group in groups
-                },
-                limit=10
-            )
-        ]
-        if full_process(query)
-        else [
-            ApplicationCommand.Option.Choice(
-                name=group.name,
-                value=str(group.id))
-            for group in groups[:25]
-        ]
-    )
+
+    responses = [
+        ApplicationCommand.Option.Choice(name=name, value=value)
+        for name, value in
+        fuzzy_search(
+            query or '',
+            [(group.name, str(group.id)) for group in groups]
+        )
+    ]
 
     await cache_add(redis_key, responses)
 
@@ -364,22 +339,11 @@ async def autocomplete_proxy_tag(
         for index, tag in enumerate(member.proxy_tags)
     }
 
-    if not full_process(query):
-        return [
-            ApplicationCommand.Option.Choice(
-                name=tag,
-                value=index)
-            for index, tag in proxy_tags.items()
-        ]
-
     return [
-        ApplicationCommand.Option.Choice(
-            name=processed[0],
-            value=str(processed[2]))
-        for processed in
-        process.extract(
-            query,
-            proxy_tags,
-            limit=10
+        ApplicationCommand.Option.Choice(name=name, value=value)
+        for name, value in
+        fuzzy_search(
+            query or '',
+            [(tag, index) for index, tag in proxy_tags.items()]
         )
     ]

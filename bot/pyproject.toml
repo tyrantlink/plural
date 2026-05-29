@@ -19,7 +19,6 @@ manifest-path = "caith/Cargo.toml"
 features = ["pyo3/extension-module"]
 include = ["*.pyi"]
 
-
 [tool.uv]
 cache-keys = [{file = "pyproject.toml"}, {file = "caith/Cargo.toml"}, {file = "**/*.rs"}]
 
