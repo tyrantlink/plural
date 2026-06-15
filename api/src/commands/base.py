@@ -33,6 +33,7 @@ from src.discord import (
     ApplicationIntegrationType,
     InteractionContextType,
     ApplicationCommand,
+    Permission,
     SlashCommandGroup,
     message_command,
     slash_command,
@@ -84,39 +85,111 @@ async def message_plural_debug(
     interaction: Interaction,
     message: Message
 ) -> None:
-    debug_log_str = await redis.hget('proxy_debug', str(message.id))
+    # ? this is the worst way to do this but my types just
+    # ? don't load half the time and python hurts my brain
+    embeds: list[Embed] = []
 
-    if debug_log_str is None:
-        if message.timestamp < datetime.now(UTC) - timedelta(days=1):
-            raise InteractionError('Debug logs only last for one day')
-        raise InteractionError('No debug log found for this message')
+    try:
+        debug_log_str = await redis.hget('proxy_debug', str(message.id))
 
-    debug_log: list[str] = loads(debug_log_str)
+        if debug_log_str is None:
+            if message.timestamp < datetime.now(UTC) - timedelta(days=1):
+                raise InteractionError('Debug logs only last for one day')
+            raise InteractionError('No debug log found for this message')
 
-    if (
-        debug_log[0] != str((await interaction.get_usergroup()).id) and
-        interaction.author_id not in env.admins
-    ):
-        for entry in debug_log.copy():
-            if RESTRICTED_GROUP_PATTERN.match(entry):
-                debug_log.remove(entry)
-                continue
-            if AUTOPROXY_FOUND_PATTERN.match(entry):
-                debug_log.remove(entry)
+        debug_log: list[str] = loads(debug_log_str)
 
-    await interaction.response.send_message(embeds=[Embed(
-        title='debug log',
-        description=f'```{'\n'.join(debug_log[1:])}```',
+        if (
+            debug_log[0] != str((await interaction.get_usergroup()).id) and
+            interaction.author_id not in env.admins
+        ):
+            for entry in debug_log.copy():
+                if RESTRICTED_GROUP_PATTERN.match(entry):
+                    debug_log.remove(entry)
+                    continue
+                if AUTOPROXY_FOUND_PATTERN.match(entry):
+                    debug_log.remove(entry)
+
+        embeds.append(Embed(
+            title='debug log',
+            description=f'```{'\n'.join(debug_log[1:])}```',
+            color=(
+                0x69ff69
+                if (
+                    debug_log[-1].startswith('Latency: ') or
+                    debug_log[1] == 'Reproxy command used.'
+                ) else
+                0xff6969
+            )
+        ))
+    except InteractionError as error:
+        embeds.append(Embed.error(
+            str(error).strip()[:4095],
+            expected=True
+        ))
+
+    guild_install = interaction.authorizing_integration_owners.get(
+        ApplicationIntegrationType.GUILD_INSTALL
+    ) is not None
+    
+    guild_install_embed = Embed(
+        title='Server Debug Info',
         color=(
             0x69ff69
-            if (
-                debug_log[-1].startswith('Latency: ') or
-                debug_log[1] == 'Reproxy command used.'
-            ) else
+            if guild_install else
             0xff6969
         )
-    )])
+    ).add_field(
+        name='Installed',
+        value='✅' if guild_install else '❌',
+        inline=False
+    )
 
+    if guild_install:
+        permissions = []
+
+        for (name, permission, failure_value) in [
+            ('Manage Webhooks', Permission.MANAGE_WEBHOOKS, '❌'),
+            ('View Channels', Permission.VIEW_CHANNEL, '❌'),
+            ('Send Messages', Permission.SEND_MESSAGES, '❌'),
+            ('Send Messages in Threads', Permission.SEND_MESSAGES_IN_THREADS, '❌'),
+            ('Manage Messages', Permission.MANAGE_MESSAGES, '❌'),
+            ('Embed Links', Permission.EMBED_LINKS, '⚠️'),
+            ('Attach Files', Permission.ATTACH_FILES, '⚠️'),
+            ('Message History', Permission.READ_MESSAGE_HISTORY, '❌'),
+            ('Use External Emojis', Permission.USE_EXTERNAL_EMOJIS, '⚠️')
+        ]:
+            if interaction.app_permissions & permission:
+                permissions.append(
+                    f'{name}: ✅'
+                )
+            else:
+                match failure_value:
+                    case '⚠️' if guild_install_embed.color == 0x69ff69:
+                        guild_install_embed.color = 0xffff69
+                    case '❌' if guild_install_embed.color in [0x69ff69, 0xffff69]:
+                        guild_install_embed.color = 0xff6969
+
+                permissions.append(
+                    f'{name}: {failure_value}'
+                )
+        
+        guild_install_embed.add_field(
+            name='Permissions',
+            value='\n'.join(permissions),
+            inline=False
+        )
+
+    if guild_install_embed.color == 0x69ff69:
+        embeds[0].set_footer(
+            'Bot has all required permissions in this channel'
+        )
+    else:
+        embeds.append(guild_install_embed)
+
+    await interaction.response.send_message(
+        embeds=embeds
+    )
 
 @message_command(
     name='/plu/ral edit',
