@@ -1316,7 +1316,10 @@ async def _process_proxy(
             data=BytesIO(data),
             filename=attachment['filename'],
             description=attachment.get('description'),
-            spoiler=attachment['filename'].startswith('SPOILER_'),
+            spoiler=(
+                attachment['filename'].startswith('SPOILER_')
+                or attachment.get('flags', 0) & 8
+            ),
             duration_secs=attachment.get('duration_secs'),
             waveform=attachment.get('waveform'),
             size=len(data))
