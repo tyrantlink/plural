@@ -357,6 +357,10 @@ class ChannelFlag(Flag):
     """This group DM is used for guild join request interviews"""
     OBFUSCATED = 1 << 17
     """This channel is unavailable for the current user and has its details obfuscated"""
+    IS_MODERATOR_REPORT_CHANNEL = 1 << 19
+    """Forum channel is the guild's moderator queue"""
+    IS_SPOILER_CHANNEL = 1 << 21
+    """Channel is marked as a spoiler channel"""
 
 
 class ChannelType(Enum):
