@@ -1,4 +1,4 @@
-# Getting Started
+
 
 If you're coming from PluralKit or Tupperbox, see the [importing](/guide/importing.md) page information on how to import, and the differences between the bots.
 
